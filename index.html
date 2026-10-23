@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Iron Field — Combined Arms</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%236ce6b1'/%3E%3Ctext x='7' y='23' font-size='20'%3EIF%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css?v=24">
+  <script defer src="vendor/three.min.js"></script>
+  <script defer src="map.js?v=7"></script>
+  <script defer src="data.js?v=14"></script>
+  <script defer src="network.js?v=12"></script>
+  <script defer src="ui-art.js?v=15"></script>
+  <script defer src="weapon-fx.js?v=4"></script>
+  <script defer src="fog.js?v=2"></script>
+  <script defer src="opponent.js?v=1"></script>
+  <script defer src="voice.js?v=3"></script>
+  <script defer src="ai-link.js?v=3"></script>
+  <script defer src="game.js?v=40"></script>
+  <script defer src="music.js?v=2"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html"><span class="brand-mark">IF</span><span>IRON FIELD <small>3D STRATEGY LAB</small></span></a>
+    <div class="resources"><span class="resource-label">CREDITS <strong id="credits">600</strong></span><span id="income" class="income">Ore deliveries</span><span class="resource-label">UNITS <strong id="army">6 / 24</strong></span><span class="resource-label">POWER <strong id="power">60 / 55</strong></span></div>
+    <div class="top-actions"><div class="music-controls" role="group" aria-label="Background music"><button id="music-toggle" aria-pressed="false" aria-label="Play background music">♫ Music</button><select id="music-track" aria-label="Background music track"><option value="auto">Auto · Calm</option></select><input id="music-volume" type="range" min="0" max="100" step="1" value="25" aria-label="Music volume" title="Music volume"></div><button id="network-open">Multiplayer</button><button id="pause" aria-pressed="false">Pause</button><button id="reset">New battle</button></div>
+  </header>
+  <main class="layout">
+    <section class="battlefield" aria-label="Interactive 3D battlefield">
+      <div id="viewport"><canvas id="game" tabindex="0" aria-label="3D battlefield. Left-click or drag to select. Right-click to move, attack, or harvest. Right-drag to pan. Use WASD to pan, Q and E to rotate, and the mouse wheel to zoom."></canvas></div>
+      <div class="view-tools"><button id="zoom-in" aria-label="Zoom in">+</button><button id="zoom-out" aria-label="Zoom out">−</button><button id="home" aria-label="Reset camera">Home</button></div>
+      <div id="selection-box" hidden></div>
+      <div id="labels" aria-hidden="true"></div>
+      <div id="announcement" class="announcement" role="status">Your miners are working. Build your strike force.</div>
+      <div id="reward-notice" class="reward-notice" role="status" hidden></div>
+      <div id="result" class="result" hidden><span class="eyebrow">EXERCISE COMPLETE</span><h2 id="result-title"></h2><p id="result-detail"></p><button id="play-again" class="primary">Try again</button></div>
+      <div class="field-footer"><span><i class="swatch friendly"></i> YOUR FORCE <i class="swatch enemy"></i> OPPOSITION</span><span id="render-stats">Starting 3D renderer…</span></div>
+    </section>
+    <aside class="sidebar">
+      <div class="radar-frame"><div class="radar-heading"><span>TACTICAL RADAR</span><span class="radar-live">● ONLINE</span></div><canvas id="radar" width="270" height="160" tabindex="0" aria-label="Tactical minimap. Left-click or drag to pan the camera. Right-click to issue an order."></canvas><details class="sidebar-info"><summary aria-label="Radar controls" title="Radar controls"><span aria-hidden="true">i</span></summary><div class="info-content"><div class="radar-caption">LMB: camera · RMB: orders · Scout to reveal</div></div></details><div id="raid-status" class="raid-status" aria-label="Battle status">Enemy status</div></div>
+      <details id="opponent-panel" class="opponent-controls">
+        <summary>COMPUTER OPPONENT <span>SOLO</span></summary>
+        <select id="opponent-style" aria-label="Computer opponent style" aria-describedby="opponent-description opponent-status">
+          <option value="balanced">Balanced</option><option value="rush">Rush commander</option><option value="fortress">Fortress commander</option><option value="economy">Economy commander</option><option value="air">Air commander</option><option value="ollama">AI commander · Ollama</option><option value="openai">AI commander · OpenAI Decisions</option>
+        </select>
+        <details class="sidebar-info"><summary aria-label="About computer opponents" title="About computer opponents"><span aria-hidden="true">i</span></summary><div class="info-content"><p id="opponent-description">Mixed forces, protected miners, and measured attacks.</p>
+        <p id="opponent-aid">Solo AI support: +120 credits/min below $600 · emergency recovery funds.</p></div></details>
+        <p id="opponent-status" role="status" hidden></p>
+        <div id="ai-settings" hidden>
+          <label for="ai-location">SEND AI REQUESTS THROUGH</label>
+          <select id="ai-location"><option value="player">This computer</option><option value="server">Game server</option></select>
+          <details class="sidebar-info"><summary aria-label="About AI providers and API usage" title="About AI providers and API usage"><span aria-hidden="true">i</span></summary><div class="info-content"><p id="ai-cloud-notice" hidden>Uses OpenAI Decisions in the cloud. Sends game-state summaries; API usage is billed to your OpenAI account.</p>
+          <p id="ai-server-info" hidden></p><p>This computer uses your paired local connector. Game server uses the provider configured on the host.</p></div></details>
+          <details id="ai-pairing"><summary>Connect this computer</summary>
+            <p><a href="local-ai.zip" download>Download the AI connector</a> and extract it. Node.js 18+ required.</p>
+            <details class="sidebar-info"><summary aria-label="How to connect AI on this computer" title="How to connect AI on this computer"><span aria-hidden="true">i</span></summary><div class="info-content"><p id="ai-ollama-help">Run Ollama locally and start <strong>Start-Local-AI.cmd</strong>. On macOS/Linux run <code>node local-ai.cjs</code>.</p>
+            <p id="ai-openai-help" hidden>Start <strong>Start-OpenAI-AI.cmd</strong>. On macOS/Linux run <code>node local-ai.cjs --provider openai</code>. After pairing, open <strong>API key setup</strong> and enter your key in the local connector page. The key stays in memory until the connector closes.</p>
+            <p>Use this game's server address, then enter the pairing code. Keep the connector running while you play.</p></div></details>
+            <button id="ai-pair">Create pairing code</button><code id="ai-pair-code">Not paired</code>
+            <p id="ai-connection" role="status">Uses a model installed in your local Ollama. No cloud key needed.</p>
+            <p><a id="ai-key-setup" href="#" target="_blank" rel="noopener noreferrer" hidden>API key setup ↗</a></p>
+          </details>
+        </div>
+        <p id="opponent-order" hidden></p>
+        <details id="opponent-log" hidden><summary>Commander activity</summary><pre id="opponent-events">No orders executed yet.</pre></details>
+      </details>
+      <nav class="tabs" aria-label="Production category"><button id="play-tab" class="active" aria-pressed="true" title="Units"><span>▰</span>Units</button><button id="build-tab" aria-pressed="false" title="Structures"><span>▥</span>Structures</button><button id="defense-tab" aria-pressed="false" title="Defenses"><span>⌖</span>Defenses</button><button id="learn-tab" aria-pressed="false" title="Learning tools"><span>⚙</span>Lab</button></nav>
+      <section id="structure-actions" class="structure-controls" aria-label="Selected structure" hidden><strong id="structure-action-name"></strong><div class="structure-buttons"><button id="structure-repair" aria-pressed="false">Repair</button><button id="structure-sell">Sell</button></div><p id="structure-action-help" class="catalog-tip"></p></section>
+      <div id="play-panel" class="panel">
+        <div class="section-heading"><span id="production-heading" class="eyebrow">UNIT PRODUCTION</span><span id="mining-status">2 miners active</span></div>
+        <div class="roster-filters" aria-label="Unit role"><button id="filter-all" class="active" aria-pressed="true">All</button><button id="filter-armor" aria-pressed="false">Armor</button><button id="filter-siege" aria-pressed="false">Siege</button><button id="filter-support" aria-pressed="false">Support</button><button id="filter-infantry" aria-pressed="false">Infantry</button><button id="filter-air" aria-pressed="false">Air</button><button id="filter-navy" aria-pressed="false">Navy</button></div><details class="sidebar-info"><summary aria-label="Unit production and rally points" title="Unit production and rally points"><span aria-hidden="true">i</span></summary><div class="info-content"><p class="catalog-tip">War factory → vehicles · Garrison → infantry<br>Airfield → aircraft · Shipyard → navy · HQ → miners<br>Click a production building to see its units. RMB sets its rally point.</p></div></details><div id="unit-catalog" class="catalog"></div>
+
+      </div>
+      <div id="build-panel" class="panel" hidden>
+        <div class="section-heading"><span class="eyebrow">CONSTRUCTION YARD</span><span>Expand your territory</span></div>
+        <details class="tech-tree sidebar-info"><summary aria-label="Building requirements" title="Building requirements"><span aria-hidden="true">i</span></summary><p>Power plant → Refinery + Garrison → War factory → Airfield<br>Refinery + Power plant → Naval shipyard (water)</p><p>Garrison → Guard turret / Flame bunker<br>War factory → Missile battery<br>War factory + Power plant → Tesla coil</p><p>Only completed buildings of your own count. Losing a prerequisite locks new construction; existing structures keep working.</p></details><div id="building-catalog" class="building-catalog"></div>
+        <details class="sidebar-info"><summary aria-label="Building placement and territory" title="Building placement and territory"><span aria-hidden="true">i</span></summary><div class="info-content"><p class="catalog-tip">HQ grants a 32-unit build radius. Every completed structure extends territory 14 units around itself. Scout ahead, then build inside the mint boundary. Right-click cancels placement.</p></div></details>
+      </div>
+      <div id="defense-panel" class="panel" hidden><div class="section-heading"><span class="eyebrow">BASE DEFENSE</span><span>4 defensive options</span></div><div id="defense-catalog" class="building-catalog"></div><details class="sidebar-info"><summary aria-label="Defense range and power" title="Defense range and power"><span aria-hidden="true">i</span></summary><div class="info-content"><p class="catalog-tip">The gold circle shows firing range. Each defense uses power; low power halves its fire rate. Build extra power plants to support your defenses. Right-click cancels placement.</p></div></details></div>
+      <div id="learn-panel" class="panel" hidden>
+        <span class="eyebrow">LOOK UNDER THE HOOD</span><h2>From shapes to a game.</h2><details class="sidebar-info"><summary aria-label="About the learning tools" title="About the learning tools"><span aria-hidden="true">i</span></summary><div class="info-content"><p>Change the view while the simulation runs. Every tank is a group of boxes and cylinders.</p></div></details>
+        <label class="graphics-label" for="graphics-quality">Graphics quality</label><select id="graphics-quality" aria-describedby="graphics-help"><option value="high">High</option><option value="balanced">Balanced</option><option value="performance">Performance</option></select><details class="sidebar-info"><summary aria-label="About graphics quality" title="About graphics quality"><span aria-hidden="true">i</span></summary><div class="info-content"><p id="graphics-help">For a slow frame rate, choose Performance. This setting applies to your browser.</p></div></details>
+        <label class="toggle"><span>Show triangle wireframe<small>The geometry beneath the surfaces</small></span><input id="wireframe" type="checkbox"></label>
+        <label class="toggle"><span>Voice alerts<small>Production, attack and low-power warnings</small></span><input id="voice-enabled" type="checkbox" checked></label>
+        <label class="speed-label" for="voice-volume">Voice volume</label><input id="voice-volume" type="range" min="0" max="100" step="1" value="80" aria-label="Voice alert volume"><p id="voice-status" role="status"></p>
+        <label class="toggle"><span>Show world grid<small>Each square is 2 world units</small></span><input id="grid" type="checkbox"></label>
+        <label class="toggle"><span>Perspective camera<small>Distant objects look smaller</small></span><input id="perspective" type="checkbox"></label>
+        <label class="speed-label" for="speed">Simulation speed <output id="speed-value">1×</output></label><input id="speed" type="range" min="0.25" max="2" step="0.25" value="1">
+        <label class="toggle"><span>Computer strategy &amp; raids<small>Turn off for a quieter learning session</small></span><input id="raids" type="checkbox" checked></label>
+        <div class="divider"></div>
+        <span class="eyebrow">ONE FRAME, REPEATED</span>
+        <details class="sidebar-info"><summary aria-label="How each game frame works" title="How each game frame works"><span aria-hidden="true">i</span></summary><div class="info-content"><ol class="pipeline"><li><strong>Choose a state</strong><p>Miners cycle through travel, harvest, return, and unload. Credits arrive only at a refinery.</p></li><li><strong>Find a route</strong><p>A* searches around buildings and rocky ridges. Aircraft fly over obstacles. Local separation keeps vehicles apart.</p></li><li><strong>Apply unit rules</strong><p>Each vehicle has its own speed, armor, range, and weapon. Artillery damages an area.</p></li><li><strong>Draw the scene</strong><p>The renderer turns model triangles, lights, and camera position into the next image.</p></li></ol></div></details>
+        <div class="inspector"><span class="eyebrow">SELECTED OBJECT / LIVE</span><pre id="inspector">Select a friendly tank to inspect it.</pre></div>
+        <a class="source-link" href="README.md" target="_blank">Read the source walkthrough ↗</a>
+      </div>
+      <div class="production-console">        <div id="build-status" class="secondary" role="status"></div><button id="cancel-build" class="quiet" hidden>Cancel placement · Esc</button>
+<details class="sidebar-info"><summary aria-label="Production controls and item information" title="Production controls and item information"><span aria-hidden="true">i</span></summary><div class="info-content"><div id="catalog-help">Left-click an icon to produce. Right-click a unit icon to cancel one of that type and refund it.</div></div></details>
+</div>
+      <section class="selection-console" aria-label="Selected force">        <div class="section-heading"><span class="eyebrow">01 / YOUR SQUAD</span><span id="selected-count">0 selected</span></div>
+        <h2 id="selection-name">Ready for orders</h2>
+        <p id="selection-detail">Click a tank, or drag a box around several. Shift-click adds to your selection.</p>
+        <div class="command-grid"><button id="select-all">Army <kbd>F</kbd></button><button id="select-miners">Miners <kbd>M</kbd></button><button id="harvest">Harvest <kbd>H</kbd></button><button id="stop">Stop <kbd>X</kbd></button></div>
+        <div id="selection-extra" class="selection-extra"></div>
+<div class="group-strip" aria-label="Control groups"><button id="group-1" title="Ctrl+1: assign · 1: select · double tap: center">1</button><button id="group-2" title="Ctrl+2: assign · 2: select · double tap: center">2</button><button id="group-3" title="Ctrl+3: assign · 3: select · double tap: center">3</button><button id="group-4" title="Ctrl+4: assign · 4: select · double tap: center">4</button><button id="group-5" title="Ctrl+5: assign · 5: select · double tap: center">5</button><button id="group-6" title="Ctrl+6: assign · 6: select · double tap: center">6</button><button id="group-7" title="Ctrl+7: assign · 7: select · double tap: center">7</button><button id="group-8" title="Ctrl+8: assign · 8: select · double tap: center">8</button><button id="group-9" title="Ctrl+9: assign · 9: select · double tap: center">9</button></div><details class="sidebar-info"><summary aria-label="Selection and control group shortcuts" title="Selection and control group shortcuts"><span aria-hidden="true">i</span></summary><div class="info-content"><p class="catalog-tip">LMB select · RMB command · Double-click same type<br>Shift adds · Ctrl + 1–9 assigns groups · Edge / right-drag pans</p></div></details></section>
+      <footer class="side-footer"><span class="status-dot"></span> COMBINED ARMS <span>v0.5 · LAN</span></footer>
+    </aside>
+  </main>
+  <dialog id="map-dialog" aria-labelledby="map-title">
+    <span class="eyebrow">IRON FIELD / NEW BATTLE</span><h2 id="map-title">Choose your battlefield</h2>
+    <label class="lobby-label" for="map-select">Map</label><select id="map-select"></select>
+    <canvas id="map-preview" width="440" height="260" aria-label="Map overview showing waterways, bridges, ridges and starting positions"></canvas>
+    <p id="map-description"></p><p class="catalog-tip">Build a refinery and power plant, then place a naval shipyard in scouted water near shore. Ships sail beneath bridges; ground forces cross over them.</p>
+    <div class="lobby-buttons"><button id="map-start" class="primary">Start solo battle</button><button id="map-multiplayer">Multiplayer lobby</button><button id="map-cancel" hidden>Return to battle</button></div>
+  </dialog>
+  <dialog id="network-dialog" aria-labelledby="network-title">
+    <div class="lobby-heading"><span class="eyebrow">IRON FIELD / MULTIPLAYER</span><button id="network-close" aria-label="Close multiplayer lobby">×</button></div>
+    <h2 id="network-title">Four commanders. One battlefield.</h2><p>Play with 2–4 players in a free-for-all on the same Wi-Fi or local network. Each player controls their own army, miners, and base.</p>
+    <div id="network-server-help" hidden><p>Run <strong>Start-Multiplayer.cmd</strong> in the game folder, then open the multiplayer server.</p><a id="network-server-link" href="http://localhost:8766/">Open multiplayer server ↗</a></div>
+    <label class="lobby-label" for="network-map">Battlefield · host chooses before starting</label><select id="network-map"></select><p id="network-map-description" class="catalog-tip"></p>
+    <div id="network-actions">
+      <label class="lobby-label" for="network-name">Commander name</label><input id="network-name" maxlength="24" value="Commander" autocomplete="off">
+      <button id="network-host" class="primary lobby-wide">Host a match</button>
+      <div class="join-row"><input id="network-code" maxlength="6" placeholder="ROOM CODE" aria-label="Room code" autocomplete="off"><button id="network-join">Join match</button></div>
+    </div>
+    <div id="network-room" hidden>
+      <div class="room-banner"><span>ROOM CODE</span><strong id="network-room-code"></strong><small id="network-seat"></small></div>
+      <p id="network-host-status"></p><p id="network-guest-status"></p><p id="network-guest2-status"></p><p id="network-guest3-status"></p>
+      <label class="lobby-label" for="network-invite">Share this address with the other commanders</label><div class="join-row"><input id="network-invite" readonly><button id="network-copy">Copy</button></div>
+      <p id="network-phase" class="lobby-phase"></p>
+      <div class="lobby-buttons"><button id="network-ready">Ready</button><button id="network-start" class="primary">Start match</button><button id="network-leave">Leave room</button></div>
+    </div>
+    <p id="network-message" role="status"></p>
+    <details class="lobby-details"><summary>Connecting another computer</summary><p>Open an address below on the other computer, then join using the room code. All devices must reach the host on port 8766. The host keeps this game tab open and visible; disconnecting or backgrounding it pauses the match.</p><div id="network-addresses"></div><a href="MULTIPLAYER.md" target="_blank">Setup and networking guide ↗</a></details>
+  </dialog>
+  <noscript>This prototype requires JavaScript and a browser with WebGL enabled.</noscript>
+</body>
+</html>

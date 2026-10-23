@@ -1,0 +1,28 @@
+# Credentials and machine-specific configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Local tools, logs and operating-system files
+node_modules/
+*.log
+*.pid
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Local deployment notes and development screenshots
+DEPLOYMENT.md
+*-preview.png
+preview.png
+weapon-effects.png
+
+# Generated archives, except the connector served by the game
+*.zip
+!local-ai.zip
+*.tar.gz
