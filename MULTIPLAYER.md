@@ -82,7 +82,7 @@ The connection addresses printed by the server reflect the selected port. Use th
 Opening `index.html` directly continues to provide the offline solo game. Its Multiplayer button explains how to launch the server. The earlier static preview server on port 8765 cannot host rooms; use the multiplayer server on port 8766.
 
 
-Each selectable battlefield is 132 × 104 units; Iron Valley retains the original eight ridges. Ground navigation respects the ridges; aircraft fly over them. Complete an airfield to unlock aircraft. Select a production building and right-click to set its rally point. Exit placement, rally ownership, aircraft prerequisites, and target compatibility are checked by the host. Refresh every client after updating: protocol v12 prevents older game versions from creating or joining new rooms.
+Each selectable battlefield is 132 × 104 units; Iron Valley retains the original eight ridges. Ground navigation respects the ridges; aircraft fly over them. Complete an airfield to unlock aircraft. Select a production building and right-click to set its rally point. Exit placement, rally ownership, aircraft prerequisites, and target compatibility are checked by the host. Refresh every client after updating: protocol v13 prevents older game versions from creating or joining new rooms.
 
 ## Frame rate and responsiveness
 
@@ -94,7 +94,7 @@ In a local two-browser smoke benchmark, a 24-route batch fell from 179 ms to 46 
 
 ## Battle rewards
 
-Enemy kills pay 50% of build cost (HQ: 300 credits) directly to the team landing the final hit, even without a refinery. All four seats use the same rules. A gold notice shows the payout; the resource bar tracks cumulative rewards separately from ore. Only the host calculates rewards. Balances and reward totals survive host/guest refresh without double payment. Eliminated teams and armies removed as part of HQ elimination receive no additional payouts. All players must refresh for protocol v12.
+Enemy kills pay 50% of build cost (HQ: 300 credits) directly to the team landing the final hit, even without a refinery. All four seats use the same rules. A gold notice shows the payout; the resource bar tracks cumulative rewards separately from ore. Only the host calculates rewards. Balances and reward totals survive host/guest refresh without double payment. Eliminated teams and armies removed as part of HQ elimination receive no additional payouts. All players must refresh for protocol v13.
 
 ## Voice alerts
 
@@ -114,4 +114,4 @@ Low-power speech is team-specific and rate-limited. Mixed ground-army orders ass
 
 The host chooses Iron Valley (dry), River Front (two bridges), or Four Shores (crossed waterways, four bridges) before starting. Guests see the selection but cannot edit it. A host map change resets guests to not ready. Map changes during play and snapshots with a different map ID are rejected by the relay. New matches and reconnects apply the same terrain definition to every seat.
 
-Naval shipyards require a completed refinery and power plant, scouted water near shore, construction territory, and a clear launch point. The host validates all placements and rally orders. Patrol boats, missile frigates and bombardment ships use water-only navigation; ground units use bridges and aircraft fly overhead. Shipyard production pauses at a blocked exit. Ships, queues, rally points, power, and fog survive reconnects. The 24-unit limit includes ships. Refresh all browsers after upgrading to protocol v12.
+Naval shipyards require a completed refinery and power plant, scouted water near shore, construction territory, and a clear launch point. The host validates all placements and rally orders. Patrol boats, missile frigates and bombardment ships use water-only navigation; ground units use bridges and aircraft fly overhead. Shipyard production pauses at a blocked exit. Ships, queues, rally points, power, and fog survive reconnects. The 24-unit limit includes ships. Refresh all browsers after upgrading to protocol v13.

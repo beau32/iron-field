@@ -570,4 +570,20 @@ Each class has its own model and matching production portrait. The patrol boat i
 
 Ships share the 24-unit army limit. Select them and right-click water to move, or a visible enemy to attack. They can bombard land targets within range while staying in water. Select a shipyard and right-click clear water to set its rally point. A blocked exit holds completed production until space clears. Selling or losing the shipyard pauses its pending line until another completed shipyard is available. Repair crawlers escort and repair land vehicles only. Solo computer opponents can expand to the shore, build shipyards, and recruit naval units.
 
-Multiplayer hosts choose the map in the lobby. Changing it clears guests' ready status. The map is locked once the match starts, checked by the relay, and restored together with naval units after host or guest reconnects. All players must refresh for protocol v12.
+Multiplayer hosts choose the map in the lobby. Changing it clears guests' ready status. The map is locked once the match starts, checked by the relay, and restored together with naval units after host or guest reconnects. All players must refresh for protocol v13.
+
+
+## Superweapons
+
+Complete an **Airfield** and **Power plant**, then build a superweapon from **Structures**. Each commander may own one of each, including structures under construction. Select the building or use the **Superweapons** panel to target a currently visible location. Left-click launches; right-click or Escape cancels. Scout first: explored but currently hidden territory cannot be targeted.
+
+| Structure | Cost / power | Recharge | Strike |
+| --- | --- | --- | --- |
+| Tempest missile silo | 1,200 / 60 | 120 seconds | 4-second warning, radius 9, 450 damage at the center falling to 180 at the edge. Hits enemy units and buildings, including aircraft. |
+| Blackout EMP array | 900 / 50 | 90 seconds | 3-second warning, radius 11, disables enemy vehicles, miners, aircraft, ships and defenses for 10 seconds. Infantry and economy buildings are unaffected. |
+
+Construction takes 25 / 20 seconds respectively. Charging starts empty after completion. Low power pauses charging and prevents launches, even when charged. Match pauses freeze all timers. Firing consumes the full charge; selling and rebuilding starts empty. A launched strike continues if its launcher is sold or destroyed. Strikes do not harm friendly units. EMP preserves orders, so affected units resume after recovery; already-fired projectiles still land.
+
+The sidebar displays recharge and incoming-strike countdowns, with battlefield warning rings, distinct missile/EMP effects and optional voice alerts. All four multiplayer seats use the same host-validated targeting, power and charge rules; strikes and EMP expiry are replicated in snapshots. Network protocol is now 13: every player must refresh after updating.
+
+Solo opponents can invest in superweapons after six minutes when they have an airfield, at least six combat units and 400 credits left over. Their local tactical controller targets worthwhile visible enemy groups with the same recharge and vision restrictions. This targeting works with every opponent style, including Ollama and OpenAI; it does not require a separate LLM request.

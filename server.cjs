@@ -10,7 +10,7 @@ const os = require('node:os');
 const crypto = require('node:crypto');
 const ROOT = __dirname, PORT = Number(process.env.PORT || 8766), HOST = process.env.HOST || '0.0.0.0';
 const rooms = new Map(), sessions = new Map(), creationLimits = new Map();
-const version = 12;
+const version = 13;
 const roles=['host','guest','guest2','guest3'], teams=['player','enemy','team3','team4'];
 const seats=room=>roles.map(role=>room[role]).filter(Boolean);
 const MAP = require('./map.js');
@@ -53,11 +53,11 @@ function authenticate(req) {
 }
 function live(room) {return seats(room).length>=2 && seats(room).every(s=>s.stream) && room.hostVisible;}
 function validateAction(action) {
-  if (!action || !['order','rally','stop','harvest','queue','cancelQueue','build','pause','repairStructure','sellStructure'].includes(action.type)) throw fail(400,'Unknown action.');
-  if (['repairStructure','sellStructure'].includes(action.type)&&(!Array.isArray(action.ids)||action.ids.length!==1||!Number.isSafeInteger(action.ids[0])||action.ids[0]<1))throw fail(400,'Select one structure.');
+  if (!action || !['order','rally','stop','harvest','queue','cancelQueue','build','pause','repairStructure','sellStructure','superweapon'].includes(action.type)) throw fail(400,'Unknown action.');
+  if (['repairStructure','sellStructure','superweapon'].includes(action.type)&&(!Array.isArray(action.ids)||action.ids.length!==1||!Number.isSafeInteger(action.ids[0])||action.ids[0]<1))throw fail(400,'Select one structure.');
   if (action.type==='repairStructure'&&typeof action.enabled!=='boolean')throw fail(400,'Invalid repair setting.');
   if (['order','rally','stop','harvest'].includes(action.type) && (!Array.isArray(action.ids)||action.ids.length>24||!action.ids.every(id=>Number.isSafeInteger(id)&&id>0))) throw fail(400,'Invalid selection.');
-  if (['order','rally','build'].includes(action.type) && (!action.point||!Number.isFinite(action.point.x)||!Number.isFinite(action.point.z)||Math.abs(action.point.x)>MAP.halfWidth||Math.abs(action.point.z)>MAP.halfDepth)) throw fail(400,'Invalid map position.');
+  if (['order','rally','build','superweapon'].includes(action.type) && (!action.point||!Number.isFinite(action.point.x)||!Number.isFinite(action.point.z)||Math.abs(action.point.x)>MAP.halfWidth||Math.abs(action.point.z)>MAP.halfDepth)) throw fail(400,'Invalid map position.');
   if ((action.type==='queue'||action.type==='cancelQueue'&&action.kind!=null)&&!unitKinds.includes(action.kind)) throw fail(400,'Unknown unit.');
   if (action.type==='build'&&!buildingKinds.includes(action.kind)) throw fail(400,'Unknown structure.');
   if (action.targetId!==undefined&&action.targetId!==null&&(!Number.isSafeInteger(action.targetId)||action.targetId<1)) throw fail(400,'Invalid target.');

@@ -39,7 +39,7 @@ window.FieldNetwork = class FieldNetwork {
     if(!this.$('network-dialog').open)this.$('network-dialog').showModal();
     try{
       const response=await fetch('/api/info',{cache:'no-store'});if(!response.ok)throw Error();
-      const info=await response.json();if(info.version!==12)throw Error('Game updated. Refresh this page before hosting or joining.');
+      const info=await response.json();if(info.version!==13)throw Error('Game updated. Refresh this page before hosting or joining.');
       this.links=info.links;this.$('network-server-help').hidden=true;this.$('network-actions').hidden=this.active;
       const list=this.$('network-addresses');list.replaceChildren();
       for(const url of info.links){const item=document.createElement('div');item.textContent=url;list.append(item);}
@@ -56,7 +56,7 @@ window.FieldNetwork = class FieldNetwork {
   }
   async enter(endpoint){
     if(this.entering||this.active)return;this.entering=true;this.message('Connecting…');
-    try{const session=await this.post(endpoint,{version:12,name:this.$('network-name').value,mapId:this.$('network-map').value,code:this.$('network-code').value},false);this.adopt(session);}
+    try{const session=await this.post(endpoint,{version:13,name:this.$('network-name').value,mapId:this.$('network-map').value,code:this.$('network-code').value},false);this.adopt(session);}
     catch(error){this.message(error.message);}finally{this.entering=false;}
   }
   adopt(session){

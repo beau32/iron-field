@@ -5,18 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Iron Field — Combined Arms</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%236ce6b1'/%3E%3Ctext x='7' y='23' font-size='20'%3EIF%3C/text%3E%3C/svg%3E">
-  <link rel="stylesheet" href="style.css?v=24">
+  <link rel="stylesheet" href="style.css?v=25">
   <script defer src="vendor/three.min.js"></script>
   <script defer src="map.js?v=7"></script>
-  <script defer src="data.js?v=14"></script>
-  <script defer src="network.js?v=12"></script>
-  <script defer src="ui-art.js?v=15"></script>
+  <script defer src="data.js?v=15"></script>
+  <script defer src="network.js?v=13"></script>
+  <script defer src="ui-art.js?v=16"></script>
   <script defer src="weapon-fx.js?v=4"></script>
   <script defer src="fog.js?v=2"></script>
   <script defer src="opponent.js?v=1"></script>
-  <script defer src="voice.js?v=3"></script>
+  <script defer src="voice.js?v=4"></script>
   <script defer src="ai-link.js?v=3"></script>
-  <script defer src="game.js?v=40"></script>
+  <script defer src="game.js?v=41"></script>
   <script defer src="music.js?v=2"></script>
 </head>
 <body>
@@ -65,7 +65,8 @@
         <details id="opponent-log" hidden><summary>Commander activity</summary><pre id="opponent-events">No orders executed yet.</pre></details>
       </details>
       <nav class="tabs" aria-label="Production category"><button id="play-tab" class="active" aria-pressed="true" title="Units"><span>▰</span>Units</button><button id="build-tab" aria-pressed="false" title="Structures"><span>▥</span>Structures</button><button id="defense-tab" aria-pressed="false" title="Defenses"><span>⌖</span>Defenses</button><button id="learn-tab" aria-pressed="false" title="Learning tools"><span>⚙</span>Lab</button></nav>
-      <section id="structure-actions" class="structure-controls" aria-label="Selected structure" hidden><strong id="structure-action-name"></strong><div class="structure-buttons"><button id="structure-repair" aria-pressed="false">Repair</button><button id="structure-sell">Sell</button></div><p id="structure-action-help" class="catalog-tip"></p></section>
+      <section id="superweapons" class="structure-controls" aria-label="Superweapons" hidden><strong>SUPERWEAPONS</strong><p id="super-warning" role="status"></p><div id="superweapon-list"></div></section>
+      <section id="structure-actions" class="structure-controls" aria-label="Selected structure" hidden><strong id="structure-action-name"></strong><div class="structure-buttons"><button id="structure-repair" aria-pressed="false">Repair</button><button id="structure-sell">Sell</button></div><button id="structure-superweapon" hidden>Target superweapon</button><p id="structure-action-help" class="catalog-tip"></p></section>
       <div id="play-panel" class="panel">
         <div class="section-heading"><span id="production-heading" class="eyebrow">UNIT PRODUCTION</span><span id="mining-status">2 miners active</span></div>
         <div class="roster-filters" aria-label="Unit role"><button id="filter-all" class="active" aria-pressed="true">All</button><button id="filter-armor" aria-pressed="false">Armor</button><button id="filter-siege" aria-pressed="false">Siege</button><button id="filter-support" aria-pressed="false">Support</button><button id="filter-infantry" aria-pressed="false">Infantry</button><button id="filter-air" aria-pressed="false">Air</button><button id="filter-navy" aria-pressed="false">Navy</button></div><details class="sidebar-info"><summary aria-label="Unit production and rally points" title="Unit production and rally points"><span aria-hidden="true">i</span></summary><div class="info-content"><p class="catalog-tip">War factory → vehicles · Garrison → infantry<br>Airfield → aircraft · Shipyard → navy · HQ → miners<br>Click a production building to see its units. RMB sets its rally point.</p></div></details><div id="unit-catalog" class="catalog"></div>

@@ -330,7 +330,10 @@
   try {const saved=localStorage.getItem('iron-field-opponent');if(['ollama','openai'].includes(saved)||Object.hasOwn(FIELD_OPPONENT.styles,saved))opponentStyle=saved;}catch{}
   let commander = resetCommander();
   let modelRequest = null;
-  let placement = null, placementPoint = null, navVersion = 0;
+  let placement = null, placementPoint = null, superTarget = null, superPoint = null, navVersion = 0;
+  let superStrikes = [];
+  const superVisuals = new Map(), superEffects = new THREE.Group(); scene.add(superEffects);
+  const empMat = new THREE.MeshBasicMaterial({color:0x79dfff,transparent:true,opacity:.8,side:THREE.DoubleSide,depthWrite:false});
   const ghostMat = new THREE.MeshBasicMaterial({ color: '#9dffc6', transparent: true, opacity: .4, depthWrite: false });
   const ghost = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 24), ghostMat);
   ghost.visible = false; scene.add(ghost);
@@ -601,7 +604,7 @@
       box(turret,buildingMat.glass,0,.2,.5,.23,.12,.07);
     }
     batchStaticBoxes(group);if(turret)batchStaticBoxes(turret);if(rotor)batchStaticBoxes(rotor);
-    return {base:5.3,refinery:4.2,power:4.1,warFactory:4.2,garrison:4.1,shipyard:5.2,airfield:5.1,teslaCoil:5.1}[kind]||3.9;
+    return {missileSilo:4.7,empArray:5.3,base:5.3,refinery:4.2,power:4.1,warFactory:4.2,garrison:4.1,shipyard:5.2,airfield:5.1,teslaCoil:5.1}[kind]||3.9;
   }
 
   function createBuilding(kind, team, x, z, underConstruction = false) {
@@ -611,7 +614,24 @@
     const trim = teamMaterials[team][1];
     if(kind!=='shipyard')box(group, mat.concrete, 0, .08, 0, def.radius * 2, .16, def.radius * 1.85);
     let turret = null, rotor = null;
-    if (kind === 'base') {
+    if (kind === 'missileSilo') {
+      box(group,color,0,.65,0,5,1.1,4.8);
+      cylinder(group,mat.dark,0,1.3,0,1.65,.4,16);
+      for(const side of [-1,1])box(group,mat.metal,side*1.05,1.6,0,1.5,.25,3.1);
+      cylinder(group,trim,0,2.45,0,.42,2.1,12);
+      mesh(new THREE.ConeGeometry(.42,.95,12),mat.red,group,0,3.95,0);
+      for(const x of [-.6,.6])box(group,color,x,1.9,0,.6,.7,.15);
+      box(group,mat.dark,1.8,1.8,-1.6,1.1,1.6,1.1);
+      box(group,mat.window,1.8,2,-1.02,.75,.35,.06);
+      for(const x of [-2,2])for(const z of [-1.9,1.9])cylinder(group,trim,x,1.35,z,.13,.3,6);
+    } else if (kind === 'empArray') {
+      cylinder(group,color,0,.6,0,2.3,1,12);
+      cylinder(group,mat.dark,0,2.2,0,.55,3.4,10);
+      for(let i=0;i<5;i++)cylinder(group,i%2?energyMat:trim,0,1.5+i*.5,0,1.15-i*.1,.15,16);
+      mesh(new THREE.SphereGeometry(.65,12,8),energyMat,group,0,4.15,0);
+      rotor=new THREE.Group();rotor.position.y=4.15;group.add(rotor);
+      for(const side of [-1,1]){box(rotor,trim,side*1.15,0,0,.15,1.8,.15);box(group,color,side*1.7,1,0,.65,1.6,1.2);}
+    } else if (kind === 'base') {
       box(group, mat.dark, 0, 1, 0, 4.8, 1.8, 3.6);
       box(group, color, 0, 2.03, 0, 5.05, .4, 3.85);
       box(group, mat.metal, -1.15, 2.6, -.45, 1.5, .85, 1.5);
@@ -1513,14 +1533,15 @@
       const exit=point.clone().add(new THREE.Vector3(0,0,(point.z>0?-1:1)*(def.radius+2.2)));
       if(blocked(exit.x,exit.z,1.3)||fields.some(f=>Math.hypot(exit.x-f.mesh.position.x,exit.z-f.mesh.position.z)<3.5))return 'Leave clear ground in front of the production exit.';
     }
+    if (def.superweapon && buildings.some(b=>b.team===team&&b.kind===kind&&b.hp>0)) return 'Limit: one of each superweapon per commander.';
     if (kind !== 'power' && buildings.filter(b => b.team === team && b.kind === kind && b.hp > 0).length >= 6) return `Limit: 6 ${def.name.toLowerCase()} structures.`;
     return '';
   }
-  function cancelPlacement() { placement = null; placementPoint = null; ghost.visible = false; territoryGuide.visible=false; $('cancel-build').hidden = true; $('build-status').textContent = ''; }
+  function cancelPlacement() { superTarget=null;superPoint=null; placement = null; placementPoint = null; ghost.visible = false; territoryGuide.visible=false; $('cancel-build').hidden = true; $('build-status').textContent = ''; }
   function beginPlacement(kind) {
     if (outcome) return;
     const requirement=prerequisiteMessage(kind,localTeam);if(requirement){announce(requirement);return;}
-    placement = kind; placementPoint = null; ghost.visible = false;
+    cancelPlacement(); placement = kind; placementPoint = null; ghost.visible = false;
     $('cancel-build').hidden = false; $('build-status').textContent = `Place ${STRUCTURE[kind].name.toLowerCase()} · green = valid`;
     updateTerritoryGuide(); announce('Build inside the mint territory. Completed structures extend it. Escape cancels.');
   }
@@ -1634,12 +1655,13 @@
   });
   canvas.addEventListener('pointermove', e => {
     pointer = { x: e.clientX, y: e.clientY };
-    if (drag && (drag.button === 1 || drag.button === 2) && !placement) {
+    if (drag && (drag.button === 1 || drag.button === 2) && !placement && !superTarget) {
       if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > 7) drag.panned = true;
       if (drag.panned) { panPixels(e.clientX - drag.lastX, e.clientY - drag.lastY); canvas.style.cursor = 'grabbing'; }
       drag.lastX = e.clientX; drag.lastY = e.clientY; return;
     }
     const hit = pick(e.clientX, e.clientY);
+    if(superTarget){superPoint=hit.point;const error=superweaponError(superTarget,superPoint,localTeam);canvas.style.cursor=error?'not-allowed':'crosshair';$('build-status').textContent=error||'Left-click to launch · right-click or Esc cancels';return;}
     if (placement) {
       placementPoint = hit.point;
       if (placementPoint) {
@@ -1664,6 +1686,7 @@
     if (canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
     if (down.panned || down.button === 1) return;
     const hit = pick(e.clientX, e.clientY);
+    if(superTarget){if(down.button===2)cancelPlacement();else if(hit.point&&launchSuperweapon(superTarget,hit.point))cancelPlacement();return;}
     if (placement) { if (down.button === 2) cancelPlacement(); else if (hit.point) placeBuilding(hit.point); return; }
     if (down.button === 2) {
       if (selected.size && hit.point) issueOrder(hit.entity ? hit.entity.mesh.position.clone() : hit.point, hit.entity);
@@ -1687,7 +1710,7 @@
     }
   });
   canvas.addEventListener('dblclick', e => {
-    if (e.button !== 0 || placement) return;
+    if (e.button !== 0 || placement || superTarget) return;
     const entity = pick(e.clientX, e.clientY).entity;
     if (entity?.team === localTeam && entity.type === 'unit') matchingSelection(entity, e.shiftKey);
   });
@@ -1706,7 +1729,7 @@
   radar.addEventListener('pointerdown', e => {
     e.preventDefault(); radar.focus();
     if (e.button === 0) { radar.setPointerCapture(e.pointerId); radarPan(e); }
-    if (e.button === 2 && !placement) {
+    if (e.button === 2 && !placement && !superTarget) {
       const p = radarWorld(e), target = [...living(), ...fields].find(u => visibleTo(u) && u.mesh.position.distanceTo(p) < (u.radius || 2.5));
       issueOrder(p, target);
     }
@@ -1739,6 +1762,7 @@
   function togglePause() { if (sendAction({ type: 'pause' })) return; paused = !paused; updatePause(); }
   $('select-all').onclick = selectArmy; $('select-miners').onclick = selectMiners; $('harvest').onclick = () => harvestSelected(); $('stop').onclick = () => stopSelected();
   $('pause').onclick = togglePause; $('reset').onclick = $('play-again').onclick = () => { if (net?.active) { if (net.isHost && outcome) net.control('rematch'); else net.open(); } else openMapSetup(); };
+  $('structure-superweapon').onclick=()=>beginSuperTarget([...selected][0]);
   $('structure-repair').onclick=()=>{const b=[...selected][0];repairStructure(b,!b?.repairing);};
   $('structure-sell').onclick=()=>sellStructure([...selected][0]);
   $('home').onclick = homeCamera;
@@ -1949,6 +1973,7 @@
     } else if (u.destination) u.state = u.supportIds?.length?'Following behind squad':'Moving to support';
   }
   function animateVehicles(dt) {
+    updateSuperVisuals();
     for (const u of units) {
       updateUnitDamage(u,dt);
       if(!isAir(u)){
@@ -2219,6 +2244,10 @@
       if(plan&&aiBudgetWait('miner',UNIT.miner.cost,'miner'))return;
     }
     if(!has('warFactory')&&aiPriorityBuild('warFactory'))return;
+    if(elapsed>360&&elapsed>=commander.nextBuild&&has('airfield')&&own.filter(u=>UNIT[u.kind].damage>0).length>=6){
+      const kind=!has('missileSilo')?'missileSilo':!has('empArray')?'empArray':null;
+      if(kind&&enemyCredits>STRUCTURE[kind].cost+400&&aiBuild(kind)){commander.nextBuild=elapsed+30;return;}
+    }
     if(plan&&aiCommittedProduction(plan,policy,own,ownBuildings,count))return;
     if(elapsed>=commander.nextBuild && enemyCredits>450) {
       const defenseCount=ownBuildings.filter(b=>STRUCTURE[b.kind].defense).length;
@@ -2309,6 +2338,7 @@
   function updateCommander() {
     if(net?.active || !raids || !baseOf('enemy') || elapsed<commander.nextThink)return;
     commander.nextThink=elapsed+1.5;
+    aiSuperweapons();
     requestModelPlan();
     const policy=aiPolicy();
     commander.intent='Balancing the army and protecting miners';
@@ -2393,10 +2423,100 @@
       enemyCredits+=180;computerAid.emergency+=180;computerAid.nextGrant=elapsed+90;aiLog('Emergency resupply: +180 credits');
     }
   }
+  // Strategic weapons are simulated only by the solo player or multiplayer host.
+  function superweaponError(b,point,team) {
+    if(!b||b.team!==team||!STRUCTURE[b.kind]?.superweapon||!active(b)||!baseOf(team))return 'Select a completed superweapon.';
+    if(paused||outcome||(net?.active&&!net.playable))return 'Resume the battle to launch.';
+    if(powerFor(team).low)return 'Low power: superweapon charging and launch suspended.';
+    const def=STRUCTURE[b.kind];
+    if((b.superCharge||0)<def.recharge)return `Recharging: ${Math.ceil(def.recharge-(b.superCharge||0))}s remaining.`;
+    if(!point||!Number.isFinite(point.x)||!Number.isFinite(point.z)||Math.abs(point.x)>HALF_X||Math.abs(point.z)>HALF_Z)return 'Point inside the battlefield.';
+    if(!fog.at(team,point.x,point.z))return 'Scout the target: current vision is required.';
+    return '';
+  }
+  function beginSuperTarget(b) {
+    const error=superweaponError(b,b?.mesh.position,localTeam);if(error){announce(error);return;}
+    cancelPlacement();superTarget=b;$('cancel-build').hidden=false;
+    $('build-status').textContent='Choose a visible target · right-click or Esc cancels';
+    announce(`${STRUCTURE[b.kind].name}: choose a target on the battlefield.`);
+  }
+  function launchSuperweapon(b,point,team=localTeam) {
+    const error=superweaponError(b,point,team);if(error){if(team===localTeam||applyingCommand)announce(error);return false;}
+    if(sendAction({type:'superweapon',ids:[b.id],point:{x:point.x,z:point.z}}))return true;
+    const def=STRUCTURE[b.kind];b.superCharge=0;
+    superStrikes.push({id:nextShotId++,kind:b.kind,team,x:point.x,z:point.z,launched:elapsed,impactAt:elapsed+def.warning,impacted:false});
+    for(const seat of matchTeams)if(seat!==team)emitVoiceAlert(seat,'superIncoming',b.kind);
+    if(team===localTeam||applyingCommand)announce(`${def.name} launched. Impact in ${def.warning}s.`);
+    return true;
+  }
+  const empDisabled=e=>(e.empUntil||0)>elapsed;
+  function updateSuperweapons(dt) {
+    for(const b of buildings){const def=STRUCTURE[b.kind];if(!def.superweapon||!active(b)||!baseOf(b.team)||powerFor(b.team).low)continue;
+      const before=b.superCharge||0;b.superCharge=Math.min(def.recharge,before+dt);
+      if(before<def.recharge&&b.superCharge===def.recharge)emitVoiceAlert(b.team,'superReady',b.kind);
+    }
+    for(const strike of superStrikes){
+      if(strike.impacted||elapsed<strike.impactAt)continue;strike.impacted=true;
+      const def=STRUCTURE[strike.kind];
+      for(const e of living()){
+        if(!hostile(strike.team,e.team))continue;
+        const d=Math.hypot(e.mesh.position.x-strike.x,e.mesh.position.z-strike.z);
+        if(d>def.strikeRadius)continue;
+        if(def.strikeDamage)damage(e,def.strikeDamage*(1-.6*d/def.strikeRadius),strike.team);
+        else if(e.type==='unit'&&!UNIT[e.kind].infantry||isBuilding(e)&&STRUCTURE[e.kind].defense){e.empUntil=elapsed+def.disableTime;e.repairTarget=null;}
+      }
+    }
+    superStrikes=superStrikes.filter(s=>elapsed<s.impactAt+1.2);
+  }
+  function updateSuperVisuals() {
+    // Public warning markers stay visible even in fog; they never reveal enemy entities.
+    const keep=new Set(superStrikes.map(s=>s.id));
+    for(const [id,v] of superVisuals)if(!keep.has(id)){superEffects.remove(v.root);v.material.dispose();superVisuals.delete(id);}
+    for(const s of superStrikes){
+      let v=superVisuals.get(s.id);const def=STRUCTURE[s.kind];
+      if(!v){const root=new THREE.Group(),material=new THREE.MeshBasicMaterial({color:s.kind==='empArray'?0x79dfff:0xff7955,transparent:true,opacity:.8,side:THREE.DoubleSide,depthWrite:false});
+        const rim=new THREE.Mesh(defenseRange.geometry,material);rim.rotation.x=-Math.PI/2;rim.position.y=.35;root.add(rim);
+        const core=new THREE.Mesh(burstGeometry,material);root.add(core);superEffects.add(root);v={root,rim,core,material};superVisuals.set(s.id,v);}
+      v.root.position.set(s.x,0,s.z);const after=elapsed-s.impactAt;
+      v.rim.scale.setScalar(def.strikeRadius*(after<0?1:1+after*.5));v.material.opacity=after<0?.55+.3*Math.sin(elapsed*10):Math.max(0,1-after/1.2);
+      if(after<0){v.core.visible=s.kind==='missileSilo';v.core.position.y=1+(s.impactAt-elapsed)*16;v.core.scale.set(.45,2.3,.45);}
+      else{v.core.visible=true;v.core.position.y=.8;v.core.scale.set(def.strikeRadius*after+.4,s.kind==='empArray'?.2:5*after+.4,def.strikeRadius*after+.4);}
+    }
+    for(const e of living()){
+      if(empDisabled(e)&&!e.empRing){e.empRing=ring(e.mesh,empMat,e.radius+ .5);e.empRing.raycast=()=>{};shadedRoots.delete(e.mesh);}
+      if(e.empRing){e.empRing.visible=empDisabled(e);e.empRing.position.y=e.type==='unit'&&isAir(e)?-e.mesh.position.y+.35:.35;e.empRing.scale.setScalar((e.radius+.5)*(1+.07*Math.sin(elapsed*12)));}
+    }
+  }
+  function updateSuperweaponUI() {
+    if(superTarget&&!active(superTarget))cancelPlacement();
+    const own=buildings.filter(b=>b.team===localTeam&&b.hp>0&&STRUCTURE[b.kind].superweapon),incoming=superStrikes.filter(s=>!s.impacted);
+    $('superweapons').hidden=!own.length&&!incoming.length;
+    $('super-warning').textContent=incoming.map(s=>`${s.team===localTeam?'Your':'Incoming'} ${s.kind==='empArray'?'EMP':'missile'} · ${Math.max(0,Math.ceil(s.impactAt-elapsed))}s · (${Math.round(s.x)}, ${Math.round(s.z)})`).join(' / ');
+    // Preserve focused buttons while timers change.
+    const list=$('superweapon-list'),ids=new Set(own.map(b=>String(b.id)));
+    for(const button of [...list.children])if(!ids.has(button.dataset.id))button.remove();
+    for(const b of own){let button=list.querySelector(`[data-id="${b.id}"]`);if(!button){button=document.createElement('button');button.dataset.id=b.id;button.onclick=()=>{setSelection([b]);beginSuperTarget(b);};list.append(button);}
+      const def=STRUCTURE[b.kind],left=Math.ceil(def.recharge-(b.superCharge||0));
+      button.textContent=`${def.name} · ${b.buildLeft?'Building '+Math.ceil(b.buildLeft)+'s':powerFor(localTeam).low?'LOW POWER':left>0?'Charging '+left+'s':'READY — TARGET'}`;
+      button.disabled=Boolean(superweaponError(b,b.mesh.position,localTeam));button.classList.toggle('ready',!button.disabled);
+    }
+    const b=selected.size===1?[...selected][0]:null;$('structure-superweapon').hidden=!STRUCTURE[b?.kind]?.superweapon;
+    $('structure-superweapon').disabled=!b||Boolean(superweaponError(b,b.mesh.position,localTeam));
+  }
+  function aiSuperweapons() {
+    for(const b of buildings.filter(b=>b.team==='enemy'&&STRUCTURE[b.kind].superweapon&&active(b))){
+      if(superweaponError(b,b.mesh.position,b.team))continue;
+      const candidates=living().filter(e=>hostile(b.team,e.team)&&visibleTo(e,b.team)),def=STRUCTURE[b.kind];let best=null,score=0;
+      for(const target of candidates){let value=0;for(const e of candidates){const d=Math.hypot(e.mesh.position.x-target.mesh.position.x,e.mesh.position.z-target.mesh.position.z);if(d>def.strikeRadius)continue;
+        if(def.strikeDamage)value+=Math.min(e.hp,def.strikeDamage*(1-.6*d/def.strikeRadius));else if((e.type==='unit'&&!UNIT[e.kind].infantry||STRUCTURE[e.kind]?.defense)&&!empDisabled(e))value+=stats(e).damage?150:50;}
+        if(value>score){score=value;best=target;}}
+      if(best&&score>=300&&launchSuperweapon(b,best.mesh.position,b.team))aiLog(`Launched ${def.name}`);
+    }
+  }
   function simulate(dt) {
     if (paused || outcome || (net?.active && !net.playable)) return;
     elapsed += dt; fogClock+=dt; if(fogClock>=.12){refreshFog();fogClock=0;}
-    updateComputerAid(dt);
+    updateComputerAid(dt); updateSuperweapons(dt);
     for (const b of buildings) {
       if (b.hp <= 0) continue;
       if (b.buildLeft > 0) {
@@ -2406,7 +2526,7 @@
       }
       if (b.rotor) b.rotor.rotation.y += dt * .75;
       updateStructureRepair(b,dt);
-      if (STRUCTURE[b.kind].damage) updateDefense(b, dt);
+      if (STRUCTURE[b.kind].damage && !empDisabled(b)) updateDefense(b, dt);
     }
     for (const team of (net?.active ? matchTeams : raids ? ['player','enemy'] : ['player'])) {
       const production = queueFor(team);
@@ -2421,7 +2541,7 @@
       }
     }
     updateCommander();
-    for (const u of units) { if(updateExitYield(u,dt))continue; if (u.kind === 'miner') updateMiner(u, dt); else if (u.kind === 'repair') updateRepair(u, dt); else updateCombat(u, dt); }
+    for (const u of units) { if(empDisabled(u)){u.state='EMP DISABLED';continue;} if(updateExitYield(u,dt))continue; if (u.kind === 'miner') updateMiner(u, dt); else if (u.kind === 'repair') updateRepair(u, dt); else updateCombat(u, dt); }
     resolveCollisions(); updateYardRepairs(dt); updateEffects(dt);
     powerAlertClock+=dt;if(powerAlertClock>=.5){checkPowerAlerts();powerAlertClock=0;}
   }
@@ -2455,6 +2575,7 @@
   $('map-start').onclick=()=>{chooseMap($('map-select').value);$('network-map').value=MAP.id;$('map-dialog').close();startGame();};
   $('map-multiplayer').onclick=()=>{$('network-map').value=$('map-select').value;$('map-dialog').close();net.open();};
   function startGame() {
+    for(const v of superVisuals.values())v.material.dispose();superVisuals.clear();superEffects.clear();superStrikes=[];
     window.IronFieldMusic?.reset();
     window.FieldVoice?.reset();voiceEvents=[];nextVoiceId=1;lastVoiceId=0;attackAlertAt={};
     powerAlertState={};powerAlertClock=0;
@@ -2560,10 +2681,10 @@
     rallyGuide.visible=rallyLine.visible=Boolean(rallyBuilding&&!placement);
     if(rallyLine.visible){const end=rallyBuilding.rallyPoint||rallyBuilding.exitPoint.clone().add(rallyBuilding.exitPoint.clone().sub(rallyBuilding.mesh.position).setY(0).normalize().multiplyScalar(4));
       rallyGuide.position.copy(end);rallyGuide.position.y=.24;const a=rallyLine.geometry.attributes.position;a.setXYZ(0,rallyBuilding.exitPoint.x,.24,rallyBuilding.exitPoint.z);a.setXYZ(1,end.x,.24,end.z);a.needsUpdate=true;rallyLine.geometry.computeBoundingSphere();rallyLine.computeLineDistances();}
-    const rangeKind = placement ? (STRUCTURE[placement].defense && ghost.visible ? placement : null) : selectedDefense && isBuilding(selectedDefense) && STRUCTURE[selectedDefense.kind].defense ? selectedDefense.kind : null;
-    const rangePosition = placement ? placementPoint : selectedDefense?.mesh.position;
+    const rangeKind = superTarget ? superTarget.kind : placement ? (STRUCTURE[placement].defense && ghost.visible ? placement : null) : selectedDefense && isBuilding(selectedDefense) && STRUCTURE[selectedDefense.kind].defense ? selectedDefense.kind : null;
+    const rangePosition = superTarget ? superPoint : placement ? placementPoint : selectedDefense?.mesh.position;
     defenseRange.visible = Boolean(rangeKind && rangePosition);
-    if (defenseRange.visible) { defenseRange.position.set(rangePosition.x, .12, rangePosition.z); defenseRange.scale.setScalar(STRUCTURE[rangeKind].range); }
+    if (defenseRange.visible) { defenseRange.position.set(rangePosition.x, .12, rangePosition.z); defenseRange.scale.setScalar(STRUCTURE[rangeKind].strikeRadius||STRUCTURE[rangeKind].range);defenseRange.material.color.set(superTarget?(superweaponError(superTarget,superPoint,localTeam)?'#ff675c':'#79dfff'):'#ffd97e'); }
     const yard=selectedDefense&&isBuilding(selectedDefense)&&selectedDefense.team===localTeam&&active(selectedDefense)&&STRUCTURE[selectedDefense.kind].serviceRange?selectedDefense:null;
     serviceRange.visible=Boolean(yard&&!placement);if(yard){serviceRange.position.copy(yard.exitPoint);serviceRange.position.y=yard.kind==='shipyard'?.25:.12;serviceRange.scale.setScalar(STRUCTURE[yard.kind].serviceRange);}
     const rect = canvas.getBoundingClientRect();
@@ -2592,8 +2713,9 @@
         e.labelTitle.textContent = `${e.name} · ${Math.ceil(e.amount).toLocaleString()}`;
         e.mesh.children.slice(1).forEach(o => o.visible = e.amount > 0);
       } else if (isBuilding(e)) {
-        e.labelTitle.textContent = e.buildLeft ? `BUILDING · ${Math.ceil(e.buildLeft)}s` : (e.team !== localTeam && e.kind === 'base' ? 'ENEMY HQ' : STRUCTURE[e.kind].name.toUpperCase())+(e.repairing?' · REPAIRING':'')+(e.repairTarget?' · UNIT REPAIR':'');
-      } else if (e.kind === 'miner') e.labelTitle.textContent = `${Math.floor(e.cargo)} / ${UNIT.miner.capacity}`;
+        e.labelTitle.textContent = e.buildLeft ? `BUILDING · ${Math.ceil(e.buildLeft)}s` : (e.team !== localTeam && e.kind === 'base' ? 'ENEMY HQ' : STRUCTURE[e.kind].name.toUpperCase())+(e.repairing?' · REPAIRING':'')+(e.repairTarget?' · UNIT REPAIR':'')+(empDisabled(e)?' · EMP DISABLED':'');
+      } else if(empDisabled(e))e.labelTitle.textContent='EMP DISABLED · '+Math.ceil(e.empUntil-elapsed)+'s';
+      else if (e.kind === 'miner') e.labelTitle.textContent = `${Math.floor(e.cargo)} / ${UNIT.miner.capacity}`;
       else e.labelTitle.textContent = isSelected ? UNIT[e.kind].name.toUpperCase() : e.kind === 'artillery' ? 'SIEGE' : e.kind === 'heavy' ? 'HEAVY' : '';
     }
   }
@@ -2614,6 +2736,7 @@
     $('selected-count').textContent = `${selected.size} selected`;
     const selection = [...selected], first = selection[0];
     const structure=selection.length===1&&isBuilding(first)&&first.team===localTeam&&first.hp>0?first:null;
+    updateSuperweaponUI();
     $('structure-actions').hidden=!structure;
     if(structure){
       $('structure-action-name').textContent=`${STRUCTURE[structure.kind].name} · ${Math.ceil(structure.hp)} / ${structure.maxHp} HP`;
@@ -2653,11 +2776,12 @@
     for (const kind of BUILDABLE) {
       const button = $(`build-${kind}`), def = STRUCTURE[kind], pending = buildings.filter(b => b.team === localTeam && b.kind === kind && b.hp > 0 && b.buildLeft > 0);
       const missing=missingStructures(kind,localTeam);
-      button.disabled = Boolean(outcome) || held || myCredits < def.cost || missing.length>0 || kind==='shipyard'&&!MAP.water.length;
+      const atLimit=def.superweapon&&buildings.some(b=>b.team===localTeam&&b.kind===kind&&b.hp>0);
+      button.disabled = Boolean(outcome) || held || atLimit || myCredits < def.cost || missing.length>0 || kind==='shipyard'&&!MAP.water.length;
       button.classList.toggle('locked',missing.length>0);button.title=missing.length?prerequisiteMessage(kind,localTeam):`${def.name} · $${def.cost}`;
       button.classList.toggle('deploying', placement === kind);
       button.querySelector('.build-count').hidden = !pending.length; button.querySelector('.build-count').textContent = pending.length;
-      button.querySelector('.card-state').textContent = kind==='shipyard'&&!MAP.water.length?'WATER MAP ONLY':missing.length?'NEEDS '+missing.map(k=>STRUCTURE[k].name).join(' + ').toUpperCase():placement === kind ? 'PLACE' : pending.length ? 'BUILDING' : 'DEPLOY';
+      button.querySelector('.card-state').textContent = atLimit?'LIMIT 1':kind==='shipyard'&&!MAP.water.length?'WATER MAP ONLY':missing.length?'NEEDS '+missing.map(k=>STRUCTURE[k].name).join(' + ').toUpperCase():placement === kind ? 'PLACE' : pending.length ? 'BUILDING' : 'DEPLOY';
       button.style.setProperty('--progress', pending.length ? 1 - pending[0].buildLeft / def.time : 0);
     }
     for (let i = 1; i <= 9; i++) {
@@ -2674,17 +2798,18 @@
     else { $('pause').disabled = false; $('reset').textContent = 'New battle'; $('play-again').textContent = 'Choose next map'; }
     updateOpponentUI();
     $('speed').disabled = Boolean(net?.active); $('raids').disabled = Boolean(net?.active);
-    if (performance.now() > alertUntil) $('announcement').textContent = placement ? 'Click to place the structure · Escape cancels' : paused ? 'Simulation paused. Explore the camera or queue orders.' : power.low ? 'Low power. Build another power plant.' : 'F: army · M: miners · H: harvest · Right-click: command';
+    if (performance.now() > alertUntil) $('announcement').textContent = superTarget ? 'Choose a visible strike target · right-click or Escape cancels' : placement ? 'Click to place the structure · Escape cancels' : paused ? 'Simulation paused. Explore the camera or queue orders.' : power.low ? 'Low power. Build another power plant.' : 'F: army · M: miners · H: harvest · Right-click: command';
   }
 
   // NETWORK ADAPTER. Only the host advances rules; a guest renders snapshots.
   // Commands identify units, but ownership is always checked against the seat.
   function applyNetworkCommand(team, action) {
     if (!net?.isHost || !net.playable || outcome || (eliminated.includes(team)&&action.type!=='pause')) return;
-    const squad = (action.ids || []).map(id => (['rally','repairStructure','sellStructure'].includes(action.type)?buildings:units).find(u => u.id === id && u.team === team && u.hp>0)).filter(Boolean);
+    const squad = (action.ids || []).map(id => (['rally','repairStructure','sellStructure','superweapon'].includes(action.type)?buildings:units).find(u => u.id === id && u.team === team && u.hp>0)).filter(Boolean);
     if (action.ids && squad.length !== new Set(action.ids).size) { net.feedback(team, 'Order rejected: you can only command your own units or buildings.'); return; }
     applyingCommand = true; commandTeam = team;
     try {
+      if (action.type === 'superweapon')launchSuperweapon(squad[0],action.point,team);
       if (action.type === 'rally')setRally(new THREE.Vector3(action.point.x,0,action.point.z),squad,team);
       if (action.type === 'queue') queueUnit(action.kind, team, action.producerId);
       if (action.type === 'cancelQueue') cancelQueue(team, action.kind);
@@ -2708,10 +2833,10 @@
   const vectorJSON = v => v ? { x: Math.round(v.x*1000)/1000, y: Math.round(v.y*1000)/1000, z: Math.round(v.z*1000)/1000 } : null;
   const fromJSON = v => v ? new THREE.Vector3(v.x, v.y || 0, v.z) : null;
   function exportNetworkState() {
-    return { mapId:MAP.id, matchTeams, extraEconomies, eliminated, battleRewards, lastRewards, voiceEvents:voiceEvents.filter(e=>elapsed-e.time<12), nextVoiceId, attackAlertAt, powerAlertState, fogExplored:fog.save(true), elapsed, credits, enemyCredits, delivered, enemyDelivered, queue, remoteQueue, paused, winner, seed, nextId, nextShotId, nextFXId, fxEvents,
+    return { superStrikes:superStrikes.map(s=>({...s})), mapId:MAP.id, matchTeams, extraEconomies, eliminated, battleRewards, lastRewards, voiceEvents:voiceEvents.filter(e=>elapsed-e.time<12), nextVoiceId, attackAlertAt, powerAlertState, fogExplored:fog.save(true), elapsed, credits, enemyCredits, delivered, enemyDelivered, queue, remoteQueue, paused, winner, seed, nextId, nextShotId, nextFXId, fxEvents,
       fields: fields.map(f => ({ id: f.id, amount: f.amount, initialAmount:f.initialAmount,name:f.name,x:f.mesh.position.x,z:f.mesh.position.z })),
       entities: living().map(e => ({ id: e.id, kind: e.kind, type: e.type, team: e.team, position: vectorJSON(e.mesh.position), hp: e.hp, rallyPoint:vectorJSON(e.rallyPoint),
-        buildLeft: e.buildLeft || 0, repairing:Boolean(e.repairing), body: e.body?.rotation.y || 0, turret: e.turret?.rotation.y || 0, rotor: e.rotor?.rotation.y || 0,
+        superCharge:e.superCharge||0,empUntil:e.empUntil||0,buildLeft: e.buildLeft || 0, repairing:Boolean(e.repairing), body: e.body?.rotation.y || 0, turret: e.turret?.rotation.y || 0, rotor: e.rotor?.rotation.y || 0,
         cooldown: e.cooldown, shotSide: e.shotSide || 1, flashLeft: e.flashLeft || 0, repairTargetId: e.repairTarget?.id, cargo: e.cargo, mining: e.mining, mineState: e.mineState, state: e.state,
         fieldId: e.field?.id, preferredRefineryId: e.preferredRefinery?.id, unload: e.unload,
         supportIds:e.supportIds, supportHeading:vectorJSON(e.supportHeading), supportSlot:e.supportSlot,
@@ -2723,6 +2848,7 @@
   }
   function importNetworkState(state, restoring = false) {
     if (!state || !Array.isArray(state.entities)) return;
+    superStrikes=(state.superStrikes||[]).map(s=>({...s}));
     chooseMap(state.mapId);
     networkSampleAt=performance.now();networkSampleElapsed=state.elapsed;
     if(restoring||networkRenderTime===null)networkRenderTime=state.elapsed-.075;
@@ -2758,7 +2884,7 @@
       e.hp = data.hp; e.buildLeft = data.buildLeft; e.mesh.scale.y = data.buildLeft ? .15 + .85 * (1 - data.buildLeft / STRUCTURE[e.kind].time) : 1;
       e.repairing=Boolean(data.repairing);
       if(fresh||restoring||net?.isHost){if(e.body)e.body.rotation.y=data.body;if(e.turret)e.turret.rotation.y=data.turret;if(e.rotor)e.rotor.rotation.y=data.rotor;}
-      for (const key of ['cooldown','shotSide','flashLeft','cargo','mining','mineState','state','unload','harvestAccumulator','repath']) if (data[key] !== undefined) e[key] = data[key];
+      for (const key of ['superCharge','empUntil','cooldown','shotSide','flashLeft','cargo','mining','mineState','state','unload','harvestAccumulator','repath']) if (data[key] !== undefined) e[key] = data[key];
       if (e.type === 'unit') {
         e.supportIds=[...(data.supportIds||[])];e.supportHeading=fromJSON(data.supportHeading);e.supportSlot=data.supportSlot||0;
         e.destination = fromJSON(data.destination); e.path = (data.path || []).map(fromJSON); e.pathGoal = fromJSON(data.pathGoal); e.pathVersion = -1;
@@ -2850,12 +2976,12 @@
   }
   // Console diagnostics return copies, so inspection cannot alter the simulation.
   window.IronField = Object.freeze({
-    snapshot: () => ({ version: 12, matchTeams:[...matchTeams],eliminated:[...eliminated],winner,fog:fog.summary(localTeam), map: { id:MAP.id,name:MAP.name,water:MAP.water,bridges:MAP.bridges,width: HALF_X * 2, depth: HALF_Z * 2, buildRadius: MAP.buildRadius }, localTeam, network: { active: Boolean(net?.active), role: net?.role, code: net?.session?.code, phase: net?.room?.phase, playable: Boolean(net?.playable) }, credits: money(localTeam), delivered: deliveredFor(localTeam), rewards: battleRewards[localTeam]||0, enemyCredits, queue: queueFor(localTeam).map(q => ({ ...q })), paused, outcome, elapsed,
+    snapshot: () => ({ version: 13, matchTeams:[...matchTeams],eliminated:[...eliminated],winner,fog:fog.summary(localTeam), map: { id:MAP.id,name:MAP.name,water:MAP.water,bridges:MAP.bridges,width: HALF_X * 2, depth: HALF_Z * 2, buildRadius: MAP.buildRadius }, localTeam, network: { active: Boolean(net?.active), role: net?.role, code: net?.session?.code, phase: net?.room?.phase, playable: Boolean(net?.playable) }, credits: money(localTeam), delivered: deliveredFor(localTeam), rewards: battleRewards[localTeam]||0, enemyCredits, queue: queueFor(localTeam).map(q => ({ ...q })), paused, outcome, elapsed,
       camera: camera.type, cameraView: { ...view }, power: powerFor(localTeam), raids, nextRaid, wave, ai: net?.active ? null : {style:opponentStyle,policy:aiPolicy().name,plan:currentModelPlan()?{...currentModelPlan()}:null,intent:commander.intent,decisions:commander.decisions,events:commander.events.map(e=>({...e})),model:commander.model,pending:commander.pending,status:commander.modelStatus,mode:commander.mode,targetId:commander.targetId,queue:remoteQueue.map(q=>({...q}))}, placement, selected: [...selected].map(u => u.id),
       fields: fields.map(f => ({ id: f.id, name: f.name, amount: f.amount, x: f.mesh.position.x, z: f.mesh.position.z })),
       entities: living().map(e => ({ visible:visibleTo(e),rendered:e.mesh.visible,labelHidden:e.label.hidden,id: e.id, type: e.type, kind: e.kind, team: e.team, hp: e.hp, maxHp: e.maxHp,
         x: e.mesh.position.x, y:e.mesh.position.y, z: e.mesh.position.z, exitPoint:vectorJSON(e.exitPoint),rallyPoint:vectorJSON(e.rallyPoint),state: e.state, cargo: e.cargo, mining: e.mining, mineState: e.mineState,
-        field: e.field?.id, buildLeft: e.buildLeft, repairing:Boolean(e.repairing), destination: e.destination ? { x: e.destination.x, z: e.destination.z } : null,
+        superCharge:e.superCharge||0,empUntil:e.empUntil||0,field: e.field?.id, buildLeft: e.buildLeft, repairing:Boolean(e.repairing), destination: e.destination ? { x: e.destination.x, z: e.destination.z } : null,
         supportIds:[...(e.supportIds||[])],supportHeading:vectorJSON(e.supportHeading),repairTarget: e.repairTarget?.id, attackTarget: e.attackTarget?.id, pathLength: e.path?.length })) }),
     project: (x, y, z) => screenPosition(new THREE.Vector3(x, y, z))
   });

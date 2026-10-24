@@ -24,6 +24,8 @@ const data = {
     miner: { name: 'Ore miner', role: 'Harvests ore · carries 90 credits · unarmed', cost: 120, time: 5, hp: 190, speed: 3.7, damage: 0, range: 0, reload: 1, radius: .95, capacity: 90, harvestRate: 18, icon: '◆' }
   },
   buildings: {
+    missileSilo: { name:'Tempest missile silo', description:'Superweapon · 120s recharge · 4s warning · 450 area damage · 60 power · one per commander', superweapon:true, cost:1200, time:25, hp:900, radius:3, load:60, recharge:120, warning:4, strikeRadius:9, strikeDamage:450, icon:'▲' },
+    empArray: { name:'Blackout EMP array', description:'Superweapon · 90s recharge · 3s warning · disables vehicles and defenses for 10s · 50 power · one per commander', superweapon:true, cost:900, time:20, hp:750, radius:2.7, load:50, recharge:90, warning:3, strikeRadius:11, disableTime:10, icon:'◎' },
     shipyard: { name:'Naval shipyard', description:'Produces and repairs ships at its exit · 25 power', serviceRange:5, serviceRate:35, cost:300, time:12, hp:850, radius:2.4, load:25, icon:'⚓' },
     airfield: { name:'Airfield', description:'Unlocks gunships, interceptors and bombers · 30 power', cost:400, time:15, hp:850, radius:4.5, load:30, icon:'✈' },
     base: { name: 'Command factory', hp: 1200, radius: 3.3, load: 20 },
@@ -38,7 +40,7 @@ const data = {
   }
 };
 for (const [kind, unit] of Object.entries(data.units)) unit.producer ||= kind === 'miner' ? 'base' : 'warFactory';
-const prerequisites={power:['base'],refinery:['power'],garrison:['power'],warFactory:['refinery','garrison'],airfield:['warFactory'],shipyard:['refinery','power'],turret:['garrison'],flameBunker:['garrison'],missileBattery:['warFactory'],teslaCoil:['warFactory','power']};
+const prerequisites={missileSilo:['airfield','power'],empArray:['airfield','power'],power:['base'],refinery:['power'],garrison:['power'],warFactory:['refinery','garrison'],airfield:['warFactory'],shipyard:['refinery','power'],turret:['garrison'],flameBunker:['garrison'],missileBattery:['warFactory'],teslaCoil:['warFactory','power']};
 for(const [kind,requires] of Object.entries(prerequisites))data.buildings[kind].requires=requires;
 for (const kind of ['rocket','rocketTrooper']) data.units[kind].targets='all';
 data.buildings.missileBattery.targets='all';
