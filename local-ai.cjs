@@ -29,17 +29,19 @@ async function main(){
   const r=await fetch(new URL('/api/commander/local/'+path,base),{method:'POST',headers:{'Content-Type':'application/json',...(workerToken?{Authorization:'Bearer '+workerToken}:{})},body:JSON.stringify(data),signal:AbortSignal.timeout(7000)});
   const result=await r.json();if(!r.ok)throw Object.assign(Error(result.error||'Connection failed'),{status:r.status});return result;
  }
- const {workerToken}=await send('connect',{code:String(code).trim(),model:preferred,provider,configPort:keyUI?.port});
+ const initialStatus=await commander.status();
+ const {workerToken}=await send('connect',{models:initialStatus.models,code:String(code).trim(),model:preferred,provider,configPort:keyUI?.port});
  console.log('Paired with '+base.origin+'. Using '+(provider==='openai'?'OpenAI Decisions via this computer':'local Ollama')+' · '+preferred+'. Keep this connector running; Ctrl+C stops it.');
  let warming=false;
  while(true){
   try{
-   const status=await commander.status();
-   if(!status.ready&&!warming){warming=true;commander.warmup().finally(()=>warming=false);}
-   const {job}=await send('work',{ready:status.ready,model:preferred,configPort:keyUI?.port},workerToken);
+   const status=await commander.status(preferred);
+   if(!status.ready&&!warming){warming=true;commander.warmup(preferred).finally(()=>warming=false);}
+   const {job}=await send('work',{ready:status.ready,models:status.models,model:preferred,configPort:keyUI?.port},workerToken);
    if(job){
+    if(provider==='ollama'&&job.model)preferred=job.model;
     const started=Date.now();let result;
-    try{result=await commander.plan(job.summary,new AbortController().signal);console.log('Local strategy completed in '+(Date.now()-started)+' ms.');}
+    try{result=await commander.plan({...job.summary,...(provider==='ollama'?{model:preferred}:{})},new AbortController().signal);console.log('Local strategy completed in '+(Date.now()-started)+' ms.');}
     catch(error){result={error:error.message,retryAfterMs:error.retryAfterMs};console.log(error.message);}
     await send('result',{id:job.id,...result},workerToken);
    }

@@ -90,7 +90,7 @@ const server=http.createServer(async(req,res)=>{
     // No cross-origin control API. Tokens are carried in headers, never invite URLs.
     if(req.headers.origin && req.headers.origin!==`http://${req.headers.host}`)throw fail(403,'Open the game on this server to connect.');
     if(url.pathname==='/api/info'&&req.method==='GET'){reply(res,200,{version,links:lanLinks(req),port:PORT});return;}
-    if(url.pathname==='/api/commander/status'&&req.method==='GET'){reply(res,200,await aiCommander.status());return;}
+    if(url.pathname==='/api/commander/status'&&req.method==='GET'){reply(res,200,await aiCommander.status(url.searchParams.get('model')||undefined));return;}
     if(url.pathname==='/api/commander/openai/status'&&req.method==='GET'){reply(res,200,openaiCommander.status());return;}
     if(url.pathname==='/api/events'&&req.method==='GET') {
       const seat=authenticate(req),room=seat.room;

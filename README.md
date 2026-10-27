@@ -587,3 +587,12 @@ Construction takes 25 / 20 seconds respectively. Charging starts empty after com
 The sidebar displays recharge and incoming-strike countdowns, with battlefield warning rings, distinct missile/EMP effects and optional voice alerts. All four multiplayer seats use the same host-validated targeting, power and charge rules; strikes and EMP expiry are replicated in snapshots. Network protocol is now 13: every player must refresh after updating.
 
 Solo opponents can invest in superweapons after six minutes when they have an airfield, at least six combat units and 400 credits left over. Their local tactical controller targets worthwhile visible enemy groups with the same recharge and vision restrictions. This targeting works with every opponent style, including Ollama and OpenAI; it does not require a separate LLM request.
+
+
+### Choose an Ollama model
+
+Open **Computer opponent → AI commander · Ollama**. Under **Send AI requests through**, choose **Game server** or **This computer**, then use **Ollama model**. The list shows installed completion models and download size; the refresh button reloads discovery (the backend caches discovery for up to 15 seconds). No model is downloaded by choosing it. Larger models may miss the existing five-second planning deadline.
+
+Choices are remembered separately for server and player execution in this browser. **Automatic** uses the server's configured default or the connector's current model. Server choices travel with each planning request, so one player's choice does not change another player's model. Each model warms up independently; inference is still serialized on each Ollama adapter to avoid overloading the computer. Changing a model clears the previous game plan and requests a fresh one on the next active planning cycle. Paused games wait until resumed.
+
+For **This computer**, download and restart the updated `local-ai.zip` connector, then pair it. It reports installed model names and sizes through the authenticated relay and uses the model requested by that browser. Older connectors still work with their default model, but cannot populate the dropdown. OpenAI mode keeps its existing model configuration and does not show the Ollama selector.
