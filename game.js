@@ -29,6 +29,7 @@
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.localClippingEnabled = true;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.12;
@@ -183,6 +184,7 @@
   // Impassable stepped ridges: geometry and navigation share the same footprints.
   const terrainBlocked=(x,z,r=0)=>MAP.obstacles.some(o=>Math.hypot(x-o.x,z-o.z)<o.radius+r+.2);
   const cliffMat=material('#6e7569'),cliffTop=material('#9a9b7d');
+  const BRIDGE_DECK_TOP=2.91,BRIDGE_DECK_BOTTOM=2.69;
   let terrainArt=new THREE.Group();scene.add(terrainArt);
   function rebuildTerrain(){
     for(const obj of world.children)if(obj.isGroup)obj.visible=!FIELD_MAP.waterAt(MAP,obj.position.x,obj.position.z);
@@ -206,7 +208,7 @@
     }
     for(const b of MAP.bridges){
       // Open steel spans: ships pass under the road, ground units use its deck.
-      box(terrainArt,mat.concrete,b.x,2.8,b.z,b.width,.22,b.depth);
+      box(terrainArt,mat.concrete,b.x,(BRIDGE_DECK_TOP+BRIDGE_DECK_BOTTOM)/2,b.z,b.width,BRIDGE_DECK_TOP-BRIDGE_DECK_BOTTOM,b.depth);
       const alongZ=b.depth>b.width;
       for(const side of [-1,1])box(terrainArt,mat.dark,b.x+(alongZ?side*(b.width/2-.2):0),3.25,b.z+(alongZ?0:side*(b.depth/2-.2)),alongZ?.16:b.width,.65,alongZ?b.depth:.16);
       for(const side of [-1,1]){
@@ -259,7 +261,7 @@
     for(const b of MAP.bridges){
       const alongZ=b.depth>b.width,cross=alongZ?Math.abs(x-b.x):Math.abs(z-b.z),half=alongZ?b.width/2:b.depth/2;
       const along=alongZ?Math.abs(z-b.z):Math.abs(x-b.x),length=alongZ?b.depth/2:b.width/2;
-      if(cross<=half&&along<length+6)return 2.91*Math.max(0,Math.min(1,(length+6-along)/6));
+      if(cross<=half&&along<length+6)return BRIDGE_DECK_TOP*Math.max(0,Math.min(1,(length+6-along)/6));
     }
     return 0;
   }
@@ -1031,6 +1033,12 @@
   const damageSmoke=new THREE.MeshBasicMaterial({color:'#494944',map:new THREE.CanvasTexture(smokeCanvas),transparent:true,opacity:.65,depthWrite:false});
   const smokeGeometry=new THREE.PlaneGeometry(1,1),damageFlameGeometry=new THREE.ConeGeometry(1,2,5);
   const damageFire=new THREE.MeshBasicMaterial({color:'#ff9d32',toneMapped:false});
+  function damageEffectCeiling(u){
+    // Depth testing cannot hide a plume that physically extends above the road.
+    // Ground units on the deck and aircraft above it must keep their normal effects.
+    if(u.mesh.position.y+u.body.position.y<BRIDGE_DECK_BOTTOM&&MAP.bridges.some(b=>FIELD_MAP.inside(b,u.mesh.position.x,u.mesh.position.z)))return BRIDGE_DECK_BOTTOM-.01;
+    return 1000000;
+  }
   function wornMaterial(original,stage){
     if(!stage||!original.isMeshStandardMaterial)return original;
     let variants=damageVariants.get(original);
@@ -1060,10 +1068,14 @@
     const root=new THREE.Group();u.body.add(root);
     const scars=new THREE.InstancedMesh(burstGeometry,damageSoot,3);scars.raycast=()=>{};root.add(scars);
     hits.forEach((point,i)=>{damageTransform.position.copy(point);damageTransform.rotation.set(0,i*1.7,0);damageTransform.scale.set(size*(infantry?.25:.42),.035,size*.26);damageTransform.updateMatrix();scars.setMatrixAt(i,damageTransform.matrix);});
-    const smoke=new THREE.InstancedMesh(smokeGeometry,damageSmoke,4);smoke.instanceMatrix.setUsage(THREE.DynamicDrawUsage);smoke.frustumCulled=false;smoke.raycast=()=>{};root.add(smoke);
-    const fire=new THREE.Mesh(damageFlameGeometry,damageFire);fire.raycast=()=>{};root.add(fire);
+    // Keep one plane on each material, moving it out of range outside a bridge.
+    // Crossing a bridge changes a uniform rather than recompiling the shader.
+    const ceiling=new THREE.Plane(new THREE.Vector3(0,-1,0),damageEffectCeiling(u));
+    const clippedMaterial=source=>{const m=source.clone();delete m.userData.fieldFog;m.clippingPlanes=[ceiling];return m;};
+    const smoke=new THREE.InstancedMesh(smokeGeometry,clippedMaterial(damageSmoke),4);smoke.instanceMatrix.setUsage(THREE.DynamicDrawUsage);smoke.frustumCulled=false;smoke.raycast=()=>{};root.add(smoke);
+    const fire=new THREE.Mesh(damageFlameGeometry,clippedMaterial(damageFire));fire.raycast=()=>{};root.add(fire);
     shadedRoots.delete(u.mesh);
-    return {root,surfaces,scars,smoke,fire,anchor:hits[0],size,infantry,stage:-1,time:0,orientation:new THREE.Quaternion()};
+    return {root,surfaces,scars,smoke,fire,ceiling,anchor:hits[0],size,infantry,stage:-1,time:0,orientation:new THREE.Quaternion()};
   }
   function updateUnitDamage(u,dt){
     const health=u.hp/u.maxHp,stage=health<=.25?3:health<=.5?2:health<.8?1:0;
@@ -1074,6 +1086,7 @@
       fx.stage=stage;fx.root.visible=stage>0;fx.scars.count=stage===1?1:3;
     }
     if(!stage||!u.mesh.visible)return;
+    fx.ceiling.constant=damageEffectCeiling(u);
     fx.time+=dt;
     fx.smoke.visible=!fx.infantry&&stage>=2;fx.fire.visible=!fx.infantry&&stage===3;
     if(fx.smoke.visible){
@@ -1092,7 +1105,7 @@
   }
   function releaseUnitDamage(u){
     const fx=u.damageVisual;if(!fx)return;
-    fx.scars.dispose();fx.smoke.dispose();fx.root.removeFromParent();u.damageVisual=null;
+    fx.scars.dispose();fx.smoke.dispose();fx.smoke.material.dispose();fx.fire.material.dispose();fx.root.removeFromParent();u.damageVisual=null;
   }
 
   function createUnit(kind, team, x, z) {
@@ -1991,7 +2004,6 @@
   function animateVehicles(dt) {
     updateSuperVisuals();
     for (const u of units) {
-      updateUnitDamage(u,dt);
       if(!isAir(u)){
         u.body.position.y=isNaval(u)?Math.sin(elapsed*2+u.id)*.04:bridgeHeight(u.mesh.position.x,u.mesh.position.z);
         u.turret.position.y=(isNaval(u)?u.navalRig.mountY:u.groundRig?u.groundRig.mountY:.75)+u.body.position.y;
@@ -2003,6 +2015,7 @@
         u.ring.position.y=isNaval(u)?.24:.09+u.body.position.y;
       }
       if(isAir(u)){u.ring.position.y=.09-u.mesh.position.y;if(u.flightRotor)u.flightRotor.rotation.y+=dt*30;u.body.position.y=Math.sin(elapsed*3+u.id)*.06;}
+      updateUnitDamage(u,dt);
       if (u.legs?.length) u.legs.forEach((leg,i) => { leg.rotation.x = u.destination || u.path.length ? Math.sin(elapsed*10+i*Math.PI)*.5 : 0; });
 
       if (u.repairBeam) {

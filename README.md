@@ -35,6 +35,8 @@ Each battlefield is **132 × 104 world units**, with widely separated bases, sha
 
 Ground units cross bridges through the ramp ends and stay within the deck edges. Routes account for unit size, check corners before turning, and recover from traffic pushing a unit past a waypoint. Ships continue to pass beneath bridges, and aircraft can fly over them.
 
+Fire and smoke from damaged units beneath a bridge stop at the underside of its deck instead of showing through the road. Units on top of the bridge and ships in open water keep their full damage effects; leaving the span restores the plume automatically.
+
 The compact status below the radar shows the enemy commander’s current activity and next-push countdown in solo play, or connection and surviving-commander status in multiplayer.
 
 ## Start playing
