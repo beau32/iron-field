@@ -1,6 +1,33 @@
 # Iron Field — Land, Air & Navy + LAN
 
-An original 3D strategy prototype for learning how an RTS works. Build a mixed army, gather finite ore, expand a base, manage power, and destroy the enemy headquarters.
+An original 3D strategy prototype for learning how an RTS works, featuring an optional **local LLM computer opponent powered by the Ollama API**. Build a mixed army, gather finite ore, expand a base, manage power, and destroy the enemy headquarters.
+
+## Local LLM opponent via Ollama
+
+Choose **AI commander · Ollama** in a solo battle to let a locally running language model select the enemy's strategic operation. It can prioritize rebuilding the economy, defense, armor counters, siege, air power, or naval production according to a compact battle summary. The game turns that choice into production and attack priorities; its tactical rules handle movement, targeting, retreat, and combat continuously.
+
+**Run inference on the player's computer or on the game server.** The default **This computer** option uses a paired Node.js connector, so a lightweight LAN server can host the game while the player's machine runs Ollama. No cloud API key is needed for Ollama mode. Preset opponents remain available without a model.
+
+### Quick start: player-local AI
+
+1. Start Ollama on your computer and install the game's small default model with `ollama pull qwen2.5:0.5b`.
+2. Run the game through `node server.cjs`, or open an existing Node game server in your browser. Start a **solo** battle and expand **Computer opponent**.
+3. Choose **AI commander · Ollama → This computer**, open **Connect this computer**, and download/extract the **AI connector**. Node.js 18 or newer is required on the computer running the connector.
+4. Click **Create pairing code**. Run `Start-Local-AI.cmd` on Windows or `node local-ai.cjs` on macOS/Linux, then enter the game server address and pairing code.
+5. Keep the connector running. Use the **Ollama model** dropdown to select an installed model, and check **AI order** and **Commander activity** for accepted decisions. Warming, offline, and fallback states are shown in the panel.
+
+The connector calls Ollama at `http://127.0.0.1:11434` on **the connector's computer**. It discovers installed models with `GET /api/tags` and asks for a structured strategy choice with `POST /api/chat`. The browser communicates through the game server's authenticated pairing relay; it does not need direct access to Ollama, CORS changes, or an exposed Ollama port.
+
+```text
+Browser battle summary → Node game server → paired local connector → Ollama API
+Browser strategic plan ← validated result ← paired local connector ← JSON choice
+```
+
+The LLM selects from a situation-dependent shortlist and returns a small JSON result such as `{"strategy":"siege"}`. It does not control individual frames or learn between matches. Requests run asynchronously with a five-second default inference deadline; the game retains an unexpired plan or uses Balanced fallback when a response is unavailable. A successful plan is eligible for refresh 30 seconds after completion. Larger models must still meet the deadline, so model size alone does not guarantee a stronger opponent.
+
+AI opponents are currently **solo-only**; 2–4 player multiplayer uses human opponents. See the [opponent logic guide](#choose-a-computer-opponent), [server-side Ollama setup](#run-with-your-own-ollama), and [player-local connector details](#run-ollama-on-the-players-computer) for strategy tables, timing, configuration, and limitations. The integration lives in [`commander.cjs`](commander.cjs), [`local-ai.cjs`](local-ai.cjs), [`local-commander.cjs`](local-commander.cjs), and [`ai-link.js`](ai-link.js).
+
+## Battlefield and multiplayer
 
 **New: 2–4 player LAN multiplayer and fog of war.** Run `Start-Multiplayer.cmd`, open the server address, then use Multiplayer → Host / Join. See [MULTIPLAYER.md](MULTIPLAYER.md) for setup, reconnect behavior, and the networking source walkthrough. The rest of this guide describes the solo game and shared controls.
 
@@ -36,7 +63,7 @@ Riflemen wear helmets and body armor, rocket troopers carry shoulder launchers a
 
 All eleven structures have distinct procedural models. HQ has a raised command room and antenna mast; power plants have twin tapered cooling towers and a turbine housing; refineries have pipework, a pressure column, and an ore conveyor. War factories use a sawtooth roof, reinforced walls, and a shuttered vehicle entrance. Troop garrisons have pitched roofs, windows, and sandbags. Airfields have a curved hangar and glazed control tower beside the landing pad. Naval shipyards have an open water slipway, dock fittings, and a braced gantry crane.
 
-Defenses also have role-specific details: guard turrets carry armor and sights, missile batteries have reinforced launch pods and stabilizers, Tesla coils have surrounding capacitor towers, and flame bunkers have fuel pipes and reinforced walls. Build portraits match the new designs. Team colors, selection indicators, exits, repair bays, and construction progress remain visible. Static box details are batched by material; the visual update does not change costs, collision footprints, production, or combat rules.
+Defenses also have role-specific details: guard turrets carry armor and sights, missile batteries have reinforced launch pods and stabilizers, Tesla coils have surrounding capacitor towers, and flame bunkers have fuel pipes and reinforced walls. Build portraits match the new designs. Team colors, selection indicators, exits, repair bays, and construction progress remain visible. Rigid model details are batched by material and shadow settings; the visual update does not change costs, collision footprints, production, or combat rules.
 
 ## Building tech tree
 
@@ -115,7 +142,7 @@ Weapons fire from their barrel or launcher tips. Paired guns and missile pods al
 
 Tracer bursts are cosmetic: they do not add damage or change firing rates. Damage, splash amounts, and targeting remain defined in `data.js`. The renderer caps effects at 240 particles, 64 projectiles/tracers, and 16 beams, and clears them when they expire.
 
-`weapon-fx.js` handles cosmetic particles, projectiles, and arcs separately from damage. Effects use bounded counts and release temporary materials when finished. Their random variation does not change the simulation's random sequence. Multiplayer retains brief shot/impact events between snapshots, so even shots shorter than one network update are visible to the guest; event IDs prevent duplicate playback. All effects pause with the battle.
+`weapon-fx.js` handles cosmetic particles, projectiles, and arcs separately from damage. Effects use bounded counts and a bounded pool of reusable particle meshes/materials; electric arcs batch their segments into one draw call per beam. Pools are cleared between battles. Rigid vehicle and building parts are merged while turrets, rotors, cargo, and other animated parts remain independent. Health labels reuse one canvas measurement per update to avoid repeated browser layout work. These optimizations preserve combat timing, damage, and network behavior. Effect variation does not change the simulation's random sequence. Multiplayer retains brief shot/impact events between snapshots, so even shots shorter than one network update are visible to the guest; event IDs prevent duplicate playback. All effects pause with the battle.
 
 ## Background music
 
@@ -472,7 +499,7 @@ There is no training or persistent learning between matches, and no search throu
 
 ### Run with your own Ollama
 
-The game's default integration expects Ollama on the server machine with `qwen2.5:0.5b` installed:
+For **Game server** execution, the server adapter expects Ollama on the server machine with `qwen2.5:0.5b` installed by default:
 
 ```sh
 ollama pull qwen2.5:0.5b

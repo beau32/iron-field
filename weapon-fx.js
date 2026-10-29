@@ -19,6 +19,7 @@
     constructor(scene) {
       this.root = new THREE.Group(); scene.add(this.root);
       this.particles = []; this.flights = []; this.beams = [];
+      this.particlePool = new Map();
       this.sphere = new THREE.IcosahedronGeometry(1, 1);
       this.ring = new THREE.RingGeometry(.85, 1, 40);
       this.chip = new THREE.BoxGeometry(1,1,1);
@@ -30,37 +31,45 @@
     }
     random() { this.seed = (Math.imul(this.seed,1664525)+1013904223)>>>0; return this.seed/4294967296; }
     vector(v) { return new THREE.Vector3(v.x,v.y,v.z); }
-    removeParticle(p) { this.root.remove(p.mesh);p.mesh.material.dispose(); }
+    removeParticle(p) {
+      this.root.remove(p.mesh);
+      const pool=this.particlePool.get(p.poolKey)||[];
+      if(pool.length<32){pool.push(p.mesh);this.particlePool.set(p.poolKey,pool);}else p.mesh.material.dispose();
+    }
     particle(point, velocity, color, size, life, options={}) {
       if(this.particles.length >= 240) this.removeParticle(this.particles.shift());
-      const material=new THREE.MeshBasicMaterial({color,transparent:true,opacity:options.opacity??.8,depthWrite:false,blending:options.glow?THREE.AdditiveBlending:THREE.NormalBlending,side:THREE.DoubleSide});
-      const mesh=new THREE.Mesh(options.ring?this.ring:options.chip?this.chip:options.cone?this.cone:this.sphere,material);mesh.position.copy(point);mesh.scale.set(size,size,size*(options.stretch||1));
+      const geometry=options.ring?this.ring:options.chip?this.chip:options.cone?this.cone:this.sphere,poolKey=geometry.id+':'+Boolean(options.glow);
+      let mesh=this.particlePool.get(poolKey)?.pop();
+      if(!mesh)mesh=new THREE.Mesh(geometry,new THREE.MeshBasicMaterial({color,transparent:true,depthWrite:false,blending:options.glow?THREE.AdditiveBlending:THREE.NormalBlending,side:THREE.DoubleSide}));
+      mesh.material.color.set(color);mesh.material.opacity=options.opacity??.8;mesh.rotation.set(0,0,0);mesh.position.copy(point);mesh.scale.set(size,size,size*(options.stretch||1));
       if(options.ring) {mesh.rotation.x=-Math.PI/2;mesh.position.y=.13;}
       if(options.direction){mesh.position.copy(point);mesh.lookAt(point.clone().add(options.direction));}
       mesh.visible=!options.delay;this.root.add(mesh);
-      this.particles.push({mesh,velocity,fresh:true,stretch:options.stretch||1,age:-(options.delay||0),life,size,end:options.end??size*2,opacity:options.opacity??.8,gravity:options.gravity||0,drag:options.drag||0,from:new THREE.Color(color),to:new THREE.Color(options.to??color)});
+      this.particles.push({mesh,poolKey,velocity,fresh:true,stretch:options.stretch||1,age:-(options.delay||0),life,size,end:options.end??size*2,opacity:options.opacity??.8,gravity:options.gravity||0,drag:options.drag||0,from:new THREE.Color(color),to:new THREE.Color(options.to??color)});
     }
     smoke(point, count=3, size=.3) {
       for(let i=0;i<count;i++) this.particle(point,new THREE.Vector3((this.random()-.5)*.9,.6+this.random(),(this.random()-.5)*.9),0x74796e,size,.7+this.random()*.6,{end:size*3,opacity:.33,to:0xabb0a0,delay:i*.025});
     }
     beam(origin,aim,kind) {
       if(this.beams.length>=16) this.removeBeam(this.beams.shift());
-      const electric=kind==='tesla', group=new THREE.Group(), points=[],delta=aim.clone().sub(origin);
+      const electric=kind==='tesla', points=[],delta=aim.clone().sub(origin);
       const material=new THREE.MeshBasicMaterial({color:electric?0x39d9ff:kind==='railgun'?0x99ffff:0xfff5cf,transparent:true,opacity:.95,depthWrite:false,toneMapped:false,blending:electric?THREE.NormalBlending:THREE.AdditiveBlending});
       const n=electric?12:1;
+      const group=new THREE.InstancedMesh(this.sphere,material,n+Math.floor(n/3)),segment=new THREE.Object3D();let next=0;
       for(let i=0;i<=n;i++) {
         const p=origin.clone().addScaledVector(delta,i/n);
         if(i&&i<n) p.add(new THREE.Vector3((this.random()-.5)*.8,(this.random()-.5)*.7,(this.random()-.5)*.8));
         points.push(p);
       }
       for(let i=1;i<points.length;i++) {
-        const a=points[i-1],b=points[i],line=new THREE.Mesh(this.sphere,material);
-        line.position.copy(a).lerp(b,.5);line.lookAt(b);line.scale.set(electric?.055:kind==='railgun'?.055:.022,electric?.055:.025,a.distanceTo(b)/2);group.add(line);
-        if(electric&&i%3===0) {const twig=new THREE.Mesh(this.sphere,material),end=a.clone().add(new THREE.Vector3(this.random()-.5,.5,this.random()-.5));twig.position.copy(a).lerp(end,.5);twig.lookAt(end);twig.scale.set(.025,.025,a.distanceTo(end)/2);group.add(twig);}
+        const a=points[i-1],b=points[i],line=segment;
+        line.position.copy(a).lerp(b,.5);line.lookAt(b);line.scale.set(electric?.055:kind==='railgun'?.055:.022,electric?.055:.025,a.distanceTo(b)/2);line.updateMatrix();group.setMatrixAt(next++,line.matrix);
+        if(electric&&i%3===0) {const twig=segment,end=a.clone().add(new THREE.Vector3(this.random()-.5,.5,this.random()-.5));twig.position.copy(a).lerp(end,.5);twig.lookAt(end);twig.scale.set(.025,.025,a.distanceTo(end)/2);twig.updateMatrix();group.setMatrixAt(next++,twig.matrix);}
       }
+      group.count=next;group.computeBoundingSphere();
       this.root.add(group);this.beams.push({group,material,fresh:true,life:electric?.24:kind==='railgun'?.18:.1,age:0,electric});
     }
-    removeBeam(b) { this.root.remove(b.group);b.material.dispose(); }
+    removeBeam(b) { this.root.remove(b.group);b.group.dispose();b.material.dispose(); }
     muzzle(point, direction, kind) {
       if(kind==='tesla') {this.particle(point,new THREE.Vector3(),0x8cefff,.3,.24,{glow:true,end:.6});return;}
       if(kind==='rocket') {
@@ -165,7 +174,7 @@
         if(t>=1){this.removeParticle(p);this.particles.splice(i,1);}
       }
     }
-    clear() {for(const p of this.particles)this.removeParticle(p);for(const b of this.beams)this.removeBeam(b);this.root.clear();this.particles=[];this.beams=[];this.flights=[];}
+    clear() {for(const p of this.particles)this.removeParticle(p);for(const b of this.beams)this.removeBeam(b);for(const pool of this.particlePool.values())for(const mesh of pool)mesh.material.dispose();this.particlePool.clear();this.root.clear();this.particles=[];this.beams=[];this.flights=[];}
   }
   window.FIELD_WEAPONS={profiles,kinds,WeaponFX};
 })();

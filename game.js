@@ -915,13 +915,26 @@
     const shape=new THREE.Shape();outline.forEach(([x,z],i)=>shape[i?'lineTo':'moveTo'](x*width*.95,z*length*.97));shape.closePath();
     const deck=new THREE.ExtrudeGeometry(shape,{depth:.09,bevelEnabled:false});deck.rotateX(Math.PI/2);mesh(deck,deckMat,parent,0,.61,0);
   }
-  // Batch repeated static boxes by material to keep detailed ships inexpensive to draw.
+  // Bake rigid parts into one mesh per material/shadow setting. Moving groups and
+  // flagged parts (cargo, drills, legs, turrets) keep their independent transforms.
   function batchStaticBoxes(parent){
     const groups=new Map();
-    for(const child of [...parent.children])if(child.isMesh&&child.geometry===boxGeometry&&!child.userData.dynamic){const list=groups.get(child.material)||[];list.push(child);groups.set(child.material,list);}
-    for(const [m,list] of groups)if(list.length>1){
-      const instanced=new THREE.InstancedMesh(boxGeometry,m,list.length);instanced.castShadow=instanced.receiveShadow=true;
-      list.forEach((o,i)=>{o.updateMatrix();instanced.setMatrixAt(i,o.matrix);parent.remove(o);});parent.add(instanced);
+    for(const child of parent.children)if(child.isMesh&&!child.isInstancedMesh&&child.visible&&!child.children.length&&!child.userData.dynamic&&!Array.isArray(child.material)&&child.geometry!==burstGeometry){
+      const key=`${child.material.id}:${child.castShadow}:${child.receiveShadow}`,list=groups.get(key)||[];list.push(child);groups.set(key,list);
+    }
+    const shared=new Set([boxGeometry,wheelGeometry,burstGeometry,ringGeometry,selectionRingGeometry]),disposed=new Set();
+    for(const list of groups.values())if(list.length>1){
+      const parts=list.map(o=>{o.updateMatrix();const g=o.geometry.index?o.geometry.toNonIndexed():o.geometry.clone();return g.applyMatrix4(o.matrix);});
+      const count=parts.reduce((n,g)=>n+g.attributes.position.count,0),geometry=new THREE.BufferGeometry();
+      for(const [name,size] of [['position',3],['normal',3],['uv',2]]){
+        const values=new Float32Array(count*size);let offset=0;
+        for(const g of parts){if(g.attributes[name])values.set(g.attributes[name].array,offset);offset+=g.attributes.position.count*size;}
+        geometry.setAttribute(name,new THREE.BufferAttribute(values,size));
+      }
+      const combined=new THREE.Mesh(geometry,list[0].material);combined.castShadow=list[0].castShadow;combined.receiveShadow=list[0].receiveShadow;
+      for(const g of parts)g.dispose();
+      for(const o of list){parent.remove(o);if(!shared.has(o.geometry)&&!disposed.has(o.geometry)){disposed.add(o.geometry);o.geometry.dispose();}}
+      parent.add(combined);
     }
   }
   function navalGun(parent,color,width=.65,barrels=1){
@@ -1109,6 +1122,7 @@
     } else {
       groundRig=buildGroundModel(body,turret,kind,color,trim);cargoMesh=groundRig.cargoMesh;drill=groundRig.drill;
     }
+    if(def.aircraft){batchStaticBoxes(body);batchStaticBoxes(turret);if(flightRotor)batchStaticBoxes(flightRotor);}
     const muzzle = mesh(burstGeometry, def.weapon === 'tesla' ? energyMat : lampMat, turret, 0, kind === 'tesla' ? 1.46 : .3, kind === 'tesla' ? 0 : 1.65); muzzle.scale.setScalar(.28); muzzle.visible = false;
     const beamGeometry = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]);
     const repairBeam = kind === 'repair' ? new THREE.Line(beamGeometry, repairLineMat) : null;
@@ -2671,8 +2685,8 @@
     resize();
   }
   new ResizeObserver(resize).observe($('viewport'));
-  function screenPosition(position) {
-    const point = position.clone().project(camera), rect = canvas.getBoundingClientRect();
+  function screenPosition(position, rect = canvas.getBoundingClientRect()) {
+    const point = position.clone().project(camera);
     return { x: rect.left + (point.x + 1) * rect.width / 2, y: rect.top + (1 - point.y) * rect.height / 2, visible: point.z >= -1 && point.z <= 1 };
   }
   function updateLabels() {
@@ -2690,8 +2704,9 @@
     const rect = canvas.getBoundingClientRect();
     for (const e of [...living(), ...fields]) {
       const height = e.type === 'ore' ? 2 : isBuilding(e) ? (e.visualHeight || STRUCTURE[e.kind].height || (e.kind === 'base' ? 5.3 : 3.9)) : e.kind === 'tesla' ? 3.4 : ['miner', 'rocket', 'repair'].includes(e.kind) ? 2.6 : 2;
-      const p = screenPosition(e.mesh.position.clone().add(new THREE.Vector3(0, height+(e.body?.position.y||0), 0)));
+      const p = screenPosition(e.mesh.position.clone().add(new THREE.Vector3(0, height+(e.body?.position.y||0), 0)),rect);
       e.label.hidden = !visibleTo(e) || !p.visible || p.x < rect.left || p.x > rect.right || p.y < rect.top || p.y > rect.bottom;
+      if(e.label.hidden){if(e.selectionFrame)e.selectionFrame.hidden=true;continue;}
       e.label.style.left = `${p.x - rect.left}px`; e.label.style.top = `${p.y - rect.top}px`;
       e.healthFill.style.width = `${Math.max(0, e.type === 'ore' ? e.amount / e.initialAmount * 100 : e.hp / e.maxHp * 100)}%`;
       const isSelected = selected.has(e);
@@ -2701,7 +2716,7 @@
         if (isSelected && !e.label.hidden) {
           const radius = isBuilding(e) ? e.radius : Math.max(1.5, e.radius * 1.25), points = [];
           for (const x of [-radius, radius]) for (const z of [-radius, radius]) for (const y of [0, height - .3])
-            points.push(screenPosition(e.mesh.position.clone().add(new THREE.Vector3(x, y, z))));
+            points.push(screenPosition(e.mesh.position.clone().add(new THREE.Vector3(x, y, z)),rect));
           const left = Math.min(...points.map(p => p.x)) - rect.left - 4, top = Math.min(...points.map(p => p.y)) - rect.top - 4;
           const width = Math.max(26, Math.max(...points.map(p => p.x)) - rect.left - left + 4);
           const frameHeight = Math.max(22, Math.max(...points.map(p => p.y)) - rect.top - top + 4);
