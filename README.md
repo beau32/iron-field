@@ -128,7 +128,7 @@ Repair crawlers automatically repair one damaged friendly vehicle within seven w
 
 ## Graphics
 
-**Lab → Graphics quality** offers High, Balanced, and Performance. For a slow frame rate, choose Performance: it limits pixel density and disables dynamic shadows. The setting is saved per browser and also works in multiplayer. High preserves the original visuals.
+**Lab → Graphics quality** offers High, Balanced, and Performance. For a slow frame rate, choose Performance: it renders the battlefield at 80% of its CSS dimensions and disables dynamic shadows. Menus, health bars, and selection labels retain their normal resolution. This trades some battlefield sharpness for smoother large battles; 30 FPS is a target, not a hardware-independent guarantee. The setting is saved per browser and also works in multiplayer. High preserves the original visuals.
 
 The battlefield uses locally generated grass, gravel, and animated water textures, a sandy shoreline, instanced vegetation and pebbles, and additional tree clusters. Vehicles have beveled hulls, tread plates, lights, exhausts, and role-specific turrets. Energy bolts, flame projectiles, rockets, and muzzle flashes make weapon types easier to distinguish. The game still uses original procedural art and works offline.
 
@@ -142,7 +142,7 @@ Weapons fire from their barrel or launcher tips. Paired guns and missile pods al
 
 Tracer bursts are cosmetic: they do not add damage or change firing rates. Damage, splash amounts, and targeting remain defined in `data.js`. The renderer caps effects at 240 particles, 64 projectiles/tracers, and 16 beams, and clears them when they expire.
 
-`weapon-fx.js` handles cosmetic particles, projectiles, and arcs separately from damage. Effects use bounded counts and a bounded pool of reusable particle meshes/materials; electric arcs batch their segments into one draw call per beam. Pools are cleared between battles. Rigid vehicle and building parts are merged while turrets, rotors, cargo, and other animated parts remain independent. Health labels reuse one canvas measurement per update to avoid repeated browser layout work. These optimizations preserve combat timing, damage, and network behavior. Effect variation does not change the simulation's random sequence. Multiplayer retains brief shot/impact events between snapshots, so even shots shorter than one network update are visible to the guest; event IDs prevent duplicate playback. All effects pause with the battle.
+`weapon-fx.js` handles cosmetic particles, projectiles, and arcs separately from damage. Effects use bounded counts and a bounded pool of reusable particle meshes/materials. Smoke, sparks, and flame particles render in instanced batches by shape and blending mode, with individual colors, opacity, and back-to-front ordering within each batch; electric arcs batch their segments into one draw call per beam. Pools are cleared between battles. Rigid vehicle and building parts are merged while turrets, rotors, cargo, and other animated parts remain independent. Health labels reuse one canvas measurement per update, move with CSS transforms, and avoid replacing unchanged text to reduce browser layout work. These optimizations preserve combat timing, damage, and network behavior. Effect variation does not change the simulation's random sequence. Multiplayer retains brief shot/impact events between snapshots, so even shots shorter than one network update are visible to the guest; event IDs prevent duplicate playback. All effects pause with the battle.
 
 ## Background music
 

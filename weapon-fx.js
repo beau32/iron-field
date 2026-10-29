@@ -20,6 +20,7 @@
       this.root = new THREE.Group(); scene.add(this.root);
       this.particles = []; this.flights = []; this.beams = [];
       this.particlePool = new Map();
+      this.particleBatches = new Map();
       this.sphere = new THREE.IcosahedronGeometry(1, 1);
       this.ring = new THREE.RingGeometry(.85, 1, 40);
       this.chip = new THREE.BoxGeometry(1,1,1);
@@ -44,8 +45,32 @@
       mesh.material.color.set(color);mesh.material.opacity=options.opacity??.8;mesh.rotation.set(0,0,0);mesh.position.copy(point);mesh.scale.set(size,size,size*(options.stretch||1));
       if(options.ring) {mesh.rotation.x=-Math.PI/2;mesh.position.y=.13;}
       if(options.direction){mesh.position.copy(point);mesh.lookAt(point.clone().add(options.direction));}
-      mesh.visible=!options.delay;this.root.add(mesh);
+      mesh.visible=!options.delay;
       this.particles.push({mesh,poolKey,velocity,fresh:true,stretch:options.stretch||1,age:-(options.delay||0),life,size,end:options.end??size*2,opacity:options.opacity??.8,gravity:options.gravity||0,drag:options.drag||0,from:new THREE.Color(color),to:new THREE.Color(options.to??color)});
+    }
+    syncParticles(camera) {
+      // Particle meshes hold simulation transforms only. Render matching shapes/blends
+      // together, with a separate color and opacity for every instance.
+      for(const batch of this.particleBatches.values())batch.items.length=0;
+      for(const p of this.particles){
+        if(!p.mesh.visible)continue;
+        let batch=this.particleBatches.get(p.poolKey);
+        if(!batch){
+          const geometry=p.mesh.geometry.clone(),colors=new THREE.InstancedBufferAttribute(new Float32Array(240*4),4);
+          colors.setUsage(THREE.DynamicDrawUsage);geometry.setAttribute('color',colors);
+          const material=p.mesh.material.clone();material.color.set(0xffffff);material.opacity=1;material.vertexColors=true;
+          const mesh=new THREE.InstancedMesh(geometry,material,240);mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);mesh.frustumCulled=false;mesh.count=0;
+          batch={mesh,colors,items:[]};this.particleBatches.set(p.poolKey,batch);this.root.add(mesh);
+        }
+        batch.items.push(p);
+      }
+      for(const batch of this.particleBatches.values()){
+        // Transparent instances need their own back-to-front order within a batch.
+        if(camera){const e=camera.matrixWorldInverse.elements;for(const p of batch.items){const v=p.mesh.position;p.depth=e[2]*v.x+e[6]*v.y+e[10]*v.z+e[14];}batch.items.sort((a,b)=>a.depth-b.depth);}
+        batch.mesh.count=batch.items.length;batch.mesh.visible=batch.items.length>0;
+        batch.items.forEach((p,i)=>{p.mesh.updateMatrix();batch.mesh.setMatrixAt(i,p.mesh.matrix);const c=p.mesh.material.color;batch.colors.setXYZW(i,c.r,c.g,c.b,p.mesh.material.opacity);});
+        batch.mesh.instanceMatrix.needsUpdate=true;batch.colors.needsUpdate=true;
+      }
     }
     smoke(point, count=3, size=.3) {
       for(let i=0;i<count;i++) this.particle(point,new THREE.Vector3((this.random()-.5)*.9,.6+this.random(),(this.random()-.5)*.9),0x74796e,size,.7+this.random()*.6,{end:size*3,opacity:.33,to:0xabb0a0,delay:i*.025});
@@ -157,8 +182,8 @@
       else if(!electric) this.smoke(p,1,.1);
     }
     emit(event) { if(event.type==='shot')this.shot(event);else this.impact(event); }
-    update(dt) {
-      if(dt<=0)return;
+    update(dt,camera) {
+      if(dt<=0){this.syncParticles(camera);return;}
       for(let i=this.flights.length-1;i>=0;i--) {
         const f=this.flights[i];if(f.fresh){f.fresh=false;continue;}f.age+=dt;if(f.age<0)continue;f.mesh.visible=true;f.trail+=dt;const t=Math.min(1,f.age/f.duration),travel=f.kind==='rocket'?t*(.55+.45*t):f.kind==='bomb'?t*t:t;
         const previous=f.mesh.position.clone();f.mesh.position.lerpVectors(f.origin,f.aim,travel);f.mesh.position.y+=Math.sin(t*Math.PI)*f.arc;
@@ -173,8 +198,9 @@
         const size=THREE.MathUtils.lerp(p.size,p.end,t);p.mesh.scale.set(size,size,size*p.stretch);if(p.stretch!==1)p.mesh.lookAt(p.mesh.position.clone().add(p.velocity));p.mesh.material.opacity=p.opacity*(1-t);p.mesh.material.color.lerpColors(p.from,p.to,t);
         if(t>=1){this.removeParticle(p);this.particles.splice(i,1);}
       }
+      this.syncParticles(camera);
     }
-    clear() {for(const p of this.particles)this.removeParticle(p);for(const b of this.beams)this.removeBeam(b);for(const pool of this.particlePool.values())for(const mesh of pool)mesh.material.dispose();this.particlePool.clear();this.root.clear();this.particles=[];this.beams=[];this.flights=[];}
+    clear() {for(const p of this.particles)this.removeParticle(p);for(const b of this.beams)this.removeBeam(b);for(const pool of this.particlePool.values())for(const mesh of pool)mesh.material.dispose();for(const {mesh} of this.particleBatches.values()){mesh.dispose();mesh.geometry.dispose();mesh.material.dispose();}this.particlePool.clear();this.particleBatches.clear();this.root.clear();this.particles=[];this.beams=[];this.flights=[];}
   }
   window.FIELD_WEAPONS={profiles,kinds,WeaponFX};
 })();

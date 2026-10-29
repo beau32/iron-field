@@ -424,6 +424,7 @@
   function label(e, name) {
     const node = document.createElement('div');
     node.className = `world-label ${hostile(localTeam,e.team) ? 'enemy' : ''} ${e.type === 'unit' ? 'tank-label' : ''} ${e.type === 'ore' ? 'ore-label' : ''}`;
+    node.style.left=node.style.top='0';
     const title = document.createElement('span'); title.textContent = name;
     const bar = document.createElement('div'); bar.className = 'health';
     const fill = document.createElement('div'); bar.append(fill);
@@ -431,6 +432,7 @@
     let selectionFrame = null;
     if (e.type !== 'ore') {
       selectionFrame = document.createElement('div'); selectionFrame.className = 'selection-frame'; selectionFrame.hidden = true;
+      selectionFrame.style.left=selectionFrame.style.top='0';
       selectionFrame.innerHTML = '<i></i><i></i><i></i><i></i><b>✓</b>';
       $('labels').append(selectionFrame);
     }
@@ -2677,7 +2679,7 @@
   }
   function applyGraphics() {
     const quality=$('graphics-quality').value;
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio,quality==='performance'?1:quality==='balanced'?1.25:2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio,quality==='performance'?.8:quality==='balanced'?1.25:2));
     renderer.shadowMap.enabled=quality!=='performance';
     const shadowSize=quality==='high'?2048:1024;
     if(sun.shadow.mapSize.x!==shadowSize){sun.shadow.map?.dispose();sun.shadow.map=null;sun.shadow.mapSize.set(shadowSize,shadowSize);}
@@ -2707,8 +2709,8 @@
       const p = screenPosition(e.mesh.position.clone().add(new THREE.Vector3(0, height+(e.body?.position.y||0), 0)),rect);
       e.label.hidden = !visibleTo(e) || !p.visible || p.x < rect.left || p.x > rect.right || p.y < rect.top || p.y > rect.bottom;
       if(e.label.hidden){if(e.selectionFrame)e.selectionFrame.hidden=true;continue;}
-      e.label.style.left = `${p.x - rect.left}px`; e.label.style.top = `${p.y - rect.top}px`;
-      e.healthFill.style.width = `${Math.max(0, e.type === 'ore' ? e.amount / e.initialAmount * 100 : e.hp / e.maxHp * 100)}%`;
+      let labelX=p.x-rect.left,labelY=p.y-rect.top;
+      e.healthFill.style.width = `${Math.max(0, e.type === 'ore' ? e.amount / e.initialAmount * 100 : e.hp / e.maxHp * 100).toFixed(1)}%`;
       const isSelected = selected.has(e);
       e.label.classList.toggle('is-selected', isSelected);
       if (e.selectionFrame) {
@@ -2720,18 +2722,21 @@
           const left = Math.min(...points.map(p => p.x)) - rect.left - 4, top = Math.min(...points.map(p => p.y)) - rect.top - 4;
           const width = Math.max(26, Math.max(...points.map(p => p.x)) - rect.left - left + 4);
           const frameHeight = Math.max(22, Math.max(...points.map(p => p.y)) - rect.top - top + 4);
-          Object.assign(e.selectionFrame.style, { left: `${left}px`, top: `${top}px`, width: `${width}px`, height: `${frameHeight}px` });
-          e.label.style.top = `${top - 5}px`;
+          Object.assign(e.selectionFrame.style, { transform: `translate(${Math.round(left)}px,${Math.round(top)}px)`, width: `${Math.round(width)}px`, height: `${Math.round(frameHeight)}px` });
+          labelY=top-5;
         }
       }
+      e.label.style.transform=`translate(${Math.round(labelX)}px,${Math.round(labelY)}px) translate(-50%,-100%)`;
+      let title;
       if (e.type === 'ore') {
-        e.labelTitle.textContent = `${e.name} · ${Math.ceil(e.amount).toLocaleString()}`;
+        title = `${e.name} · ${Math.ceil(e.amount).toLocaleString()}`;
         e.mesh.children.slice(1).forEach(o => o.visible = e.amount > 0);
       } else if (isBuilding(e)) {
-        e.labelTitle.textContent = e.buildLeft ? `BUILDING · ${Math.ceil(e.buildLeft)}s` : (e.team !== localTeam && e.kind === 'base' ? 'ENEMY HQ' : STRUCTURE[e.kind].name.toUpperCase())+(e.repairing?' · REPAIRING':'')+(e.repairTarget?' · UNIT REPAIR':'')+(empDisabled(e)?' · EMP DISABLED':'');
-      } else if(empDisabled(e))e.labelTitle.textContent='EMP DISABLED · '+Math.ceil(e.empUntil-elapsed)+'s';
-      else if (e.kind === 'miner') e.labelTitle.textContent = `${Math.floor(e.cargo)} / ${UNIT.miner.capacity}`;
-      else e.labelTitle.textContent = isSelected ? UNIT[e.kind].name.toUpperCase() : e.kind === 'artillery' ? 'SIEGE' : e.kind === 'heavy' ? 'HEAVY' : '';
+        title = e.buildLeft ? `BUILDING · ${Math.ceil(e.buildLeft)}s` : (e.team !== localTeam && e.kind === 'base' ? 'ENEMY HQ' : STRUCTURE[e.kind].name.toUpperCase())+(e.repairing?' · REPAIRING':'')+(e.repairTarget?' · UNIT REPAIR':'')+(empDisabled(e)?' · EMP DISABLED':'');
+      } else if(empDisabled(e))title='EMP DISABLED · '+Math.ceil(e.empUntil-elapsed)+'s';
+      else if (e.kind === 'miner') title = `${Math.floor(e.cargo)} / ${UNIT.miner.capacity}`;
+      else title = isSelected ? UNIT[e.kind].name.toUpperCase() : e.kind === 'artillery' ? 'SIEGE' : e.kind === 'heavy' ? 'HEAVY' : '';
+      if(e.labelTitle.textContent!==title)e.labelTitle.textContent=title;
     }
   }
   function updateUI() {
@@ -2984,7 +2989,7 @@
     } else {accumulator=0;if(!net.isHost)interpolateNetwork(realDt);}
     if(net?.canPublish&&now-lastPublished>=50){lastPublished=now;net.publish(exportNetworkState());}
     const visualDt = paused || outcome || (net?.active && !net.playable) ? 0 : realDt * (net?.active ? 1 : simSpeed);
-    weaponFX.update(visualDt); animateVehicles(visualDt); shadeScene(); renderer.render(scene, camera); updateLabels();
+    weaponFX.update(visualDt,camera); animateVehicles(visualDt); shadeScene(); renderer.render(scene, camera); updateLabels();
     uiTimer += realDt; fpsTimer += realDt; frames++;
     if (uiTimer > .12) { window.IronFieldMusic?.setBattleState(!paused&&!winner&&(!net?.active||net.playable));updateUI(); uiTimer = 0; }
     if (fpsTimer > .8) { $('render-stats').textContent = `${Math.round(frames / fpsTimer)} FPS · ${renderer.info.render.triangles.toLocaleString()} TRIANGLES · WEBGL`; fpsTimer = 0; frames = 0; }

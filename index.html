@@ -11,12 +11,12 @@
   <script defer src="data.js?v=15"></script>
   <script defer src="network.js?v=13"></script>
   <script defer src="ui-art.js?v=16"></script>
-  <script defer src="weapon-fx.js?v=5"></script>
+  <script defer src="weapon-fx.js?v=6"></script>
   <script defer src="fog.js?v=2"></script>
   <script defer src="opponent.js?v=1"></script>
   <script defer src="voice.js?v=4"></script>
   <script defer src="ai-link.js?v=4"></script>
-  <script defer src="game.js?v=42"></script>
+  <script defer src="game.js?v=43"></script>
   <script defer src="music.js?v=2"></script>
 </head>
 <body>
@@ -81,7 +81,7 @@
       <div id="defense-panel" class="panel" hidden><div class="section-heading"><span class="eyebrow">BASE DEFENSE</span><span>4 defensive options</span></div><div id="defense-catalog" class="building-catalog"></div><details class="sidebar-info"><summary aria-label="Defense range and power" title="Defense range and power"><span aria-hidden="true">i</span></summary><div class="info-content"><p class="catalog-tip">The gold circle shows firing range. Each defense uses power; low power halves its fire rate. Build extra power plants to support your defenses. Right-click cancels placement.</p></div></details></div>
       <div id="learn-panel" class="panel" hidden>
         <span class="eyebrow">LOOK UNDER THE HOOD</span><h2>From shapes to a game.</h2><details class="sidebar-info"><summary aria-label="About the learning tools" title="About the learning tools"><span aria-hidden="true">i</span></summary><div class="info-content"><p>Change the view while the simulation runs. Every tank is a group of boxes and cylinders.</p></div></details>
-        <label class="graphics-label" for="graphics-quality">Graphics quality</label><select id="graphics-quality" aria-describedby="graphics-help"><option value="high">High</option><option value="balanced">Balanced</option><option value="performance">Performance</option></select><details class="sidebar-info"><summary aria-label="About graphics quality" title="About graphics quality"><span aria-hidden="true">i</span></summary><div class="info-content"><p id="graphics-help">For a slow frame rate, choose Performance. This setting applies to your browser.</p></div></details>
+        <label class="graphics-label" for="graphics-quality">Graphics quality</label><select id="graphics-quality" aria-describedby="graphics-help"><option value="high">High</option><option value="balanced">Balanced</option><option value="performance">Performance</option></select><details class="sidebar-info"><summary aria-label="About graphics quality" title="About graphics quality"><span aria-hidden="true">i</span></summary><div class="info-content"><p id="graphics-help">Performance targets smoother battles: no dynamic shadows and 80% battlefield resolution. Menus and labels stay sharp. Frame rate depends on your hardware and battle size. This setting applies to your browser.</p></div></details>
         <label class="toggle"><span>Show triangle wireframe<small>The geometry beneath the surfaces</small></span><input id="wireframe" type="checkbox"></label>
         <label class="toggle"><span>Voice alerts<small>Production, attack and low-power warnings</small></span><input id="voice-enabled" type="checkbox" checked></label>
         <label class="speed-label" for="voice-volume">Voice volume</label><input id="voice-volume" type="range" min="0" max="100" step="1" value="80" aria-label="Voice alert volume"><p id="voice-status" role="status"></p>
