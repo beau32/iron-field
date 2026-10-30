@@ -429,47 +429,63 @@ Shared tactical rules also:
 
 ### What Ollama sees and decides
 
-In **Game server** mode, the browser sends `POST /api/commander/plan` a structured summary. In **This computer** mode, it sends the same summary to the paired local connector through `/api/commander/local/plan`. The summary contains: elapsed time, computer credits, both sides' unit/building counts, and context flags for water, low power, and pressure near the computer's base. The relay validates these fields; the selected inference adapter reduces them to a short prompt. **Elapsed time, credits, and the full count dictionaries are not all forwarded verbatim.** The current model prompt contains:
+**Strategy v2 combines a small LLM with battle analysis.** In **Game server** mode, the browser sends `POST /api/commander/plan` a structured summary. In **This computer** mode, the same summary travels through the authenticated relay to the paired connector. Both use `commander.cjs`.
 
-- Human aircraft, armed ground-vehicle count, defensive-building count, and ship count.
-- Computer miner count and total armed-unit count.
-- Whether the map has waterways, whether the computer is short of power, and how many visible armed enemies threaten completed computer structures.
+The summary includes living unit counts, owned and completed structures, the computer's production queue, average army health, both HQ health percentages, credits, remaining ore, low power, and visible pressure at the computer's base. It also includes the current operation, attack state, and the last 45 simulation seconds of destroyed/lost asset value and ore deliveries. Construction and queue progress identify stalled operations. Feedback resets with the match; there is no model training or persistent learning.
 
-The model receives no screenshot, terrain grid, routes, exact coordinates, unit health, or shot-by-shot history. Low power is included as context; the game's essential-infrastructure rule handles power recovery directly.
+The adapter calculates missing counters **including queued units**, estimates combat strength from unit costs weighted by average health, and estimates the cost of missing production prerequisites. These are heuristics, not a battle simulator. Air-only interceptors do not count as an HQ assault force. To keep a small CPU model within the five-second deadline, it compresses these facts into a short assessment rather than sending full rosters or a screenshot.
 
-Before inference, `relevantStrategies()` constructs a shortlist. **The first matching row wins**:
+The current prompt starts with:
 
-| Condition | Choices offered to the model |
+```text
+Command OUR army to destroy ENEMY HQ. Recover income, defend danger,
+fill counter gaps, exploit strength. Queued counters count. Keep
+productive plans; replace stalled or losing plans. Choose an offered
+strategy. Return only JSON {"strategy":"name"}.
+```
+
+An illustrative appended assessment is:
+
+```text
+Income working. Force stronger. Cash 650. Base safe. Need no counters.
+Enemy HQ 25%. Previous rush: attacking.
+Choose only: rush,balanced.
+```
+
+`candidates()` scores feasible operations and offers at most four. This replaces the old first-match rule that forced air-related choices whenever any enemy aircraft existed:
+
+| Situation | Strategic response |
 | --- | --- |
-| At least 3 enemies pressuring the computer's base, and human aircraft exist | `anti-air`, `defend` |
-| At least 3 enemies pressuring the base, without human aircraft | `defend`, `anti-armor` |
-| Computer has fewer than 2 miners | `economy`, `defend` |
-| Human has any aircraft | `anti-air`, `air` |
-| Water map and human has at least 2 naval units | `naval`, `air` |
-| Human has at least 2 defensive structures | `siege`, `air` |
-| Computer has fewer than 60% as many armed units as the human | `defend`, `economy` |
-| Human has at least 3 armed ground vehicles, excluding infantry and ships | `anti-armor`, `siege`, `air` |
-| Otherwise | `rush`, `air`, `economy` |
+| Income is broken and ore remains | Prioritize economy recovery |
+| Base pressure, a threatened HQ, substantial recent losses, or a weak army | Offer defense and rebuilding |
+| Aircraft outnumber existing and queued mobile anti-air | Offer anti-air; covered aircraft do not force more counters |
+| Armor or static defenses exceed existing and queued specialist coverage | Offer armor hunters or siege, if the investment is feasible |
+| Income is operating and the technology chain is affordable | Consider air or naval investment; naval also requires water |
+| A ground-capable force has an advantage over a weakened enemy HQ | Offer immediate pressure/HQ assault instead of new technology or economy expansion |
+| A plan is productive | Give it a continuity bonus when still feasible |
+| A plan is stalled or losing heavily | Reduce its priority so alternatives can be offered |
 
-The model returns one small JSON choice, for example `{"strategy":"naval"}`. It selects an operation from this shortlist. The server maps that choice to a validated plan:
+Healthy economy expansion and new air technology lose priority when an existing army can already apply pressure. When all ore is exhausted, the computer stops replacing or expanding mining solely for ore income and can fight for battle rewards instead.
+
+The model returns one small choice, such as `{"strategy":"siege"}`. The adapter maps it to a validated operation:
 
 | Operation | Preset | Target focus | Unit priority | Building priority |
 | --- | --- | --- | --- | --- |
-| `balanced` | Balanced | Economy | Auto | Auto |
-| `rush` | Rush | Production | Battle tank | Auto |
+| `balanced` | Balanced | Economy, or a vulnerable HQ | Auto | Auto |
+| `rush` | Rush | Production, or a vulnerable HQ | Battle tank | Auto |
 | `defend` | Fortress | Army | Auto | Guard turret |
 | `economy` | Economy | Economy | Auto | Auto |
-| `air` | Air | Production | Gunship* | Airfield |
-| `anti-air` | Balanced | Army | Rocket carrier | Missile battery |
+| `air` | Air | Production | Gunship | Airfield |
+| `anti-air` | Balanced | Army | Interceptor, rocket trooper, or rocket carrier | Auto, or an affordable missile battery under base pressure |
 | `siege` | Balanced | Production | Siege artillery | Auto |
 | `anti-armor` | Balanced | Army | Tank destroyer | Auto |
 | `naval` | Balanced | Production | Missile frigate | Naval shipyard |
 
-*When `air` is selected from a shortlist containing `anti-air`, the unit priority becomes **interceptor**. `Auto` delegates that priority to the ordinary economy/recruitment rules. `balanced` is a defined package, but the current live shortlist does not offer it; Balanced is also the no-plan fallback policy. The validator supports HQ focus, although no current package selects it.
+Anti-air priorities account for completed producers and cash: use an available, affordable interceptor; otherwise use rocket troopers when the factory is missing or rockets are unaffordable; otherwise use rocket carriers. `Auto` delegates to ordinary economy/recruitment rules. A changed plan updates priorities without recalling a live attack. An idle force's next attack opportunity can move forward to within 8 seconds for Rush or 20 seconds for other plans. Existing readiness, local strength, navigation and visibility checks still govern execution.
 
-A changed model plan updates spending and target priorities without recalling an attack already in progress. When there is no active raid, it can bring the next attack opportunity forward to within 8 seconds for Rush or 20 seconds for other plans. Readiness, defense, and strength checks still apply. Manually switching the opponent selector still resets the commander as described above.
+The LLM cannot execute code, issue arbitrary unit commands, alter rules, or grant resources. Strategies and plan fields are validated by the adapter, relay and browser. Production still pays costs and obeys technology, power, population, placement and producer rules. A valid strategy choice is not proof of a stronger win rate; scenario tests check the decision constraints, and actual battles still depend on local tactics and the selected model.
 
-The LLM cannot execute code, issue arbitrary unit commands, alter rules, or grant resources. The server accepts only allowlisted strategies and plan fields; the browser validates the resulting plan again. Actual construction and recruitment still pay costs and obey technology, power, population, placement, and producer rules.
+Run `node tests/commander.test.cjs` and `node tests/commander-feedback.test.cjs` to check strategy constraints, browser feedback, validation and request timing without contacting a model service.
 
 ### Timing, fallback, and the small server
 
@@ -477,7 +493,7 @@ The LLM cannot execute code, issue arbitrary unit commands, alter rules, or gran
 | --- | --- |
 | Default model | `qwen2.5:0.5b` |
 | Model request limits | 512-token context, at most 16 generated tokens, temperature 0, 4 threads |
-| Successful-plan refresh | Eligible 30 **real seconds after completion**; dispatched on a subsequent commander update |
+| Successful-plan refresh | Normally 30 **real seconds after completion**; major threat/income/stall changes can trigger an Ollama refresh, with at least 10 real seconds between requests and failure backoff respected |
 | Plan lifetime | 180 real seconds after acceptance |
 | Live inference deadline | 5 seconds by default and at most 5 seconds on the server; browser timeout 6.5 seconds |
 | Failed request retry | Normally 10 real seconds; busy/warming responses request a 2-second retry |
@@ -497,7 +513,7 @@ In Ollama mode, **AI order** identifies the selected operation and indicates ref
 
 The computer is a prototype opponent with global strategic knowledge: its army summaries and objective scoring can inspect both sides' units and buildings beyond the fog. Some older base-defense and miner-risk checks also use world positions. Visible-contact checks gate emergency anti-air, the new base-pressure summary, local focus fire, and the defenders used in strength estimates. Combat acquisition/fire and building placement still obey visibility rules. An unseen strategic objective causes movement toward its position until it can be attacked.
 
-There is no training or persistent learning between matches, and no search through simulated future battles. The small LLM chooses among handcrafted operations; local rules perform the combat. Its richer behavior comes from those rules plus the operation choice. This explains why Ollama may resemble a preset for a while, especially when funds, prerequisites, a shortlist, or a fallback constrain its choices.
+There is no training or persistent learning between matches, and no search through simulated future battles. The small LLM chooses among scored, feasible operations using a compact assessment and recent battle feedback; local rules perform the combat. Its richer behavior comes from those rules plus the operation choice. This explains why Ollama may resemble a preset for a while, especially when funds, prerequisites, a shortlist, or a fallback constrain its choices.
 
 ### Run with your own Ollama
 
@@ -523,7 +539,7 @@ Select **AI commander · Ollama → Send AI requests through → Game server** t
 1. Install/run Ollama and have a local model available. The connector prefers `qwen2.5:0.5b`, then the smallest installed completion model. It does not download models automatically. Set `OLLAMA_MODEL` before launching to choose another installed model.
 2. In the game, choose **AI commander · Ollama → This computer → Connect this computer**. Download and extract **AI connector** (`local-ai.zip`). It requires Node.js 18 or newer.
 3. Click **Create pairing code**, then run `Start-Local-AI.cmd` on Windows or `node local-ai.cjs` on macOS/Linux. Enter the game server address and the 12-character code. The code expires in five minutes and can be used once.
-4. Keep the connector running. The game reports the local model and whether it is warming up, connected, or offline. The pairing survives page reloads in that browser tab. Re-pair after a game-server restart or session expiry.
+4. Keep the connector running. For Strategy v2, download/extract the updated connector and restart it; old connectors retain the older strategy logic and show an update notice. The game reports **Strategy v2** alongside the local model once the new connector is paired, and whether it is warming up, connected, or offline. The pairing survives page reloads in that browser tab. Re-pair after a game-server restart or session expiry.
 
 The connector makes outbound requests to the game server and contacts Ollama on its own `127.0.0.1:11434`. It opens no listening port and requires no Ollama CORS changes or LAN exposure. The game server relays only the validated battle summary and model plan; it does not perform inference for **This computer** requests. Separate browser and connector tokens isolate each pairing. Pairing codes are displayed to the player; tokens are kept out of URLs.
 

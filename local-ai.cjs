@@ -30,14 +30,14 @@ async function main(){
   const result=await r.json();if(!r.ok)throw Object.assign(Error(result.error||'Connection failed'),{status:r.status});return result;
  }
  const initialStatus=await commander.status();
- const {workerToken}=await send('connect',{models:initialStatus.models,code:String(code).trim(),model:preferred,provider,configPort:keyUI?.port});
+ const {workerToken}=await send('connect',{decisionVersion:initialStatus.decisionVersion,models:initialStatus.models,code:String(code).trim(),model:preferred,provider,configPort:keyUI?.port});
  console.log('Paired with '+base.origin+'. Using '+(provider==='openai'?'OpenAI Decisions via this computer':'local Ollama')+' · '+preferred+'. Keep this connector running; Ctrl+C stops it.');
  let warming=false;
  while(true){
   try{
    const status=await commander.status(preferred);
    if(!status.ready&&!warming){warming=true;commander.warmup(preferred).finally(()=>warming=false);}
-   const {job}=await send('work',{ready:status.ready,models:status.models,model:preferred,configPort:keyUI?.port},workerToken);
+   const {job}=await send('work',{ready:status.ready,decisionVersion:status.decisionVersion,models:status.models,model:preferred,configPort:keyUI?.port},workerToken);
    if(job){
     if(provider==='ollama'&&job.model)preferred=job.model;
     const started=Date.now();let result;

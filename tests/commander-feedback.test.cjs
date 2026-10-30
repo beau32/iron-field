@@ -1,0 +1,24 @@
+'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),data=require('../data.js');
+const source=fs.readFileSync(require.resolve('../game.js'),'utf8');
+function body(name){const start=source.indexOf('  function '+name+'('),end=source.indexOf('\n  function ',start+3);assert(start>=0&&end>start);return source.slice(start,end);}
+const state={elapsed:0,net:null,opponentStyle:'ollama',UNIT:data.units,MAP:{water:[]},remoteQueue:[],fields:[{amount:5000}],buildings:[],performance:{now:()=>now},unitsFor:t=>army.filter(u=>u.team===t&&u.hp>0),baseOf:t=>state.buildings.find(b=>b.team===t&&b.kind==='base'),active:b=>b.hp>0&&!b.buildLeft,powerFor:()=>({low:false}),aiBaseThreats:()=>threats,deliveredFor:()=>delivered,isAir:u=>Boolean(data.units[u.kind].aircraft),hostile:(a,b)=>a!==b&&Boolean(a&&b),emitVoiceAlert:()=>{},isBuilding:e=>e.type!=='unit',stats:e=>data.units[e.kind]||data.buildings[e.kind],awardBattleReward:()=>{},destroy:()=>{}};
+let now=0,delivered=0,threats=[];
+const unit=(id,kind,team='enemy')=>({id,kind,team,type:'unit',hp:data.units[kind].hp,maxHp:data.units[kind].hp});
+const army=[unit(1,'miner'),unit(2,'tank'),unit(3,'tank','player')];
+state.buildings=[{id:10,kind:'base',team:'enemy',hp:1000,maxHp:1200},{id:11,kind:'base',team:'player',hp:500,maxHp:1200},{id:12,kind:'refinery',team:'enemy',hp:650,maxHp:650},{id:13,kind:'airfield',team:'enemy',hp:650,maxHp:650,buildLeft:8}];
+state.enemyCredits=321.9;vm.createContext(state);
+vm.runInContext(['resetCommander','isModelOpponent','currentModelPlan','modelBattleSummary','updateAIHistory','damage'].map(body).join('\n'),state);
+state.commander=state.resetCommander();state.updateAIHistory();
+let summary=state.modelBattleSummary();assert.equal(summary.credits,321);assert.equal(summary.own.hqHealth,83);assert.equal(summary.opponent.hqHealth,42);assert.equal(summary.own.buildings.airfield,1);assert(!summary.own.ready.airfield);
+state.remoteQueue.push({kind:'rocketTrooper',progress:1});assert.equal(state.modelBattleSummary().own.queued.rocketTrooper,1);
+state.damage(army[1],10000,'player');state.damage(army[2],10000,'enemy');summary=state.modelBattleSummary();assert.equal(summary.feedback.lostValue,140);assert.equal(summary.feedback.destroyedValue,140);
+state.commander.plan={operation:'rush'};state.commander.planAt=0;state.commander.operationAt=0;
+state.elapsed=5;now=5000;delivered=90;state.updateAIHistory();assert.equal(state.modelBattleSummary().feedback.income,90);
+state.elapsed=55;now=55000;state.updateAIHistory();summary=state.modelBattleSummary();assert.equal(summary.feedback.lostValue,0);assert.equal(summary.feedback.destroyedValue,0);assert(summary.feedback.stalled);
+state.commander.lastModelRequest=now;state.commander.nextModel=now+30000;threats=[1,2,3];state.updateAIHistory();assert.equal(state.commander.nextModel,85000,'urgent changes cannot exceed 10-second rate limit');
+state.elapsed=66;now=66000;state.updateAIHistory();assert.equal(state.commander.nextModel,66000,'urgent threat refreshes before normal 30-second cycle');
+state.commander.nextModel=96000;state.commander.modelRetryUntil=90000;threats=[];state.updateAIHistory();assert.equal(state.commander.nextModel,96000,'failure backoff is respected');
+state.commander.raidSize=2;state.commander.raidStarted=50;army[0].raid=true;assert.equal(state.modelBattleSummary().feedback.stalled,false);assert.equal(state.modelBattleSummary().feedback.raidAge,16);
+state.elapsed=200;state.updateAIHistory();assert.equal(state.modelBattleSummary().feedback.lostValue,0);
+console.log('PASS browser summary, completed producers, queues, HQ health, combat-loss and income feedback, stalled plans, urgent refresh rate limit/backoff and active-raid continuity.');

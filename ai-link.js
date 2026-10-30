@@ -81,6 +81,7 @@
    $('ai-key-setup').hidden=!keySetup;
    if(keySetup)$('ai-key-setup').href=`http://127.0.0.1:${result.configPort}/`;
    $('ai-connection').textContent=result.connected?provider==='openai'?`${result.ready?'Connector ready · key configured':'Connector paired · enter API key'} · ${result.model}`:`${result.ready?'Connected':'Warming up'} · ${result.model} · on your computer`:result.code&&Date.now()<result.expires?'Waiting for your local connector.':'Connector offline. Restart it, or pair again.';
+   if(provider==='ollama'&&result.connected)$('ai-connection').textContent+=result.decisionVersion>=2?' · Strategy v2':' · Update AI connector: download, extract and restart it for smarter strategy.';
    if(provider==='ollama')showModels(result.connected?result.models:[],result.model,!result.connected?'Connect the local AI connector first.':!result.models?.length?'Download and restart the updated AI connector to choose models.':'');
    if(becameReady)changed('ready');
   }catch(e){$('ai-connection').textContent='Local AI connection unavailable. Gameplay continues with fallback tactics.';}

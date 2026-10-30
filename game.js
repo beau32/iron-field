@@ -1907,7 +1907,13 @@
   function damage(e, amount, attackerTeam = null) {
     if (e.hp <= 0) return;
     if(amount>0&&hostile(e.team,attackerTeam))emitVoiceAlert(e.team,isBuilding(e)?'baseAttack':'unitsAttack');
-    e.hp = Math.max(0, e.hp - amount); if (!e.hp) { awardBattleReward(e,attackerTeam); destroy(e); }
+    e.hp = Math.max(0, e.hp - amount); if (!e.hp) {
+      if(!net?.active&&hostile(e.team,attackerTeam)&&['player','enemy'].includes(e.team)){
+        commander.battleEvents||=[];commander.battleEvents.push({at:elapsed,team:e.team,value:stats(e).cost||600});
+        if(commander.battleEvents.length>120)commander.battleEvents.shift();
+      }
+      awardBattleReward(e,attackerTeam); destroy(e);
+    }
   }
   function destroy(e) {
     releaseUnitDamage(e);
@@ -2096,7 +2102,7 @@
   }
   // Solo commander: periodic decisions, ordinary credits/construction/production rules.
   function resetCommander() {
-    return { nextThink: 0, nextBuild: 6, nextRecruit: 0, mode: 'Preparing', intent:'', events:[], decisions:0, plan:null, planAt:0, nextModel:0, pending:false, modelStatus:'', model:'', targetId: null, raidSize: 0, raidStarted: 0, regroupUntil: 0 };
+    return { nextThink: 0, nextBuild: 6, nextRecruit: 0, mode: 'Preparing', intent:'', events:[], decisions:0, plan:null, planAt:0, nextModel:0, pending:false, modelStatus:'', model:'', targetId: null, raidSize: 0, raidStarted: 0, regroupUntil: 0, battleEvents:[],incomeSamples:[],progressAt:0,operationAt:0,lastModelRequest:-Infinity,modelRetryUntil:0 };
   }
   function isModelOpponent(){return ['ollama','openai'].includes(opponentStyle);}
   function modelProvider(){return opponentStyle==='openai'?'OpenAI Decisions':'Ollama';}
@@ -2110,11 +2116,35 @@
   function modelBattleSummary() {
     const side=team=>{
       const count=list=>list.reduce((result,e)=>{result[e.kind]=(result[e.kind]||0)+1;return result;},{});
-      return {units:count(unitsFor(team).filter(u=>u.hp>0)),buildings:count(buildings.filter(b=>b.team===team&&b.hp>0))};
+      const army=unitsFor(team).filter(u=>u.hp>0),structures=buildings.filter(b=>b.team===team&&b.hp>0),fighters=army.filter(u=>UNIT[u.kind].damage>0),hq=baseOf(team);
+      return {units:count(army),buildings:count(structures),ready:count(structures.filter(active)),queued:team==='enemy'?count(remoteQueue):{},health:fighters.length?Math.round(100*fighters.reduce((n,u)=>n+u.hp,0)/fighters.reduce((n,u)=>n+u.maxHp,0)):100,hqHealth:hq?Math.round(100*hq.hp/hq.maxHp):0};
     };
-    return {elapsed:Math.floor(elapsed),credits:Math.floor(enemyCredits),own:side('enemy'),opponent:side('player'),context:{water:MAP.water.length>0,lowPower:powerFor('enemy').low,pressure:aiBaseThreats().length}};
+    const recent=(commander.battleEvents||[]).filter(e=>elapsed-e.at<=45),plan=currentModelPlan();
+    return {elapsed:Math.floor(elapsed),credits:Math.floor(enemyCredits),own:side('enemy'),opponent:side('player'),context:{water:MAP.water.length>0,lowPower:powerFor('enemy').low,pressure:aiBaseThreats().length,oreRemaining:Math.floor(fields.reduce((n,f)=>n+f.amount,0))},feedback:{
+      operation:plan?.operation||'',mode:commander.mode,age:Math.floor(Math.max(0,elapsed-(commander.operationAt||0))),
+      stalled:Boolean(plan&&!commander.raidSize&&elapsed-(commander.progressAt||0)>45),
+      lostValue:recent.filter(e=>e.team==='enemy').reduce((n,e)=>n+e.value,0),destroyedValue:recent.filter(e=>e.team==='player').reduce((n,e)=>n+e.value,0),
+      income:Math.floor(Math.max(0,deliveredFor('enemy')-(commander.incomeSamples?.[0]?.delivered??deliveredFor('enemy')))),
+      raidAge:commander.raidSize?Math.floor(elapsed-commander.raidStarted):0,raidSize:unitsFor('enemy').filter(u=>u.raid&&u.hp>0).length
+    }};
+  }
+  function updateAIHistory(){
+    commander.battleEvents=(commander.battleEvents||[]).filter(e=>elapsed-e.at<=45);
+    const samples=commander.incomeSamples||=[];samples.push({at:elapsed,delivered:deliveredFor('enemy')});
+    while(samples.length>1&&samples[1].at<elapsed-45)samples.shift();
+    const progress=unitsFor('enemy').map(u=>u.id).join(',')+'|'+buildings.filter(b=>b.team==='enemy'&&b.hp>0).map(b=>b.id+':'+Math.floor((b.buildLeft||0)/2)).join(',')+'|'+remoteQueue.map(q=>q.kind+':'+Math.floor(q.progress/2)).join(',');
+    if(progress!==commander.progressSignature){commander.progressSignature=progress;commander.progressAt=elapsed;}
+    if(opponentStyle!=='ollama')return;
+    const summary=modelBattleSummary(),aa=unitsFor('enemy').filter(u=>['air','all'].includes(UNIT[u.kind].targets)).length+remoteQueue.filter(q=>['air','all'].includes(UNIT[q.kind].targets)).length;
+    const trigger=[summary.context.pressure>=3,summary.own.hqHealth<45,!summary.own.units.miner,!summary.own.ready.refinery,unitsFor('player').filter(isAir).length>aa,summary.feedback.stalled].join(':');
+    if(commander.modelTrigger&&trigger!==commander.modelTrigger)commander.urgentModel=true;
+    commander.modelTrigger=trigger;
+    const now=performance.now();
+    if(commander.urgentModel&&currentModelPlan()&&!commander.pending&&now-commander.lastModelRequest>=10000&&now>=commander.modelRetryUntil){commander.nextModel=Math.min(commander.nextModel,now);commander.urgentModel=false;}
   }
   function aiPlanName(plan) {
+    if(plan.focus==='hq')return 'HQ assault';
+    if(plan.operation)return ({balanced:'Balanced operation',rush:plan.focus==='hq'?'HQ assault':'Production raid',defend:'Base defense',economy:'Economy recovery',air:'Air operation','anti-air':'Anti-air screen',siege:'Siege operation','anti-armor':'Armor hunters',naval:'Naval operation'})[plan.operation];
     return plan.unit==='frigate'?'Naval operation':plan.unit==='rocket'?'Anti-air screen':plan.unit==='destroyer'?'Armor hunters':plan.unit==='artillery'?'Siege operation':FIELD_OPPONENT.styles[plan.style].name;
   }
   function aiLog(message) {
@@ -2125,6 +2155,7 @@
     const changed=JSON.stringify(commander.plan)!==JSON.stringify(plan);
     commander.plan=plan;commander.planAt=performance.now();commander.model=String(model||modelProvider()).slice(0,80);commander.modelStatus='AI plan active';commander.decisions++;
     if(changed) {
+      commander.operationAt=elapsed;commander.progressAt=elapsed;
       aiLog(`${modelProvider()} ordered: ${aiPlanName(plan)}`);commander.intent='Putting the new order into action';
       commander.nextBuild=Math.min(commander.nextBuild,elapsed);commander.nextRecruit=Math.min(commander.nextRecruit,elapsed);
       // A strategy refresh changes spending and objectives, not the progress of a live attack.
@@ -2135,6 +2166,7 @@
   async function requestModelPlan() {
     if(net?.active||!raids||outcome||!isModelOpponent()||commander.pending||performance.now()<commander.nextModel)return;
     const state=commander,controller=new AbortController();modelRequest=controller;
+    state.lastModelRequest=performance.now();state.urgentModel=false;
     state.pending=true;state.modelStatus=modelProvider()+' is planning';
     const timer=setTimeout(()=>controller.abort(),6500);
     let retryAfterMs=10000;
@@ -2145,10 +2177,11 @@
       if(!plan)throw Error(modelProvider()+' returned an invalid plan');
       if(state!==commander||controller.signal.aborted||net?.active||!raids||!isModelOpponent())return;
       acceptAIPlan(plan,result.model);
+      state.modelRetryUntil=0;
       state.nextModel=performance.now()+30000;
     } catch(error) {
       if(state!==commander||net?.active||!raids||!isModelOpponent())return;
-      if(!currentModelPlan())state.plan=null;state.modelStatus=error.name==='AbortError'?modelProvider()+' timed out':String(error.message).slice(0,140);state.nextModel=performance.now()+retryAfterMs;
+      if(!currentModelPlan())state.plan=null;state.modelStatus=error.name==='AbortError'?modelProvider()+' timed out':String(error.message).slice(0,140);state.nextModel=performance.now()+retryAfterMs;state.modelRetryUntil=state.nextModel;
     } finally {clearTimeout(timer);state.pending=false;if(modelRequest===controller)modelRequest=null;}
   }
   function updateOpponentUI() {
@@ -2232,6 +2265,7 @@
     queueUnit(kind,'enemy');if(commander.budgetWaits)delete commander.budgetWaits['unit:'+kind];commander.nextRecruit=elapsed+policy.recruit;commander.intent=`Producing ${def.name}`;return true;
   }
   function aiRecoverIncome(own,ownBuildings,count) {
+    if(!fields.some(f=>f.amount>0)){commander.recovering=false;return false;}
     const has=kind=>ownBuildings.some(b=>b.kind===kind);
     const missingRefinery=!has('refinery'),missingMiner=!count('miner');
     commander.recovering=missingRefinery||missingMiner;
@@ -2268,7 +2302,7 @@
       return;
     }
     if(aiEmergencyProduction(own,count,policy))return;
-    if(count('miner')<policy.miners && own.length+remoteQueue.length<24 && producerFor('miner','enemy')) {
+    if(fields.some(f=>f.amount>0)&&count('miner')<policy.miners && own.length+remoteQueue.length<24 && producerFor('miner','enemy')) {
       if(enemyCredits>=UNIT.miner.cost){queueUnit('miner','enemy');commander.intent=`Expanding ore income · ${count('miner')} / ${policy.miners} miners`;return;}
       if(plan&&aiBudgetWait('miner',UNIT.miner.cost,'miner'))return;
     }
@@ -2367,6 +2401,7 @@
   function updateCommander() {
     if(net?.active || !raids || !baseOf('enemy') || elapsed<commander.nextThink)return;
     commander.nextThink=elapsed+1.5;
+    updateAIHistory();
     aiSuperweapons();
     requestModelPlan();
     const policy=aiPolicy();

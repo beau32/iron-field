@@ -8,9 +8,11 @@
     air:{name:'Air commander',description:'Early airfield, gunships and bombers, with ground escorts.',miners:3,defenses:2,firstRaid:110,interval:60,minForce:5,guards:2,maxRaid:9,recruit:6,cap:20,airAt:30,retreat:.3,focus:'production'}
   };
   const focuses=['economy','production','hq','army'];
+  const operations=['balanced','rush','defend','economy','air','anti-air','siege','anti-armor','naval'];
   function validPlan(plan,units,buildings){
     if(!plan||typeof plan!=='object'||Array.isArray(plan)||!Object.hasOwn(styles,plan.style)||!focuses.includes(plan.focus)||!['auto',...units].includes(plan.unit)||!['auto',...buildings].includes(plan.building))return null;
-    return {style:plan.style,focus:plan.focus,unit:plan.unit,building:plan.building};
+    if(plan.operation!==undefined&&!operations.includes(plan.operation))return null;
+    return {style:plan.style,focus:plan.focus,unit:plan.unit,building:plan.building,...(plan.operation?{operation:plan.operation}:{})};
   }
-  return {styles,focuses,validPlan};
+  return {styles,focuses,operations,validPlan};
 });
