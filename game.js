@@ -2280,9 +2280,12 @@
       }
       return false;
     }
-    // Test legal sites near HQ, tending toward its front for defenses.
+    const opponentBase=baseOf('player');
+    const facing=STRUCTURE[kind].defense&&opponentBase
+      ?Math.atan2(opponentBase.mesh.position.x-base.mesh.position.x,opponentBase.mesh.position.z-base.mesh.position.z):-Math.PI/2;
+    // Start defensive placement on the approach from the opposing base.
     for(const radius of [9,15,21,27]) for(let i=0;i<16;i++) {
-      const angle=-Math.PI/2+i*Math.PI/8,point=base.mesh.position.clone().add(new THREE.Vector3(Math.sin(angle)*radius,0,Math.cos(angle)*radius));
+      const angle=facing+i*Math.PI/8,point=base.mesh.position.clone().add(new THREE.Vector3(Math.sin(angle)*radius,0,Math.cos(angle)*radius));
       if(!placementError(kind,point,'enemy')) {spend('enemy',STRUCTURE[kind].cost);createBuilding(kind,'enemy',point.x,point.z,true);aiLog(`Building ${STRUCTURE[kind].name}`);return true;}
     }
     return false;
@@ -2309,7 +2312,7 @@
     const has=kind=>ownBuildings.some(b=>b.kind===kind);
     const defenseCount=ownBuildings.filter(b=>STRUCTURE[b.kind].defense).length;
     const build=plan.building!=='auto'&&(!has(plan.building)||(STRUCTURE[plan.building].defense&&defenseCount<policy.defenses))?plan.building:null;
-    if(build&&aiPriorityBuild(build))return true;
+    if(build&&!STRUCTURE[build].defense&&aiPriorityBuild(build))return true;
     if(plan.unit==='auto')return false;
     const kind=plan.unit,def=UNIT[kind],quota=def.aircraft?4:3;
     if(count(kind)>=quota){commander.intent=`${def.name} group assembled · supporting the force`;return false;}
@@ -2319,6 +2322,32 @@
     if(enemyCredits<def.cost)return aiBudgetWait('unit:'+kind,def.cost,def.name);
     if(elapsed<commander.nextRecruit){commander.intent=`Preparing ${def.name}`;return true;}
     queueUnit(kind,'enemy');if(commander.budgetWaits)delete commander.budgetWaits['unit:'+kind];commander.nextRecruit=elapsed+policy.recruit;commander.intent=`Producing ${def.name}`;return true;
+  }
+  function aiMaintainDefenses(policy,own,ownBuildings) {
+    const defenses=ownBuildings.filter(b=>STRUCTURE[b.kind].defense);
+    if(defenses.some(b=>b.buildLeft>0))return false;
+    if(!ownBuildings.some(b=>b.kind==='garrison'&&active(b)))return false;
+    const seen=unitsFor('player').filter(u=>visibleTo(u,'enemy'));
+    const has=kind=>ownBuildings.some(b=>b.kind===kind);
+    const armor=seen.filter(u=>!isAir(u)&&!UNIT[u.kind].infantry&&!isNaval(u)&&stats(u).damage>0).length;
+    const target=Math.max(2,policy.defenses);
+    let kind=null;
+    if(seen.some(isAir)&&has('warFactory')&&!has('missileBattery'))kind='missileBattery';
+    else if(defenses.length<target){
+      kind=armor>=3&&has('warFactory')&&!has('teslaCoil')?'teslaCoil':'turret';
+    }
+    if(!kind)return false;
+    const essential=defenses.length<2||aiBaseThreats().length>0;
+    if(enemyCredits<STRUCTURE[kind].cost){
+      const armyReady=own.filter(u=>stats(u).damage>0).length>=3;
+      if(essential&&armyReady)return aiBudgetWait('defense:'+kind,STRUCTURE[kind].cost,STRUCTURE[kind].name);
+      return false;
+    }
+    if(elapsed<commander.nextBuild)return false;
+    if(!aiBuild(kind))return false;
+    commander.nextBuild=elapsed+12;
+    aiTactic('Securing base approaches: constructing '+STRUCTURE[kind].name);
+    return false; // Construction runs alongside recruitment.
   }
   function aiRecoverIncome(own,ownBuildings,count) {
     if(!fields.some(f=>f.amount>0)){commander.recovering=false;return false;}
@@ -2363,6 +2392,7 @@
       if(plan&&aiBudgetWait('miner',UNIT.miner.cost,'miner'))return;
     }
     if(!has('warFactory')&&aiPriorityBuild('warFactory'))return;
+    if(aiMaintainDefenses(policy,own,ownBuildings))return;
     if(elapsed>360&&elapsed>=commander.nextBuild&&has('airfield')&&own.filter(u=>UNIT[u.kind].damage>0).length>=6){
       const kind=!has('missileSilo')?'missileSilo':!has('empArray')?'empArray':null;
       if(kind&&enemyCredits>STRUCTURE[kind].cost+400&&aiBuild(kind)){commander.nextBuild=elapsed+30;return;}
@@ -2466,6 +2496,15 @@
     }
     return null;
   }
+  function guardsForThreats(available,threats) {
+    const reserved=new Set();
+    for(const threat of threats){
+      const guards=guardsForHarasser(available.filter(unit=>!reserved.has(unit)),threat);
+      if(!guards)return null;
+      for(const unit of guards)reserved.add(unit);
+    }
+    return reserved;
+  }
   function raidHasStalled(raiders,objective) {
     if(!raiders.length)return false;
     if(!objective)return elapsed-commander.raidStarted>=65;
@@ -2494,7 +2533,9 @@
     const base=baseOf('enemy'), own=unitsFor('enemy'),fighters=own.filter(u=>UNIT[u.kind].damage>0);
     const assets=[...buildings.filter(b=>b.team==='enemy'&&active(b)),...own.filter(u=>u.kind==='miner')];
     const threats=unitsFor('player').filter(u=>UNIT[u.kind].damage>0&&assets.some(a=>distance(a,u)<(a.kind==='miner'?12:14)));
-    const rally=base.mesh.position.clone().add(new THREE.Vector3(-8,0,5));
+    const opponentBase=baseOf('player');
+    const approach=opponentBase?opponentBase.mesh.position.clone().sub(base.mesh.position).setY(0).normalize():new THREE.Vector3(-1,0,0);
+    const rally=base.mesh.position.clone().addScaledVector(approach,10);
     for(const b of buildings.filter(b=>b.team==='enemy'&&active(b)&&b.hp<b.maxHp*.65&&!b.repairing)){if(!commander.recovering&&enemyCredits>180){b.repairing=true;aiLog('Repairing '+STRUCTURE[b.kind].name);}}
     for(const miner of own.filter(u=>u.kind==='miner')) {
       const threat=living().find(e=>e.team==='player'&&stats(e).damage>0&&distance(e,miner)<11);
@@ -2516,22 +2557,26 @@
     }
     let raiders=fighters.filter(u=>u.raid&&!u.aiRetreat);
     const adaptiveRaid=opponentStyle==='ollama';
+    const homeGuards=adaptiveRaid?guardsForThreats(fighters.filter(u=>!u.raid&&!u.aiRetreat),threats):null;
     const timedOut=commander.raidSize&&(adaptiveRaid?raidHasStalled(raiders,living().find(e=>e.id===commander.targetId)):elapsed-commander.raidStarted>65);
-    if(commander.raidSize && (raiders.length<Math.ceil(commander.raidSize*.55)||timedOut||threats.length>=3)) {aiRegroup();raiders=[];}
-    if(!raiders.length && elapsed>=nextRaid && elapsed>=commander.regroupUntil && (!threats.length||adaptiveRaid&&threats.length===1)) {
+    if(commander.raidSize && (raiders.length<Math.ceil(commander.raidSize*.55)||timedOut||threats.length>=3&&!homeGuards)) {aiRegroup();raiders=[];}
+    if(!raiders.length && elapsed>=nextRaid && elapsed>=commander.regroupUntil && (!threats.length||adaptiveRaid)) {
       const available=fighters.filter(u=>!u.aiRetreat&&u.hp/u.maxHp>(commander.recovering?.25:.55));
       // Each style reserves its own number of guards near the miners.
       available.sort((a,b)=>distance(b,base)-distance(a,base));
       const opportunistic=commander.recovering||elapsed-(commander.lastLaunch??policy.firstRaid)>45;
       const reserve=opportunistic?Math.min(1,Math.max(0,available.length-2)):policy.guards;
-      const guards=threats.length?guardsForHarasser(available,threats[0]):new Set();
+      const guards=threats.length?guardsForThreats(available,threats):new Set();
       const strikeForce=guards?available.filter(unit=>!guards.has(unit)):[];
       if(guards&&strikeForce.length>=(opportunistic?2:policy.minForce)) {
         raiders=strikeForce.slice(0,Math.min(policy.maxRaid,available.length-Math.max(reserve,guards.size)));
         const target=aiObjective(raiders);
         if(target&&aiEngagement(raiders,target).viable) {raiders.forEach(u=>u.raid=true);commander.targetId=target.id;commander.raidSize=raiders.length;commander.raidStarted=elapsed;commander.lastLaunch=elapsed;wave++;nextRaid=elapsed+policy.interval;aiLog(`Sent ${raiders.length} units against ${stats(target).name}`);announce(`Enemy strike force targeting your ${stats(target).name.toLowerCase()}.`);}
         else {raiders=[];nextRaid=elapsed+10;aiTactic('Holding attack: build a stronger force or strike an exposed target');}
-      } else nextRaid=elapsed+10;
+      } else {
+        nextRaid=elapsed+10;
+        aiTactic(!guards?'Holding attack: home threats exceed available guard coverage':`Assembling strike force: ${strikeForce.length} ready, ${opportunistic?2:policy.minForce} needed`);
+      }
     }
     let objective=living().find(e=>e.id===commander.targetId);
     if(raiders.length&&!objective) {objective=aiObjective(raiders);commander.targetId=objective?.id||null;}

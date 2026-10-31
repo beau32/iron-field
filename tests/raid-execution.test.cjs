@@ -12,7 +12,7 @@ function gameFunction(name){
   assert(start>=0&&end>start,name);
   return source.slice(start,end);
 }
-function battle(harassers){
+function battle(harassers,extraGuards=0){
   let id=0;
   const troops=[],buildings=[],shots=[];
   function create(kind,team,x){
@@ -26,6 +26,7 @@ function battle(harassers){
   const objective=create('base','player',70);
   const guard=create('tank','enemy',1);
   for(let i=0;i<8;i++)create('tank','enemy',30+i);
+  for(let i=0;i<extraGuards;i++)create('tank','enemy',1+i);
   const threats=harassers.map(kind=>create(kind,'player',7));
   const stats=e=>UNIT[e.kind]||STRUCTURE[e.kind];
   const distance=(a,b)=>a.mesh.position.distanceTo(b.mesh.position);
@@ -40,7 +41,7 @@ function battle(harassers){
     serviceCompatible:()=>false,clearRoute:noop,blocked:()=>false,rotateToward:noop,closestEnemy:()=>null,
     fire:(u,target)=>shots.push(target.id)};
   vm.createContext(ctx);
-  vm.runInContext(['resetCommander','aiMove','aiAttack','aiFocusTarget','aiObjective','aiEngagement','guardsForHarasser','raidHasStalled','aiRegroup','updateCommander','updateCombat'].map(gameFunction).join('\n'),ctx);
+  vm.runInContext(['resetCommander','aiMove','aiAttack','aiFocusTarget','aiObjective','aiEngagement','guardsForHarasser','guardsForThreats','raidHasStalled','aiRegroup','updateCommander','updateCombat'].map(gameFunction).join('\n'),ctx);
   ctx.commander=ctx.resetCommander();
   ctx.updateCommander();
   return {ctx,guard,objective,threats,troops,shots};
@@ -61,5 +62,6 @@ assert(raiders.every(u=>u.raid),'objective damage extends a productive raid');
 fight.ctx.elapsed=197;fight.ctx.updateCommander();
 assert(raiders.every(u=>!u.raid),'stalled raid eventually regroups');
 assert.equal(battle(['gunship']).ctx.commander.raidSize,0,'uncovered air threat keeps army home');
-assert.equal(battle(['scout','tank']).ctx.commander.raidSize,0,'multiple home threats block launch');
+assert(battle(['scout','tank'],2).ctx.commander.raidSize>=4,'covered threats release remaining strike force');
+assert.equal(battle(['gunship','gunship','gunship']).ctx.commander.raidSize,0,'uncovered threats retain defenders');
 console.log('PASS covered scout, guard and HQ attack orders, actual firing, productive long raid, stalled raid, uncovered and multiple threats.');
