@@ -1,28 +1,14 @@
 'use strict';
 // Jev/System One decision API. Keep its endpoint separate from Ollama chat.
-const {summarize,candidates,planFor,assess,decisionVersion}=require('./commander.cjs');
+const {summarize,offeredOperations,operationEvidence,planFor,assess,decisionVersion}=require('./commander.cjs');
 const fail=(status,message,retryAfterMs=5000)=>Object.assign(new Error(message),{status,retryAfterMs});
 function validPort(value){const port=Number(value);if(!Number.isInteger(port)||port<1||port>65535)throw fail(400,'Enter a JEV port from 1 to 65535.');return port;}
 function decisionRequest(input,model){
- const summary=summarize(input),offered=candidates(summary);
- // The choice protocol requires at least two alternatives. Holding the base is
- // always feasible when no specialist operation is warranted.
- if(offered.length===1)offered.push({name:'defend',why:'hold the base and assemble a stronger force'});
+ const summary=summarize(input),offered=offeredOperations(summary);
  return {summary,offered,body:{model,state:JSON.stringify(summary),questions:{strategy:{type:'choice',instructions:'Command our army to destroy the enemy HQ. Choose the best feasible operation. Protect a threatened base, recover broken income if ore remains, fill unmet counters including queues, and exploit an army advantage. Continue productive attacks; replace stalled or losing plans. Consider credits and completed producers.',criteria:Object.fromEntries(offered.map(c=>[c.name,c.why]))}}}};
 }
 function classificationRequest(summary,offered){
  const m=assess(summary),f=summary.feedback;
- const conditions={
-  economy:'Ore remains available and our mining income needs recovery or expansion.',
-  defend:'Our base is under threat, or our army is losing and needs to recover.',
-  rush:'Our ground attack force is strong enough to pressure the enemy now.',
-  'anti-air':'Enemy aircraft outnumber our anti-air counters, including queued counters.',
-  'anti-armor':'The enemy has armored vehicles and our army lacks enough armor counters.',
-  siege:'The enemy has multiple defensive structures and we need more long-range siege weapons.',
-  air:'An air attack is feasible and can exploit weak enemy anti-air defenses.',
-  naval:'Waterways are present and our fleet needs reinforcement.',
-  balanced:'Our army can build a mixed force and attack exposed enemy economic targets.'
- };
  const premise=[
   `Our army has ${m.army} ground attackers, combat strength ${m.attackValue}, and ${summary.credits} credits. Enemy combat strength is ${m.enemyValue}.`,
   `Our HQ has ${summary.own.hqHealth}% health; enemy HQ has ${summary.opponent.hqHealth}%. ${summary.context.pressure} enemies threaten our base.`,
@@ -32,7 +18,7 @@ function classificationRequest(summary,offered){
   `Recent losses cost ${f.lostValue}; enemy losses cost ${f.destroyedValue}. Previous operation ${f.operation||'none'} is ${f.stalled?'stalled':f.mode}.`,
   'Feasible operations after checking resources and technology: '+offered.map(c=>c.name+' ('+c.why+')').join('; ')+'.'
  ].join(' ');
- return {premise,choices:offered.map(c=>conditions[c.name])};
+ return {premise,choices:offered.map(c=>operationEvidence[c.name])};
 }
 function classificationChoice(result,body,offered){
  if(!Array.isArray(result.choices)||result.choices.length!==offered.length)throw fail(503,'OpenJEV returned an incomplete classification.');
@@ -46,31 +32,58 @@ function classificationChoice(result,body,offered){
 function createCommander({port=process.env.JEV_PORT,model=process.env.JEV_MODEL||'nimble',fetchImpl=fetch,now=Date.now,timeoutMs=5000}={}){
  const configured=port!==undefined&&port!==''&&port!==null,selectedPort=configured?validPort(port):null;
  const base=configured?'http://127.0.0.1:'+selectedPort:null;
- let installed=[],until=0,busy=false,error='',protocol='systemone';
+ let discovery={models:[],protocol:'systemone',activeModel:null,multiModel:false};
+ let refresh=null,until=0,busy=false,error='';
  const modelName=value=>{const name=value||model;if(typeof name!=='string'||!name.trim()||name.length>100)throw fail(400,'Invalid JEV model.');return name;};
+ async function discover(){
+  const signal=AbortSignal.timeout(3000);
+  const get=path=>fetchImpl(base+path,{signal});
+  const tags=await get('/api/tags');
+  if(tags.status!==404){
+   if(!tags.ok)throw Error('Model discovery returned HTTP '+tags.status+'.');
+   const data=await tags.json();
+   const models=(data.models||[]).filter(m=>!m.capabilities||m.capabilities.includes('decision'))
+    .map(m=>({name:m.name,size:Number(m.size)||0}));
+   return {protocol:'systemone',models};
+  }
+
+  // Both protocols can expose /v1/models. The adapter identity in /health
+  // distinguishes OpenJEV's classifier and identifies its currently loaded model.
+  const list=await get('/v1/models');
+  if(!list.ok&&list.status!==404)throw Error('Model discovery returned HTTP '+list.status+'.');
+  const entries=list.ok?(await list.json()).data||[]:[];
+  const models=entries.map(m=>({name:m.id,size:0}));
+  const health=await get('/health');
+  const info=health.ok?await health.json().catch(()=>null):null;
+  const classifier=typeof info?.adapter==='string'&&info.adapter&&typeof info.base_model==='string';
+  if(classifier){
+   if(info.status!=='ready')throw Error('OpenJEV classifier is not ready.');
+   return {protocol:'openjev-nli',activeModel:info.adapter,multiModel:list.ok,
+    models:list.ok?models:[{name:info.adapter,size:0}]};
+  }
+  if(entries.some(m=>m.owned_by==='openjev')||(!list.ok&&health.ok))throw Error('OpenJEV classifier is not ready.');
+  if(!list.ok)throw Error('No supported JEV API found.');
+  return {protocol:'systemone',models};
+ }
  async function status(requested){
   const selected=modelName(requested);
   if(!configured)return {available:false,ready:false,models:[],model:selected,defaultModel:model,port:null,provider:'jev',decisionVersion,message:'Configure the separate JEV port first.'};
   if(now()>=until){
-   try{
-    const discoverySignal=AbortSignal.timeout(3000);
-    let response=await fetchImpl(base+'/api/tags',{signal:discoverySignal}),data;protocol='systemone';
-    if(response.status===404){
-     response=await fetchImpl(base+'/v1/models',{signal:discoverySignal});
-     if(response.status===404){
-      response=await fetchImpl(base+'/health',{signal:discoverySignal});
-      if(!response.ok)throw Error('No supported JEV API found.');data=await response.json();
-      if(data.status!=='ready'||typeof data.adapter!=='string'||!data.adapter||typeof data.base_model!=='string')throw Error('OpenJEV classifier is not ready.');
-      protocol='openjev-nli';installed=[{name:data.adapter,size:0}];
-     }else{if(!response.ok)throw Error('Model discovery returned HTTP '+response.status+'.');data=await response.json();installed=(data.data||[]).map(m=>({name:m.id,size:0}));}
-    }
-    else{if(!response.ok)throw Error();data=await response.json();installed=(data.models||[]).filter(m=>!m.capabilities||m.capabilities.includes('decision')).map(m=>({name:m.name,size:Number(m.size)||0}));}
-    installed=installed.filter(m=>typeof m.name==='string'&&m.name.length>0&&m.name.length<=100).slice(0,100);error='';
-   }catch(e){installed=[];error='JEV port '+selectedPort+': '+(e.message==='fetch failed'?'cannot reach the service.':e.name==='TimeoutError'?'service discovery timed out.':String(e.message).slice(0,100));}
-   until=now()+5000;
+   refresh??=discover().then(result=>{
+    result.models=result.models.filter(m=>typeof m.name==='string'&&m.name.length>0&&m.name.length<=100).slice(0,100);
+    discovery=result;
+    error='';
+   }).catch(e=>{
+    discovery={models:[],protocol:'systemone'};
+    error='JEV port '+selectedPort+': '+(e.message==='fetch failed'?'cannot reach the service.':e.name==='TimeoutError'?'service discovery timed out.':String(e.message).slice(0,100));
+   }).finally(()=>{until=now()+5000;refresh=null;});
+   await refresh;
   }
-  const match=installed.find(m=>m.name===selected||m.name===selected+':latest')||(protocol==='openjev-nli'&&(!requested||selected===model)?installed[0]:null),available=Boolean(match);
-  return {available,ready:available,models:installed.map(m=>({...m})),model:match?.name||selected,defaultModel:protocol==='openjev-nli'?installed[0]?.name:model,port:selectedPort,provider:'jev',protocol,decisionVersion,message:error||(!available?'Select an installed decision model.':protocol==='openjev-nli'?'OpenJEV classifier ready.':'JEV service connected; decision support is checked on the next request.')};
+  const {models,protocol,activeModel,multiModel}=discovery;
+  let match=models.find(m=>m.name===selected||m.name===selected+':latest');
+  if(!match&&protocol==='openjev-nli'&&selected===model)match=models.find(m=>m.name===activeModel);
+  const available=Boolean(match);
+  return {available,ready:available,models:models.map(m=>({...m})),model:match?.name||selected,defaultModel:activeModel||model,port:selectedPort,provider:'jev',protocol,multiModel,decisionVersion,message:error||(!available?'Select an installed decision model.':protocol==='openjev-nli'?'OpenJEV classifier ready.':'JEV service connected; decision support is checked on the next request.')};
  }
  async function plan(input,signal){
   const info=await status(modelName(input.model)),selected=info.model,request=decisionRequest(input,selected);
@@ -81,6 +94,7 @@ function createCommander({port=process.env.JEV_PORT,model=process.env.JEV_MODEL|
   const timer=setTimeout(cancel,timeoutMs);
   try{
    const nli=info.protocol==='openjev-nli',body=nli?classificationRequest(request.summary,request.offered):request.body;
+   if(nli&&info.multiModel)body.model=selected;
    const response=await fetchImpl(base+(nli?'/classify':'/v1/systemone'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:controller.signal});
    if(!response.ok)throw fail(503,response.status===404?'JEV decision endpoint or model is missing. Check the service port and model.':'JEV rejected the decision. Select a compatible decision model.');
    const result=await response.json(),answer=nli?{type:'choice',choice:classificationChoice(result,body,request.offered)}:result.answers?.strategy;

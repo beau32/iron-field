@@ -23,7 +23,7 @@ Browser battle summary → Node game server → paired local connector → Ollam
 Browser strategic plan ← validated result ← paired local connector ← JSON choice
 ```
 
-The LLM selects from a situation-dependent shortlist and returns a small JSON result such as `{"strategy":"siege"}`. It does not control individual frames or learn between matches. Requests run asynchronously with a five-second default inference deadline; the game retains an unexpired plan or uses Balanced fallback when a response is unavailable. A successful plan is eligible for refresh 30 seconds after completion. Larger models must still meet the deadline, so model size alone does not guarantee a stronger opponent.
+The LLM selects from a situation-dependent shortlist and returns a small JSON result such as `"siege"`. It does not control individual frames or learn between matches. Requests run asynchronously with a five-second default inference deadline; the game retains an unexpired plan or uses Balanced fallback when a response is unavailable. A successful plan is eligible for refresh 30 seconds after completion. Larger models must still meet the deadline, so model size alone does not guarantee a stronger opponent.
 
 AI opponents are currently **solo-only**; 2–4 player multiplayer uses human opponents. See the [opponent logic guide](#choose-a-computer-opponent), [server-side Ollama setup](#run-with-your-own-ollama), and [player-local connector details](#run-ollama-on-the-players-computer) for strategy tables, timing, configuration, and limitations. The integration lives in [`commander.cjs`](commander.cjs), [`local-ai.cjs`](local-ai.cjs), [`local-commander.cjs`](local-commander.cjs), and [`ai-link.js`](ai-link.js).
 
@@ -423,7 +423,7 @@ Shared tactical rules also:
 - Score objectives using value, target focus, damage already taken, distance, and defensive cover. Ships are excluded from objectives beyond their approximate coastal firing reach.
 - Compare estimated combat strength before launching a raid. Strength uses current health, damage, reload time, and range; visible defenders that can retaliate are counted, with a discount for defenses outranged by siege units. Launch requires estimated attacking strength of at least 90% of that defense estimate.
 - Prefer viable objectives over higher-value targets that the force cannot beat. During income recovery, or when no raid has launched for 45 seconds beyond the first-raid time or last launch, allow an opportunity attack with as few as two units and at most one home guard. The strength check still applies. If no assets can fund income recovery, these attacks can earn the same kill rewards as the player.
-- Regroup when a raid loses roughly half its force, lasts over 65 seconds, or home threats demand a recall. The regroup delay is 18 simulation seconds. A failed attack opportunity is retried after about 10 simulation seconds.
+- Regroup when a raid loses roughly half its force or major home threats demand a recall. Both Ollama modes continue raids that close the distance to the objective or reduce its health. A raid that makes no such progress for 65 simulation seconds regroups. Other commanders retain the 65-second raid duration. Both Ollama modes can launch past one harasser if enough nearby, weapon-compatible guards can cover it and the remaining strike force is viable. The regroup delay is 18 simulation seconds. A failed attack opportunity is retried after about 10 simulation seconds.
 - Withdraw from a local fight away from home when at least two visible attackers have more than 1.6 times nearby allied strength. Long-range units try to back away without entering blocked terrain.
 - Coordinate targets using an estimate of assigned volley damage: finish vulnerable enemies, avoid assigning excessive shots to one target, and favor aircraft for compatible anti-air weapons. This estimate is recomputed each commander update; it is not a guarantee of perfect focus fire.
 
@@ -445,22 +445,9 @@ The summary includes living unit counts, owned and completed structures, the com
 
 The adapter calculates missing counters **including queued units**, estimates combat strength from unit costs weighted by average health, and estimates the cost of missing production prerequisites. These are heuristics, not a battle simulator. Air-only interceptors do not count as an HQ assault force. To keep a small CPU model within the five-second deadline, it compresses these facts into a short assessment rather than sending full rosters or a screenshot.
 
-The current prompt starts with:
+Ordinary Ollama chat and OpenJEV use the same operation shortlist, evidence statements and game plans. For example, both evaluate whether “Our ground attack force is strong enough to pressure the enemy now.” Ollama receives the evidence dictionary in a reusable prompt prefix and a compact report of the current battle. The report includes ground attack strength versus enemy strength, HQ pressure, relevant counter counts including queues, income and recent operation feedback. It ends with the names of the feasible choices in priority order. Ollama returns one allowed operation name through a constrained JSON response.
 
-```text
-Command OUR army to destroy ENEMY HQ. Recover income, defend danger,
-fill counter gaps, exploit strength. Queued counters count. Keep
-productive plans; replace stalled or losing plans. Choose an offered
-strategy. Return only JSON {"strategy":"name"}.
-```
-
-An illustrative appended assessment is:
-
-```text
-Income working. Force stronger. Cash 650. Base safe. Need no counters.
-Enemy HQ 25%. Previous rush: attacking.
-Choose only: rush,balanced.
-```
+Both modes offer at least two choices. When the HQ is at or below 45% health and at least three threats are near home, the shortlist narrows to defensive operations if at least two viable defensive choices exist.
 
 `candidates()` scores feasible operations and offers at most four. This replaces the old first-match rule that forced air-related choices whenever any enemy aircraft existed:
 
@@ -477,7 +464,7 @@ Choose only: rush,balanced.
 
 Healthy economy expansion and new air technology lose priority when an existing army can already apply pressure. When all ore is exhausted, the computer stops replacing or expanding mining solely for ore income and can fight for battle rewards instead.
 
-The model returns one small choice, such as `{"strategy":"siege"}`. The adapter maps it to a validated operation:
+The model returns one small choice, such as `"siege"`. The adapter maps it to a validated operation:
 
 | Operation | Preset | Target focus | Unit priority | Building priority |
 | --- | --- | --- | --- | --- |
@@ -534,7 +521,7 @@ For **This computer**:
 1. Run a JEV-compatible decision service locally on its own port, with a compatible decision model installed. Enter that port under **JEV PORT**; no port is assumed. The OpenJEV Python classifier (`ollama_nli_api.py`) uses port **8011** by default and is supported directly.
 2. Download and extract the updated **AI connector**. Launch **Start-JEV-AI.cmd**, or run `node local-ai.cjs --provider jev` on macOS/Linux.
 3. Click **Create pairing code**, then enter the game server address and code in the connector. The pairing supplies the port to the connector, which contacts only `http://127.0.0.1:<port>` on that computer.
-4. Choose an installed model from **JEV MODEL**. For System One the default is `nimble` (including the `nimble:latest` tag); set `JEV_MODEL` before launching for a different default. OpenJEV automatically uses the loaded adapter reported by `/health`, such as `qwen25-05b-openjev`; its single-model dropdown reflects the running service. Changing ports requires a new pairing code and connector restart.
+4. Choose an installed model from **JEV MODEL**. For System One the default is `nimble` (including the `nimble:latest` tag); set `JEV_MODEL` before launching for a different default. OpenJEV defaults to the active adapter reported by `/health`. Services with a `/v1/models` registry expose their available adapters in the dropdown and receive the selected adapter name with each classification request. Changing ports requires a new pairing code and connector restart.
 
 For **Game server**, set `JEV_PORT` and optionally `JEV_MODEL` in the game server's environment, then restart it. The port displayed in the browser is read-only in this mode. Its value is independent of `OLLAMA_URL`; JEV requests always go to the server's loopback interface. With no configured port, the game reports that JEV is unavailable and continues fallback tactics.
 
@@ -559,11 +546,11 @@ The adapter in [`jev-commander.cjs`](jev-commander.cjs) detects two API formats.
 
 This is an abbreviated example; the actual instructions include income recovery, base threats, queued counters, affordability, and stalled or losing operations. If the shortlist contains only one operation, a conservative defend option supplies the protocol's second alternative. Only an offered `answers.strategy.choice` is accepted, then mapped through the same Strategy v2 production and targeting rules. Invalid responses, missing services and timeouts retain the existing unexpired plan or Balanced fallback.
 
-If both discovery endpoints return 404, the adapter checks **OpenJEV `GET /health`**, requiring a ready status, base model and adapter name. It then calls **`POST /classify`** with a natural-language battle `premise` and a `choices` array of factual hypotheses supporting feasible operations. For example, the anti-air hypothesis is “Enemy aircraft outnumber our anti-air counters, including queued counters.” The classifier returns entailment, contradiction and neutral probabilities for each hypothesis. The game validates the echoed choices and probability ranges/sums, ranks by `entailment - contradiction`, and maps the highest-ranked hypothesis to an operation. Ties retain the rule-based shortlist order. These scores measure textual support, not guaranteed strategic quality or calibrated confidence; even the highest score can be weak. This classifier does not generate plans or learn RTS tactics during play.
+When Ollama tags are absent, the connector checks both `/v1/models` and **OpenJEV `GET /health`**. A ready health response with a base model and adapter name identifies the classifier, including versions that publish multiple models. A registry can also belong to a System One service. It then calls **`POST /classify`** with a natural-language battle `premise` and a `choices` array of factual hypotheses supporting feasible operations. For example, the anti-air hypothesis is “Enemy aircraft outnumber our anti-air counters, including queued counters.” The classifier returns entailment, contradiction and neutral probabilities for each hypothesis. The game validates the echoed choices and probability ranges/sums, ranks by `entailment - contradiction`, and maps the highest-ranked hypothesis to an operation. Ties retain the rule-based shortlist order. These scores measure textual support, not guaranteed strategic quality or calibrated confidence; even the highest score can be weak. This classifier does not generate plans or learn RTS tactics during play.
 
 **Paired** only confirms the connector-to-game-server link. **Connected to OpenJEV classifier on port 8011** confirms that the connector found the local service and its loaded adapter. Connection or discovery failures are displayed in the game and connector terminal. Keep both the Python classifier service and Node connector running.
 
-**AI order displays the measured JEV round-trip time in milliseconds**, including browser/server/connector overhead. The JEV connector checks for jobs every 100 ms; ordinary Ollama remains at 500 ms. Typed decisions may be faster than generated chat output, but selecting the checkbox does not guarantee subsecond inference. Service implementation, model, hardware, cold starts and network overhead all matter. The five-second inference deadline and ordinary 30-second strategy refresh cadence remain in place; tactics continue between decisions. API discovery alone cannot prove a model supports decisions: that is validated when a decision request completes.
+**AI order displays the measured Ollama or JEV round-trip time in milliseconds**, including browser/server/connector overhead. The JEV connector checks for jobs every 100 ms; ordinary Ollama remains at 500 ms. Typed decisions may be faster than generated chat output, but selecting the checkbox does not guarantee subsecond inference. Service implementation, model, hardware, cold starts and network overhead all matter. The five-second inference deadline and ordinary 30-second strategy refresh cadence remain in place; tactics continue between decisions. API discovery alone cannot prove a model supports decisions: that is validated when a decision request completes.
 
 ### Run with your own Ollama
 

@@ -24,8 +24,24 @@ const choices={
   naval:{style:'balanced',focus:'production',unit:'frigate',building:'shipyard'}
 };
 const decisionVersion=2;
-const prefix='Command OUR army to destroy ENEMY HQ. Recover income, defend danger, fill counter gaps, exploit strength. Queued counters count. Keep productive plans; replace stalled or losing plans. Choose an offered strategy. Return only JSON {"strategy":"name"}.\n';
-const schema=options=>({type:'object',properties:{strategy:{type:'string',enum:options}},required:['strategy'],additionalProperties:false});
+const operationEvidence={
+  economy:'Ore remains available and our mining income needs recovery or expansion.',
+  defend:'Our base is under threat, or our army is losing and needs to recover.',
+  rush:'Our ground attack force is strong enough to pressure the enemy now.',
+  'anti-air':'Enemy aircraft outnumber our anti-air counters, including queued counters.',
+  'anti-armor':'The enemy has armored vehicles and our army lacks enough armor counters.',
+  siege:'The enemy has multiple defensive structures and we need more long-range siege weapons.',
+  air:'An air attack is feasible and can exploit weak enemy anti-air defenses.',
+  naval:'Waterways are present and our fleet needs reinforcement.',
+  balanced:'Our army can build a mixed force and attack exposed enemy economic targets.'
+ };
+// Keep the evidence dictionary fixed so Ollama can reuse its prompt prefix on a small CPU.
+const prefix=[
+  'Command our army. Match the battle evidence to one offered operation. Defend immediate danger, then exploit a winning attack. Queued counters count. If tied, prefer the first offered option.',
+  ...Object.entries(operationEvidence).map(([name, evidence]) => name+' = '+evidence),
+  'Return the selected name as a JSON string.'
+].join('\n');
+const schema=options=>({type:'string',enum:options});
 const integer=(v,max)=>Number.isInteger(v)&&v>=0&&v<=max;
 function counts(value,keys){
   if(!value||typeof value!=='object'||Array.isArray(value))throw failure(400,'Invalid army summary.');
@@ -101,13 +117,26 @@ function candidates(summary){
   const finish=summary.opponent.hqHealth<=50&&advantage&&m.army>=3&&!pressure&&!losing;
   return list.filter(c=>!finish||['rush','balanced'].includes(c.name)).sort((a,b)=>b.score-a.score).slice(0,4);
 }
+function offeredOperations(summary){
+  const offered=candidates(summary);
+  if(summary.context.pressure>=3&&summary.own.hqHealth<=45){
+    const defensive=offered.filter(option=>['defend','anti-air','anti-armor'].includes(option.name));
+    if(defensive.length>=2)return defensive;
+  }
+  // System One needs two options. Holding the base is always feasible.
+  if(offered.length===1)offered.push({name:'defend',why:'hold the base and assemble a stronger force'});
+  return offered;
+}
 function relevantStrategies(summary){return candidates(summary).map(c=>c.name);}
 function facts(summary){
   const m=assess(summary),f=summary.feedback;
   const economy=!summary.context.oreRemaining?'ore exhausted':!summary.own.ready.refinery||!(summary.own.units.miner||0)?'broken':f.age>=45&&!f.income?'stalled':'working';
   const force=m.ownValue>m.enemyValue*1.25?'stronger':m.ownValue<m.enemyValue*.7?'weaker':'even';
-  const gaps=[];if(m.air>m.aa)gaps.push('anti-air');if(m.armor>=3&&m.armorCounters<Math.ceil(m.armor/3))gaps.push('anti-armor');if(m.defenses>=2&&m.siege<Math.max(2,Math.ceil(m.defenses/2)))gaps.push('siege');
-  const lines=[`Income ${economy}. Force ${force}. Cash ${summary.credits}. Base ${summary.context.pressure>=2?'threatened':'safe'}. Need ${gaps.join(',')||'no counters'}.`];
+  const lines=[`Income ${economy}. Cash ${summary.credits}. Force ${force}. Attack ${m.army} units, ${m.attackValue} vs ${m.enemyValue}. Base threats ${summary.context.pressure}.`];
+  if(m.air)lines.push(`Aircraft/counters ${m.air}/${m.aa}.`);
+  if(m.armor>=3)lines.push(`Armor/counters ${m.armor}/${m.armorCounters}.`);
+  if(m.defenses>=2)lines.push(`Defenses/siege ${m.defenses}/${m.siege}.`);
+  if(summary.context.water)lines.push(`Ships ours/theirs ${m.ownShips}/${m.ships}.`);
   if(summary.opponent.hqHealth<=50)lines.push(`Enemy HQ ${summary.opponent.hqHealth}%.`);
   if(summary.own.hqHealth<45)lines.push(`Our HQ ${summary.own.hqHealth}%.`);
   if(summary.context.lowPower)lines.push('Low power.');
@@ -123,16 +152,16 @@ function planFor(strategy,summary){
   if(['balanced','rush'].includes(strategy)&&summary.opponent.hqHealth<=50&&m.attackValue>m.enemyValue*1.2)plan.focus='hq';
   return validPlan(plan,units,buildings);
 }
-function promptFor(summary,options=candidates(summary)){
-  return prefix+facts(summary)+'\nChoose only: '+options.map(c=>c.name).join(',')+'.';
+function promptFor(summary,options=offeredOperations(summary)){
+  return prefix+'\n'+facts(summary)+'\nChoose only: '+options.map(c=>c.name).join(',')+'.';
 }
 async function infer(model,summary,signal){
-  const offered=candidates(summary),options=offered.map(c=>c.name);
+  const offered=offeredOperations(summary),options=offered.map(c=>c.name);
   const r=await fetch(base+'/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},signal,body:JSON.stringify({model,stream:false,...((process.env.OLLAMA_THINK==='false'||installed.find(m=>m.name===model)?.thinking)?{think:false}:{}),format:schema(options),keep_alive:'30m',options:{temperature:0,num_predict:16,num_ctx:512,num_thread:4},messages:[{role:'user',content:promptFor(summary,offered)}]})});
   if(!r.ok)throw Error('Ollama unavailable');
   const result=await r.json(),parsed=JSON.parse(result.message?.content);
-  if(!parsed||!options.includes(parsed.strategy)||!Object.hasOwn(choices,parsed.strategy))throw Error('Invalid model strategy');
-  const selected=planFor(parsed.strategy,summary);if(!selected)throw Error('Invalid model plan');
+  if(!options.includes(parsed))throw Error('Invalid model strategy');
+  const selected=planFor(parsed,summary);if(!selected)throw Error('Invalid model plan');
   return selected;
 }
 async function warmup(requested){
@@ -161,9 +190,10 @@ async function plan(input,signal){
   signal.addEventListener('abort',cancel,{once:true});if(signal.aborted)cancel();
   const timer=setTimeout(cancel,timeout);
   try{
+    const started=Date.now();
     const decision=await infer(model,summary,controller.signal);state.readyUntil=Date.now()+25*60000;state.error='';
-    return {plan:decision,model,decisionVersion};
+    return {plan:decision,model,decisionVersion,provider:'ollama',latencyMs:Date.now()-started};
   }catch(error){if(signal.aborted)throw failure(499,'Commander request cancelled.');throw failure(503,`${model} missed its five-second deadline or returned an invalid strategy. Try a smaller model.`);}
   finally{clearTimeout(timer);signal.removeEventListener('abort',cancel);busy=false;nextAllowed=Date.now()+2000;}
 }
-module.exports={status,plan,summarize,warmup,relevantStrategies,choices,assess,candidates,planFor,promptFor,decisionVersion};
+module.exports={offeredOperations,operationEvidence,status,plan,summarize,warmup,relevantStrategies,choices,assess,candidates,planFor,promptFor,decisionVersion};

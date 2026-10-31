@@ -22,6 +22,15 @@ const productive=fixture({}, {},{feedback:{operation:'rush',age:60,mode:'Attacki
 assert(candidates(productive).find(c=>c.name==='rush').score>(candidates(stalled).find(c=>c.name==='rush')?.score??-Infinity));
 s=fixture({}, {},{feedback:{operation:'air',age:60,mode:'Regrouping',lostValue:1000,destroyedValue:50,income:180,raidAge:35,raidSize:2,stalled:true}});assert(names(s).includes('defend'));
 const prompt=promptFor(s);for(const value of ['Cash 650','Force ','Income working','Previous air: stalled'])assert(prompt.includes(value),value);
+const {offeredOperations,operationEvidence}=require('../commander.cjs');
+const {decisionRequest,classificationRequest}=require('../jev-commander.cjs');
+const emergency=fixture({}, {},{own:{units:{tank:2},buildings:ready,hqHealth:35},opponent:{units:{tank:8},buildings:{base:1}},context:{pressure:4,oreRemaining:9000}});
+const options=offeredOperations(emergency);
+assert.deepEqual(options.map(o=>o.name),['defend','anti-armor']);
+assert.deepEqual(decisionRequest(emergency,'test').offered,options);
+assert.deepEqual(classificationRequest(emergency,options).choices,options.map(o=>operationEvidence[o.name]));
+for(const o of options)assert(promptFor(emergency).includes(operationEvidence[o.name]));
+assert(promptFor(emergency).endsWith('Choose only: defend,anti-armor.'));
 assert(prompt.length<4000,'bounded prompt for a small model');
 const weak=fixture({}, {},{own:{units:{tank:5},buildings:ready,health:20}});assert(assess(weak).ownValue<assess(fixture()).ownValue);
 for(const bad of [{feedback:{operation:'run code'}},{feedback:{stalled:'yes'}},{own:{units:{tank:1},buildings:ready,health:101}},{context:{oreRemaining:-1}},{feedback:{lostValue:Infinity}}])assert.throws(()=>fixture({}, {},bad));

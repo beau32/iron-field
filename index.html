@@ -16,7 +16,7 @@
   <script defer src="opponent.js?v=2"></script>
   <script defer src="voice.js?v=4"></script>
   <script defer src="ai-link.js?v=7"></script>
-  <script defer src="game.js?v=47"></script>
+  <script defer src="game.js?v=48"></script>
   <script defer src="music.js?v=2"></script>
 </head>
 <body>
@@ -54,7 +54,7 @@
           <details class="sidebar-info"><summary aria-label="About AI providers and API usage" title="About AI providers and API usage"><span aria-hidden="true">i</span></summary><div class="info-content"><p id="ai-cloud-notice" hidden>Uses OpenAI Decisions in the cloud. Sends game-state summaries; API usage is billed to your OpenAI account.</p>
           <p id="ai-server-info" hidden></p><p>Model choices come from the selected computer. Larger models may miss the five-second planning deadline. Selecting a model does not download it. For This computer, use the latest connector download.</p><p>This computer uses your paired local connector. Game server uses the provider configured on the host.</p></div></details>
           <details id="ai-pairing"><summary>Connect this computer</summary>
-            <p><a href="local-ai.zip?v=4" download>Download the AI connector</a> and extract it. Node.js 18+ required.</p>
+            <p><a href="local-ai.zip?v=5" download>Download the AI connector</a> and extract it. Node.js 18+ required.</p>
             <details class="sidebar-info"><summary aria-label="How to connect AI on this computer" title="How to connect AI on this computer"><span aria-hidden="true">i</span></summary><div class="info-content"><p id="ai-ollama-help">Run Ollama locally and start <strong>Start-Local-AI.cmd</strong>. On macOS/Linux run <code>node local-ai.cjs</code>.</p>
             <p id="ai-jev-help" hidden>Run a JEV-compatible decision service on the port above. Start <strong>Start-JEV-AI.cmd</strong>, or run <code>node local-ai.cjs --provider jev</code>. Create a new pairing code after changing ports. Supports System One <code>/v1/systemone</code> and OpenJEV <code>/health</code> + <code>/classify</code>. Decision times shown include the connector round trip; speed depends on your service and model.</p>
             <p id="ai-openai-help" hidden>Start <strong>Start-OpenAI-AI.cmd</strong>. On macOS/Linux run <code>node local-ai.cjs --provider openai</code>. After pairing, open <strong>API key setup</strong> and enter your key in the local connector page. The key stays in memory until the connector closes.</p>

@@ -2246,7 +2246,7 @@
     $('opponent-description').textContent=multiplayer?'Human opponents control this multiplayer match.':model?modelProvider()+' chooses operations; local tactics counter threats, coordinate fire and avoid losing fights.':FIELD_OPPONENT.styles[opponentStyle].description;
     $('opponent-aid').hidden=multiplayer||!raids;
     const label=$('opponent-status');label.hidden=!model||multiplayer;label.dataset.live=String(Boolean(plan)&&raids);
-    label.textContent=!raids?'Computer strategy is off. Enable it in Lab.':plan?`AI order: ${aiPlanName(plan)}${modelProvider()==='JEV'&&Number.isFinite(commander.decisionMs)?' · '+commander.decisionMs+' ms':''}${commander.pending?' · refreshing…':commander.modelStatus!=='AI plan active'?' · last plan (refresh unavailable)':''}`:`${commander.modelStatus||'Waiting for '+modelProvider()} · Balanced fallback active`;
+    label.textContent=!raids?'Computer strategy is off. Enable it in Lab.':plan?`AI order: ${aiPlanName(plan)}${opponentStyle==='ollama'&&Number.isFinite(commander.decisionMs)?' · '+commander.decisionMs+' ms':''}${commander.pending?' · refreshing…':commander.modelStatus!=='AI plan active'?' · last plan (refresh unavailable)':''}`:`${commander.modelStatus||'Waiting for '+modelProvider()} · Balanced fallback active`;
     $('opponent-order').hidden=multiplayer||!model||!raids;
     $('opponent-order').textContent='Tactics: '+(commander.intent||'Assessing the battlefield');
     $('opponent-log').hidden=multiplayer||!model;
@@ -2454,6 +2454,34 @@
     commander.targetId=null;commander.raidSize=0;commander.regroupUntil=elapsed+18;commander.mode='Regrouping';
     for(const u of unitsFor('enemy')) if(u.raid){u.raid=false;u.attackTarget=null;u.destination=null;clearRoute(u);}
   }
+  function guardsForHarasser(available,threat) {
+    const guards=new Set();
+    let strength=0;
+    const defenders=available.filter(unit=>canAttack(unit,threat)&&distance(unit,threat)<=reach(unit,threat)+14);
+    defenders.sort((a,b)=>distance(a,threat)-distance(b,threat));
+    for(const unit of defenders){
+      guards.add(unit);
+      strength+=aiStrength(unit);
+      if(strength>=1.25*aiStrength(threat))return guards;
+    }
+    return null;
+  }
+  function raidHasStalled(raiders,objective) {
+    if(!raiders.length)return false;
+    if(!objective)return elapsed-commander.raidStarted>=65;
+    const remaining=raiders.reduce((sum,unit)=>sum+distance(unit,objective),0)/raiders.length;
+    const progress=commander.raidProgress;
+    if(!progress||progress.started!==commander.raidStarted||progress.targetId!==objective.id){
+      commander.raidProgress={started:commander.raidStarted,targetId:objective.id,distance:remaining,hp:objective.hp,at:elapsed};
+      return false;
+    }
+    if(remaining<=progress.distance-3||objective.hp<progress.hp){
+      progress.at=elapsed;
+      progress.distance=Math.min(progress.distance,remaining);
+      progress.hp=Math.min(progress.hp,objective.hp);
+    }
+    return elapsed-progress.at>=65;
+  }
   function updateCommander() {
     if(net?.active || !raids || !baseOf('enemy') || elapsed<commander.nextThink)return;
     commander.nextThink=elapsed+1.5;
@@ -2487,15 +2515,19 @@
       if(u.aiRetreat&&u.hp/u.maxHp>.75)u.aiRetreat=false;
     }
     let raiders=fighters.filter(u=>u.raid&&!u.aiRetreat);
-    if(commander.raidSize && (raiders.length<Math.ceil(commander.raidSize*.55)||elapsed-commander.raidStarted>65||threats.length>=3)) {aiRegroup();raiders=[];}
-    if(!raiders.length && elapsed>=nextRaid && elapsed>=commander.regroupUntil && !threats.length) {
+    const adaptiveRaid=opponentStyle==='ollama';
+    const timedOut=commander.raidSize&&(adaptiveRaid?raidHasStalled(raiders,living().find(e=>e.id===commander.targetId)):elapsed-commander.raidStarted>65);
+    if(commander.raidSize && (raiders.length<Math.ceil(commander.raidSize*.55)||timedOut||threats.length>=3)) {aiRegroup();raiders=[];}
+    if(!raiders.length && elapsed>=nextRaid && elapsed>=commander.regroupUntil && (!threats.length||adaptiveRaid&&threats.length===1)) {
       const available=fighters.filter(u=>!u.aiRetreat&&u.hp/u.maxHp>(commander.recovering?.25:.55));
       // Each style reserves its own number of guards near the miners.
       available.sort((a,b)=>distance(b,base)-distance(a,base));
       const opportunistic=commander.recovering||elapsed-(commander.lastLaunch??policy.firstRaid)>45;
       const reserve=opportunistic?Math.min(1,Math.max(0,available.length-2)):policy.guards;
-      if(available.length>=(opportunistic?2:policy.minForce)) {
-        raiders=available.slice(0,Math.min(policy.maxRaid,available.length-reserve));
+      const guards=threats.length?guardsForHarasser(available,threats[0]):new Set();
+      const strikeForce=guards?available.filter(unit=>!guards.has(unit)):[];
+      if(guards&&strikeForce.length>=(opportunistic?2:policy.minForce)) {
+        raiders=strikeForce.slice(0,Math.min(policy.maxRaid,available.length-Math.max(reserve,guards.size)));
         const target=aiObjective(raiders);
         if(target&&aiEngagement(raiders,target).viable) {raiders.forEach(u=>u.raid=true);commander.targetId=target.id;commander.raidSize=raiders.length;commander.raidStarted=elapsed;commander.lastLaunch=elapsed;wave++;nextRaid=elapsed+policy.interval;aiLog(`Sent ${raiders.length} units against ${stats(target).name}`);announce(`Enemy strike force targeting your ${stats(target).name.toLowerCase()}.`);}
         else {raiders=[];nextRaid=elapsed+10;aiTactic('Holding attack: build a stronger force or strike an exposed target');}
@@ -2503,7 +2535,7 @@
     }
     let objective=living().find(e=>e.id===commander.targetId);
     if(raiders.length&&!objective) {objective=aiObjective(raiders);commander.targetId=objective?.id||null;}
-    commander.mode=threats.length?'Defending':raiders.length?'Attacking':elapsed<commander.regroupUntil?'Regrouping':'Building forces';
+    commander.mode=raiders.length?'Attacking':threats.length?'Defending':elapsed<commander.regroupUntil?'Regrouping':'Building forces';
     const assigned=new Map();
     for(const u of fighters) {
       u.aiControlled=true;

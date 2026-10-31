@@ -35,14 +35,16 @@ async function main(){
  const initialStatus=await commander.status();
  const {workerToken,port}=await send('connect',{decisionVersion:initialStatus.decisionVersion,models:initialStatus.models,code:String(code).trim(),model:preferred,provider,configPort:keyUI?.port});
  if(provider==='jev')commander=require('./jev-commander.cjs').createCommander({port,model:preferred});
- console.log('Paired with '+base.origin+'. Using '+(provider==='openai'?'OpenAI Decisions via this computer':provider==='jev'?'local JEV on port '+port:'local Ollama')+' · '+preferred+'. Keep this connector running; Ctrl+C stops it.');
+ const service=provider==='jev'?'Checking the JEV service on port '+port:(provider==='openai'?'OpenAI Decisions':'Local Ollama')+' · '+preferred;
+ console.log('Paired with '+base.origin+'. '+service+'. Keep this connector running; Ctrl+C stops it.');
  let warming=false,lastServiceMessage='';
  while(true){
   try{
    const status=await commander.status(preferred);
    if(provider==='jev'){
     if(status.ready)preferred=status.model;
-    if(status.message!==lastServiceMessage){console.log(status.message);lastServiceMessage=status.message;}
+    const message=status.ready?status.message+' Model: '+status.model:status.message;
+    if(message!==lastServiceMessage){console.log(message);lastServiceMessage=message;}
    }
    if(!status.ready&&!warming){warming=true;commander.warmup(preferred).finally(()=>warming=false);}
    const {job}=await send('work',{ready:status.ready,decisionVersion:status.decisionVersion,models:status.models,model:preferred,serviceMessage:status.message,protocol:status.protocol,configPort:keyUI?.port},workerToken);
