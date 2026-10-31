@@ -685,3 +685,10 @@ For **This computer**, download and restart the updated `local-ai.zip` connector
 Solo commanders prioritize at least two defensive structures, with additional coverage set by their current policy. They can start an affordable defense below the discretionary $450 technology budget. Once at least three combat units are available, they can briefly save for missing basic coverage using the existing bounded budget wait. Pending defense construction allows recruitment to continue. Visible aircraft favor a missile battery, while visible armor favors a Tesla coil when its prerequisites are present. Placement starts toward the opposing base and passes normal terrain, territory and collision checks. Guards rally toward that approach.
 
 Ollama and JEV allocate separate nearby, weapon-compatible guards for each home threat before releasing a strike force. Guard strength must cover the threat with a safety margin. A force that cannot launch reports whether it lacks guard coverage or enough ready attackers in the commander activity and match log.
+
+
+### Computer unit repair
+
+Idle damaged ground vehicles, miners and ships seek compatible repair service before joining the next attack. Engaged vehicles use their policy's retreat threshold. War factories and naval shipyards receive separate repair positions with collision clearance. Repair crawlers can service ground vehicles and wait for assigned patients. The repair loop spends normal credits at factories and shipyards, including when less than $20 remains. Crawlers retain their ordinary repair behavior and cost.
+
+Units remain assigned until at least 98% health, then rejoin orders. Miners resume harvesting. Losing all compatible repair services cancels the repair order. Infantry and aircraft follow their existing combat behavior because these service facilities support vehicles and ships.

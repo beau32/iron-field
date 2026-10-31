@@ -2505,6 +2505,59 @@
     }
     return reserved;
   }
+  function aiRepairDestination(unit,own,reserved) {
+    const yards=buildings.filter(b=>active(b)&&serviceCompatible(b,unit)&&enemyCredits>0);
+    yards.sort((a,b)=>distance(unit,a)-distance(unit,b));
+    for(const yard of yards){
+      const range=STRUCTURE[yard.kind].serviceRange;
+      const points=[];
+      if(unit.mesh.position.distanceTo(yard.exitPoint)<range-.3)points.push(unit.mesh.position.clone());
+      for(const radius of [0,2.5,range-.4]){
+        for(let i=0;i<(radius?16:1);i++){
+          const angle=i*Math.PI/8;
+          points.push(yard.exitPoint.clone().add(new THREE.Vector3(Math.sin(angle)*radius,0,Math.cos(angle)*radius)));
+        }
+      }
+      const point=points.find(p=>!blocked(p.x,p.z,unit.radius,isNaval(unit))&&
+        reserved.every(v=>p.distanceTo(v.point)>unit.radius+v.radius+.3)&&
+        own.every(v=>v===unit||isAir(v)||v.destination||p.distanceTo(v.mesh.position)>unit.radius+v.radius+.3));
+      if(point)return {point,source:yard.id};
+    }
+    if(!isNaval(unit)){
+      const crawler=own.filter(v=>v!==unit&&v.kind==='repair'&&!v.aiRetreat&&v.hp>0)
+        .sort((a,b)=>distance(unit,a)-distance(unit,b))[0];
+      if(crawler)return {point:crawler.mesh.position.clone(),source:crawler.id};
+    }
+    return null;
+  }
+  function aiServiceDamagedUnits(own,policy) {
+    const reserved=[];
+    const vehicles=own.filter(u=>!isAir(u)&&!UNIT[u.kind].infantry);
+    vehicles.sort((a,b)=>a.hp/a.maxHp-b.hp/b.maxHp);
+    for(const unit of vehicles){
+      const healthy=unit.hp>=unit.maxHp*.98;
+      const safe=!living().some(e=>e.team==='player'&&stats(e).damage&&visibleTo(e,'enemy')&&distance(unit,e)<stats(e).range+4);
+      const needsRepair=unit.hp/unit.maxHp<policy.retreat||(!unit.raid&&safe&&!healthy);
+      const repair=!healthy&&(unit.aiRetreat||needsRepair)?aiRepairDestination(unit,own,reserved):null;
+      if(!repair){
+        if(unit.aiRetreat){
+          unit.aiRetreat=false;unit.aiRepairSource=null;unit.destination=null;clearRoute(unit);
+          if(unit.kind==='miner'&&unit.aiResumeMining)assignMining(unit);
+          unit.aiResumeMining=false;
+          aiLog(healthy?UNIT[unit.kind].name+' repaired and ready':UNIT[unit.kind].name+' repair service unavailable');
+        }
+        continue;
+      }
+      if(!unit.aiRetreat){
+        unit.aiResumeMining=Boolean(unit.mining);
+        aiLog('Sending '+UNIT[unit.kind].name+' for repairs');
+      }
+      unit.aiRetreat=true;unit.aiRepairSource=repair.source;unit.raid=false;
+      unit.attackTarget=null;unit.mining=false;unit.supportIds=[];
+      reserved.push({point:repair.point,radius:unit.radius});
+      aiMove(unit,repair.point);
+    }
+  }
   function raidHasStalled(raiders,objective) {
     if(!raiders.length)return false;
     if(!objective)return elapsed-commander.raidStarted>=65;
@@ -2536,8 +2589,10 @@
     const opponentBase=baseOf('player');
     const approach=opponentBase?opponentBase.mesh.position.clone().sub(base.mesh.position).setY(0).normalize():new THREE.Vector3(-1,0,0);
     const rally=base.mesh.position.clone().addScaledVector(approach,10);
+    aiServiceDamagedUnits(own,policy);
     for(const b of buildings.filter(b=>b.team==='enemy'&&active(b)&&b.hp<b.maxHp*.65&&!b.repairing)){if(!commander.recovering&&enemyCredits>180){b.repairing=true;aiLog('Repairing '+STRUCTURE[b.kind].name);}}
     for(const miner of own.filter(u=>u.kind==='miner')) {
+      if(miner.aiRetreat)continue;
       const threat=living().find(e=>e.team==='player'&&stats(e).damage>0&&distance(e,miner)<11);
       if(threat&&stats(threat).damage) {miner.aiFleeUntil=elapsed+8;miner.mining=false;aiMove(miner,base.mesh.position.clone().add(new THREE.Vector3(6,0,4)));}
       else if(miner.aiFleeUntil && elapsed>=miner.aiFleeUntil) {miner.aiFleeUntil=0;assignMining(miner);}
@@ -2548,12 +2603,6 @@
         })[0];
         if(safe&&safe!==miner.field)assignMining(miner,safe);
       }
-    }
-    for(const u of fighters) {
-      const repairable=own.some(v=>v.kind==='repair'&&!isAir(u)&&!isNaval(u))||buildings.some(b=>active(b)&&serviceCompatible(b,u)&&enemyCredits>20);
-      if(!UNIT[u.kind].infantry && u.hp/u.maxHp<policy.retreat&&repairable) {u.aiRetreat=true;u.raid=false;}
-      if(!repairable)u.aiRetreat=false;
-      if(u.aiRetreat&&u.hp/u.maxHp>.75)u.aiRetreat=false;
     }
     let raiders=fighters.filter(u=>u.raid&&!u.aiRetreat);
     const adaptiveRaid=opponentStyle==='ollama';
@@ -2585,9 +2634,7 @@
     for(const u of fighters) {
       u.aiControlled=true;
       if(u.aiRetreat) {
-        const yard=buildings.filter(b=>active(b)&&serviceCompatible(b,u)).sort((a,b)=>distance(u,a)-distance(u,b))[0];
-        const crawler=own.find(v=>v.kind==='repair'&&!isAir(u)&&!isNaval(u));
-        u.attackTarget=null;aiMove(u,yard?.exitPoint||crawler?.mesh.position||rally);continue;
+        continue;
       }
       const nearby=living().filter(v=>v.team==='player'&&visibleTo(v,'enemy')&&distance(u,v)<stats(u).range+4);
       const localThreat=aiFocusTarget(u,nearby,assigned);
@@ -2604,6 +2651,10 @@
       } else {u.attackTarget=null;const guard=rally.clone().add(new THREE.Vector3((u.id%3-1)*3,0,Math.floor(u.id%6/3)*3));if(u.mesh.position.distanceTo(guard)>4)aiMove(u,guard);}
     }
     for(const crawler of own.filter(u=>u.kind==='repair')) {
+      if(crawler.aiRetreat)continue;
+      if(own.some(u=>u.aiRetreat&&u.aiRepairSource===crawler.id)){
+        crawler.supportIds=[];crawler.destination=null;clearRoute(crawler);continue;
+      }
       if(crawler.hp/crawler.maxHp<.3) {crawler.supportIds=[];aiMove(crawler,rally);continue;}
       const escorts=(raiders.length?raiders:fighters).filter(u=>!isAir(u)&&!isNaval(u)&&!UNIT[u.kind].infantry);
       if(escorts.length)setRepairEscort(crawler,escorts,objective?.mesh.position||rally);
@@ -2739,7 +2790,18 @@
       }
     }
     updateCommander();
-    for (const u of units) { if(empDisabled(u)){u.state='EMP DISABLED';continue;} if(updateExitYield(u,dt))continue; if (u.kind === 'miner') updateMiner(u, dt); else if (u.kind === 'repair') updateRepair(u, dt); else updateCombat(u, dt); }
+    for (const u of units) {
+      if(empDisabled(u)){u.state='EMP DISABLED';continue;}
+      if(updateExitYield(u,dt))continue;
+      if(!net?.active&&u.team==='enemy'&&u.aiRetreat){
+        if(u.destination&&moveToward(u,u.destination,dt))u.destination=null;
+        u.state=u.destination?'Returning for repairs':'Waiting for repairs';
+        continue;
+      }
+      if(u.kind==='miner')updateMiner(u,dt);
+      else if(u.kind==='repair')updateRepair(u,dt);
+      else updateCombat(u,dt);
+    }
     resolveCollisions(); updateYardRepairs(dt); updateEffects(dt);
     powerAlertClock+=dt;if(powerAlertClock>=.5){checkPowerAlerts();powerAlertClock=0;}
     if(!net?.active){battleLog.tick(elapsed,battleLogSnapshot);if(outcome)battleLog.finish(elapsed,battleLogSnapshot,outcome);}

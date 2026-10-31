@@ -41,7 +41,7 @@ function battle(harassers,extraGuards=0){
     serviceCompatible:()=>false,clearRoute:noop,blocked:()=>false,rotateToward:noop,closestEnemy:()=>null,
     fire:(u,target)=>shots.push(target.id)};
   vm.createContext(ctx);
-  vm.runInContext(['resetCommander','aiMove','aiAttack','aiFocusTarget','aiObjective','aiEngagement','guardsForHarasser','guardsForThreats','raidHasStalled','aiRegroup','updateCommander','updateCombat'].map(gameFunction).join('\n'),ctx);
+  vm.runInContext(['resetCommander','aiMove','aiAttack','aiFocusTarget','aiObjective','aiEngagement','guardsForHarasser','guardsForThreats','raidHasStalled','aiRegroup','aiRepairDestination','aiServiceDamagedUnits','updateCommander','updateCombat'].map(gameFunction).join('\n'),ctx);
   ctx.commander=ctx.resetCommander();
   ctx.updateCommander();
   return {ctx,guard,objective,threats,troops,shots};
