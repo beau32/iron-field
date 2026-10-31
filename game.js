@@ -4,6 +4,25 @@
  */
 'use strict';
 (() => {
+  // Bounded diagnostic history. Simulation minutes, not wall-clock intervals.
+  function createBattleLog({snapshotLimit=360,eventLimit=10000}={}) {
+    let current=null,previous=null,lastMinute=-1,sequence=0,generation=0;
+    const copy=value=>JSON.parse(JSON.stringify(value));
+    const stamp=seconds=>({gameSeconds:Math.round(seconds*100)/100,wallTime:new Date().toISOString()});
+    const trim=(list,limit,key)=>{if(list.length>limit){current.dropped[key]+=list.length-limit;list.splice(0,list.length-limit);}};
+    function event(seconds,type,data={}){if(!current||current.ended)return null;const id=++sequence;current.events.push({id,...stamp(seconds),type,data:copy(data)});trim(current.events,eventLimit,'events');return id;}
+    function capture(seconds,reason,read){if(!current)return;current.snapshots.push({...stamp(seconds),minute:Math.floor(seconds/60),reason,state:copy(read())});trim(current.snapshots,snapshotLimit,'snapshots');}
+    function finish(seconds,read,reason='ended'){if(!current||current.ended)return;event(seconds,'match-ended',{reason});capture(seconds,'final',read);current.ended={...stamp(seconds),reason};}
+    return {
+      start(metadata,read){if(current&&current.snapshots.some(s=>s.gameSeconds>0))previous=current;current={schemaVersion:1,startedAt:new Date().toISOString(),metadata:copy(metadata),limits:{snapshots:snapshotLimit,events:eventLimit},dropped:{snapshots:0,events:0},snapshots:[],events:[]};generation++;sequence=0;lastMinute=0;event(0,'match-started');capture(0,'initial',read);},
+      tick(seconds,read){if(!current||current.ended)return;if(Math.floor(seconds/60)>lastMinute){lastMinute=Math.floor(seconds/60);capture(seconds,'minute',read);}},
+      event,finish,
+      checkpoint(seconds,read){if(current&&!current.ended)capture(seconds,'download',read);},
+      export(previousMatch=false){const value=previousMatch?previous:current;return value?copy(value):null;},
+      info(){return {generation,active:Boolean(current&&!current.ended),hasCurrent:Boolean(current),hasPrevious:Boolean(previous),snapshots:current?.snapshots.length||0,events:current?.events.length||0,dropped:current?current.dropped.snapshots+current.dropped.events:0};}
+    };
+  }
+  const battleLog=createBattleLog();
   const $ = id => document.getElementById(id);
   const canvas = $('game');
   let MAP = FIELD_MAP.get('river');
@@ -753,6 +772,7 @@
     e.visualHeight=detailBuilding(group,kind,color,trim,turret,rotor);
     if (underConstruction) group.scale.y = .15;
     group.userData.entity = e; buildings.push(e); label(e, team !== localTeam && kind === 'base' ? 'ENEMY HQ' : def.name.toUpperCase());
+    if(!net?.active)battleLog.event(elapsed,'structure-placed',{id:e.id,team,kind,underConstruction,position:{x,z}});
     navVersion++; return e;
   }
   // Beveled armor and instanced tread plates keep silhouettes readable up close.
@@ -1148,6 +1168,7 @@
       path: [], pathVersion: -1, pathGoal: null, repath: 0, state: 'Idle', cargo: 0, mining: kind === 'miner', field: null, mineState: 'travel', unload: 0, raid: false };
     if(def.aircraft)selectionRing.position.y=.09-group.position.y;
     group.userData.entity = u; units.push(u); label(u, kind === 'miner' ? 'MINER' : kind === 'artillery' ? 'SIEGE' : kind === 'heavy' ? 'HEAVY' : '');
+    if(!net?.active)battleLog.event(elapsed,'unit-created',{id:u.id,team,kind,position:{x,z}});
     return u;
   }
 
@@ -1421,6 +1442,7 @@
     if(!b||!isBuilding(b)||b.team!==team||b.hp<=0||b.kind==='base'||outcome||!baseOf(team))return;
     if(sendAction({type:'sellStructure',ids:[b.id]}))return;
     const refund=saleValue(b);spend(team,-refund);
+    if(!net?.active)battleLog.event(elapsed,'structure-sold',{id:b.id,team,kind:b.kind,refund});
     // Selling is a removal, not a combat kill: no bounty or elimination event.
     b.hp=0;b.repairing=false;b.mesh.visible=false;b.label.remove();b.selectionFrame?.remove();selected.delete(b);navVersion++;
     refreshFog();if(team===localTeam)announce(`${STRUCTURE[b.kind].name} sold. ${refund} credits refunded.`);updateUI();
@@ -1788,9 +1810,10 @@
 
   function syncVoiceState(){window.FieldVoice?.setActive(!paused&&!winner&&(!net?.active||net.playable));}
   function updatePause() { syncVoiceState();$('pause').textContent = paused ? 'Resume' : 'Pause'; $('pause').setAttribute('aria-pressed', String(paused)); }
-  function togglePause() { if (sendAction({ type: 'pause' })) return; paused = !paused; updatePause(); }
+  function togglePause() { if (sendAction({ type: 'pause' })) return; paused = !paused; battleLog.event(elapsed,'pause',{paused});updatePause(); }
   $('select-all').onclick = selectArmy; $('select-miners').onclick = selectMiners; $('harvest').onclick = () => harvestSelected(); $('stop').onclick = () => stopSelected();
   $('pause').onclick = togglePause; $('reset').onclick = $('play-again').onclick = () => { if (net?.active) { if (net.isHost && outcome) net.control('rematch'); else net.open(); } else openMapSetup(); };
+  $('battle-log-download').onclick=()=>downloadBattleLog();$('battle-log-previous').onclick=()=>downloadBattleLog(true);
   $('structure-superweapon').onclick=()=>beginSuperTarget([...selected][0]);
   $('structure-repair').onclick=()=>{const b=[...selected][0];repairStructure(b,!b?.repairing);};
   $('structure-sell').onclick=()=>sellStructure([...selected][0]);
@@ -1813,6 +1836,7 @@
   $('speed').oninput = e => { simSpeed = Number(e.target.value); $('speed-value').textContent = `${simSpeed}×`; };
   $('opponent-style').value=opponentStyle;
   window.addEventListener('field-ai-change',event=>{
+    if(!net?.active)battleLog.event(elapsed,'ai-configuration',{reason:event.detail?.reason||'connection',provider:modelProvider(),execution:window.FieldLocalAI?.mode});
     if(event.detail?.reason==='ready'){
       if(!currentModelPlan()&&!commander.pending)commander.nextModel=0;
     }else{modelRequest?.abort();modelRequest=null;commander=resetCommander();}
@@ -1821,6 +1845,7 @@
   $('opponent-style').onchange=e=>{
     if(net?.active)return;
     opponentStyle=e.target.value;
+    battleLog.event(elapsed,'opponent-style',{style:opponentStyle});
     try{localStorage.setItem('iron-field-opponent',opponentStyle);}catch{}
     modelRequest?.abort();modelRequest=null;aiRegroup();commander=resetCommander();
     nextRaid=elapsed+aiPolicy().firstRaid;
@@ -1828,6 +1853,7 @@
   };
   $('raids').onchange = e => {
     raids = e.target.checked; nextRaid = elapsed + aiPolicy().firstRaid;
+    if(!net?.active)battleLog.event(elapsed,'computer-enabled',{enabled:raids});
     modelRequest?.abort();modelRequest=null;commander={...commander,pending:false,plan:null,nextModel:0,modelStatus:''};
     if (!raids) { aiRegroup(); unitsFor('enemy').forEach(u => {u.aiControlled=false;u.aiRetreat=false;u.raid=false;u.attackTarget=null;u.destination=null;clearRoute(u);if(u.kind==='miner'){u.aiFleeUntil=0;assignMining(u);}}); }
     announce(raids ? 'Computer strategy and raids enabled.' : 'Raids and reinforcements disabled. Enemies still defend their base.');
@@ -1916,6 +1942,7 @@
     }
   }
   function destroy(e) {
+    if(!net?.active)battleLog.event(elapsed,'entity-destroyed',{id:e.id,team:e.team,kind:e.kind,type:e.type,position:{x:e.mesh.position.x,z:e.mesh.position.z},value:stats(e).cost||600});
     releaseUnitDamage(e);
     explode(e.mesh.position, isBuilding(e) ? 3 : 1.8); e.mesh.visible = false; e.label.remove(); e.selectionFrame?.remove(); selected.delete(e);
     units = units.filter(u => u.hp > 0); navVersion++;
@@ -2149,7 +2176,27 @@
   }
   function aiLog(message) {
     if(net?.active)return;
+    battleLog.event(elapsed,'commander-action',{message});
     commander.events.unshift({at:Math.floor(elapsed),message});commander.events.length=Math.min(commander.events.length,5);
+  }
+  function battleLogSnapshot() {
+    const point=v=>v?{x:Math.round(v.x*10)/10,z:Math.round(v.z*10)/10}:null;
+    const count=list=>list.reduce((r,e)=>(r[e.kind]=(r[e.kind]||0)+1,r),{});
+    const teams={};
+    for(const team of ['player','enemy']){
+      const army=unitsFor(team).filter(u=>u.hp>0),structures=buildings.filter(b=>b.team===team&&b.hp>0);
+      teams[team]={credits:Math.floor(money(team)),oreDelivered:deliveredFor(team),killRewards:battleRewards[team]||0,power:{...powerFor(team)},units:count(army),structures:count(structures),completedStructures:count(structures.filter(active)),queue:queueFor(team).map(q=>({kind:q.kind,progress:q.progress,producerId:q.producerId})),
+        entities:[...army,...structures].map(e=>({id:e.id,kind:e.kind,type:e.type,hp:Math.round(e.hp),maxHp:e.maxHp,position:point(e.mesh.position),state:e.state,destination:point(e.destination),attackTarget:e.attackTarget?.id,repairTarget:e.repairTarget?.id,raid:Boolean(e.raid),retreating:Boolean(e.aiRetreat),pathLength:e.path?.length,cargo:e.cargo,mining:e.mining,mineState:e.mineState,oreField:e.field?.id,buildLeft:e.buildLeft,repairing:Boolean(e.repairing)}))};
+    }
+    return {elapsed,paused,simulationSpeed:simSpeed,outcome,winner,raids,teams,ore:fields.map(f=>({id:f.id,amount:Math.round(f.amount)})),computerAid:{...computerAid},
+      ai:{style:opponentStyle,provider:isModelOpponent()?modelProvider():null,execution:window.FieldLocalAI?.mode,model:commander.model,plan:currentModelPlan(),pending:commander.pending,status:commander.modelStatus,fallback:isModelOpponent()&&!currentModelPlan(),mode:commander.mode,intent:commander.intent,targetId:commander.targetId,raidSize:commander.raidSize,decisions:commander.decisions,lastDecisionMs:commander.decisionMs,nextRaid,feedback:modelBattleSummary().feedback}};
+  }
+  function downloadBattleLog(previous=false) {
+    if(!previous&&!net?.active)battleLog.checkpoint(elapsed,battleLogSnapshot);
+    const log=battleLog.export(previous);if(!log)return;
+    log.exportedAt=new Date().toISOString();
+    const url=URL.createObjectURL(new Blob([JSON.stringify(log,null,2)],{type:'application/json'})),link=document.createElement('a');
+    link.href=url;link.download='iron-field-match-'+log.startedAt.replace(/[:.]/g,'-')+'.json';document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),10000);
   }
   function acceptAIPlan(plan,model) {
     const changed=JSON.stringify(commander.plan)!==JSON.stringify(plan);
@@ -2168,22 +2215,28 @@
     const state=commander,controller=new AbortController();modelRequest=controller;
     state.lastModelRequest=performance.now();state.urgentModel=false;
     state.pending=true;state.modelStatus=modelProvider()+' is planning';
+    const summary=modelBattleSummary(),requestId=battleLog.event(elapsed,'ai-request',{provider:modelProvider(),execution:window.FieldLocalAI?.mode,summary});
+    const logGeneration=battleLog.info().generation;let loggedResult=false;
     const timer=setTimeout(()=>controller.abort(),6500);
     let retryAfterMs=10000;
     try {
-      const response=await FieldLocalAI.plan(modelBattleSummary(),controller.signal);
+      const response=await FieldLocalAI.plan(summary,controller.signal);
       const result=await response.json();if(!response.ok){retryAfterMs=Math.max(2000,Math.min(60000,Number(result.retryAfterMs)||10000));throw Error(result.error||modelProvider()+' unavailable');}
       const plan=FIELD_OPPONENT.validPlan(result.plan,Object.keys(UNIT),Object.keys(STRUCTURE).filter(k=>STRUCTURE[k].cost>0));
       if(!plan)throw Error(modelProvider()+' returned an invalid plan');
       if(state!==commander||controller.signal.aborted||net?.active||!raids||!isModelOpponent())return;
       acceptAIPlan(plan,result.model);
       state.decisionMs=Math.round(performance.now()-state.lastModelRequest);
+      battleLog.event(elapsed,'ai-decision',{requestId,provider:modelProvider(),model:result.model,execution:result.execution||window.FieldLocalAI?.mode,protocol:result.protocol,plan,roundTripMs:state.decisionMs,serviceMs:result.latencyMs});
+      loggedResult=true;
       state.modelRetryUntil=0;
       state.nextModel=performance.now()+30000;
     } catch(error) {
       if(state!==commander||net?.active||!raids||!isModelOpponent())return;
       if(!currentModelPlan())state.plan=null;state.modelStatus=error.name==='AbortError'?modelProvider()+' timed out':String(error.message).slice(0,140);state.nextModel=performance.now()+retryAfterMs;state.modelRetryUntil=state.nextModel;
-    } finally {clearTimeout(timer);state.pending=false;if(modelRequest===controller)modelRequest=null;}
+      battleLog.event(elapsed,'ai-error',{requestId,provider:modelProvider(),error:state.modelStatus,roundTripMs:Math.round(performance.now()-state.lastModelRequest),retryAfterMs,retainedPlan:currentModelPlan(),fallback:!currentModelPlan()});
+      loggedResult=true;
+    } finally {if(!loggedResult&&battleLog.info().generation===logGeneration)battleLog.event(elapsed,'ai-cancelled',{requestId,reason:'Opponent configuration or match state changed'});clearTimeout(timer);state.pending=false;if(modelRequest===controller)modelRequest=null;}
   }
   function updateOpponentUI() {
     const multiplayer=Boolean(net?.active),model=isModelOpponent(),plan=currentModelPlan();
@@ -2198,6 +2251,8 @@
     $('opponent-order').textContent='Tactics: '+(commander.intent||'Assessing the battlefield');
     $('opponent-log').hidden=multiplayer||!model;
     $('opponent-events').textContent=commander.events.map(e=>`${Math.floor(e.at/60)}:${String(e.at%60).padStart(2,'0')} ${e.message}`).join('\n')||'No orders executed yet.';
+    const logInfo=battleLog.info();$('battle-log').hidden=multiplayer;$('battle-log-download').disabled=!logInfo.hasCurrent;$('battle-log-previous').hidden=!logInfo.hasPrevious;
+    $('battle-log-status').textContent=`Snapshots: ${logInfo.snapshots} · Events: ${logInfo.events}${logInfo.dropped?' · older entries trimmed':''}`;
   }
   function aiMove(u, point) {
     const goal=point.clone(); goal.x=THREE.MathUtils.clamp(goal.x,-HALF_X+2,HALF_X-2);goal.z=THREE.MathUtils.clamp(goal.z,-HALF_Z+2,HALF_Z-2);
@@ -2586,6 +2641,7 @@
       if (b.hp <= 0) continue;
       if (b.buildLeft > 0) {
         b.buildLeft = Math.max(0, b.buildLeft - dt); b.mesh.scale.y = .15 + .85 * (1 - b.buildLeft / STRUCTURE[b.kind].time);
+        if(!b.buildLeft&&!net?.active)battleLog.event(elapsed,'structure-completed',{id:b.id,team:b.team,kind:b.kind});
         if (!b.buildLeft && b.team === localTeam) announce(`${STRUCTURE[b.kind].name} online.`);
         continue;
       }
@@ -2609,6 +2665,7 @@
     for (const u of units) { if(empDisabled(u)){u.state='EMP DISABLED';continue;} if(updateExitYield(u,dt))continue; if (u.kind === 'miner') updateMiner(u, dt); else if (u.kind === 'repair') updateRepair(u, dt); else updateCombat(u, dt); }
     resolveCollisions(); updateYardRepairs(dt); updateEffects(dt);
     powerAlertClock+=dt;if(powerAlertClock>=.5){checkPowerAlerts();powerAlertClock=0;}
+    if(!net?.active){battleLog.tick(elapsed,battleLogSnapshot);if(outcome)battleLog.finish(elapsed,battleLogSnapshot,outcome);}
   }
   function checkPowerAlerts() {
     for(const team of matchTeams){
@@ -2640,6 +2697,7 @@
   $('map-start').onclick=()=>{chooseMap($('map-select').value);$('network-map').value=MAP.id;$('map-dialog').close();startGame();};
   $('map-multiplayer').onclick=()=>{$('network-map').value=$('map-select').value;$('map-dialog').close();net.open();};
   function startGame() {
+    battleLog.finish(elapsed,battleLogSnapshot,'new-battle');
     for(const v of superVisuals.values())v.material.dispose();superVisuals.clear();superEffects.clear();superStrikes=[];
     window.IronFieldMusic?.reset();
     window.FieldVoice?.reset();voiceEvents=[];nextVoiceId=1;lastVoiceId=0;attackAlertAt={};
@@ -2697,6 +2755,7 @@
     spawnUnit('tank', 'enemy', 13, -7); spawnUnit('tank', 'enemy', 18, -6); spawnUnit('scout', 'enemy', 10, -14); spawnUnit('heavy', 'enemy', 22, -10);
     const enemyMiner = spawnUnit('miner', 'enemy', 24, 6); assignMining(enemyMiner, fields[2]);
     }
+    if(!net?.active)battleLog.start({game:'Iron Field',protocolVersion:13,loggingVersion:1,map:{id:MAP.id,name:MAP.name},mode:'solo',timeBasis:'simulation seconds; snapshots at minute boundaries',opponentStyle},battleLogSnapshot);
     refreshFog(); shadeScene(); homeCamera(); updatePause(); updateUI(); announce('Miners are harvesting. Build your army and protect the supply line.');
   }
 

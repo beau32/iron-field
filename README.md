@@ -427,6 +427,16 @@ Shared tactical rules also:
 - Withdraw from a local fight away from home when at least two visible attackers have more than 1.6 times nearby allied strength. Long-range units try to back away without entering blocked terrain.
 - Coordinate targets using an estimate of assigned volley damage: finish vulnerable enemies, avoid assigning excessive shots to one target, and favor aircraft for compatible anti-air weapons. This estimate is recomputed each commander update; it is not a guarantee of perfect focus fire.
 
+### Download a minute-by-minute match log
+
+Open **Computer opponent → Match analysis log → Download match log**. Recording is automatic for solo games, including preset, Ollama, JEV and OpenAI opponents. The JSON file contains an initial snapshot, one snapshot per **simulation minute**, a current snapshot when downloaded, and a final snapshot at victory, defeat or a new battle. Pausing stops the simulation clock; faster simulation advances the recording schedule proportionally. Each record also has a UTC wall-clock timestamp.
+
+Snapshots include both teams' credits, cumulative ore income and kill rewards, power, production queues, unit/building counts, completed producers, unit health and positions, destinations, targets, retreat/raid flags, miner cargo and harvesting state, remaining ore, and computer credit assistance. AI state includes its operation, execution step, target, pending/failed requests, fallback status and recent battle feedback.
+
+Events preserve commander actions beyond the five-message activity panel, unit creation and destruction, structure placement/completion/sales, configuration changes, and pauses. Each AI request records the battle summary sent for decisioning; the summary's `own` side is the computer opponent and `opponent` is the human player. Accepted decisions and errors link back with `requestId`, including model/provider, latency, retry delay and whether an old plan or fallback was retained. This log records inputs and outcomes, not hidden model reasoning or raw classifier scores. Compare consecutive snapshots and intervening events to diagnose idle armies, lost mining income, counter-production delays, repeated AI failures, or a plan that is not making progress.
+
+Logs stay in browser memory; they are not uploaded or automatically saved to disk. **Download before refreshing or closing the page.** Starting a new battle preserves the previous played match behind **Download previous match**, until another played match replaces it. Retention is bounded to the latest 360 snapshots and 10,000 events per retained match; `dropped` reports any trimming. The logger is a diagnostic history, not a replay/save system, and cannot reconstruct matches played before this update. It excludes API keys, pairing tokens and connection URLs.
+
 ### What Ollama sees and decides
 
 **Strategy v2 combines a small LLM with battle analysis.** In **Game server** mode, the browser sends `POST /api/commander/plan` a structured summary. In **This computer** mode, the same summary travels through the authenticated relay to the paired connector. Both use `commander.cjs`.

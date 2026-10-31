@@ -16,7 +16,7 @@
   <script defer src="opponent.js?v=2"></script>
   <script defer src="voice.js?v=4"></script>
   <script defer src="ai-link.js?v=7"></script>
-  <script defer src="game.js?v=46"></script>
+  <script defer src="game.js?v=47"></script>
   <script defer src="music.js?v=2"></script>
 </head>
 <body>
@@ -66,6 +66,7 @@
         </div>
         <p id="opponent-order" hidden></p>
         <details id="opponent-log" hidden><summary>Commander activity</summary><pre id="opponent-events">No orders executed yet.</pre></details>
+        <details id="battle-log"><summary>Match analysis log</summary><p id="battle-log-status" role="status"></p><button id="battle-log-download">Download match log</button><button id="battle-log-previous" hidden>Download previous match</button><p>Records every game minute and AI decisions as they happen. Download JSON before refreshing or closing this page. Solo matches only.</p></details>
       </details>
       <nav class="tabs" aria-label="Production category"><button id="play-tab" class="active" aria-pressed="true" title="Units"><span>▰</span>Units</button><button id="build-tab" aria-pressed="false" title="Structures"><span>▥</span>Structures</button><button id="defense-tab" aria-pressed="false" title="Defenses"><span>⌖</span>Defenses</button><button id="learn-tab" aria-pressed="false" title="Learning tools"><span>⚙</span>Lab</button></nav>
       <section id="superweapons" class="structure-controls" aria-label="Superweapons" hidden><strong>SUPERWEAPONS</strong><p id="super-warning" role="status"></p><div id="superweapon-list"></div></section>
