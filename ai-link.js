@@ -43,7 +43,7 @@
    const result=await response.json();if(id!==modelRequestId||mode!==location||provider!==service)return;
    if(!response.ok)throw Error(result.error||'Could not load installed models.');
    if(service==='jev'&&location==='server'){$('jev-port').value=result.port||'';$('jev-port-status').textContent=result.port?'Server port · configured by the host.':'Host must configure JEV_PORT and restart the game server.';}
-   showModels(location==='player'&&!result.connected?[]:result.models,result.defaultModel||result.model,location==='player'&&!result.connected?'Connect the local AI connector first.':location==='player'&&!result.models?.length?'Download and restart the updated AI connector to choose models.':result.available===false?result.message:result.models?.length?'':result.message);
+   showModels(location==='player'&&!result.connected?[]:result.models,result.defaultModel||result.model,location==='player'&&!result.connected?'Connect the local AI connector first.':location==='player'&&!result.models?.length?(service==='jev'?result.serviceMessage||'No JEV model reported. Check the connector terminal.':'Download and restart the updated AI connector to choose models.'):result.available===false?result.message:result.models?.length?'':result.message);
   }catch(e){if(id===modelRequestId&&mode===location&&provider===service)showModels([], '', e.message);}
   finally{if(id===modelRequestId)$('ollama-model-refresh').disabled=false;}
  }
@@ -94,8 +94,9 @@
    $('ai-key-setup').hidden=!keySetup;
    if(keySetup)$('ai-key-setup').href=`http://127.0.0.1:${result.configPort}/`;
    $('ai-connection').textContent=result.connected?provider==='openai'?`${result.ready?'Connector ready · key configured':'Connector paired · enter API key'} · ${result.model}`:`${result.ready?'Connected':provider==='jev'?'Check service port and model':'Warming up'} · ${result.model} · on your computer`:result.code&&Date.now()<result.expires?'Waiting for your local connector.':'Connector offline. Restart it, or pair again.';
+   if(provider==='jev'&&result.connected)$('ai-connection').textContent=result.ready?`Connected to ${result.protocol==='openjev-nli'?'OpenJEV classifier':'JEV'} on port ${result.port} · ${result.model}`:'Connector paired · '+(result.serviceMessage||'Check the service port and model.');
    if(provider==='ollama'&&result.connected)$('ai-connection').textContent+=result.decisionVersion>=2?' · Strategy v2':' · Update AI connector: download, extract and restart it for smarter strategy.';
-   if(provider!=='openai')showModels(result.connected?result.models:[],result.model,!result.connected?'Connect the local AI connector first.':!result.models?.length?'Download and restart the updated AI connector to choose models.':'');
+   if(provider!=='openai')showModels(result.connected?result.models:[],result.model,!result.connected?'Connect the local AI connector first.':!result.models?.length?(provider==='jev'?result.serviceMessage||'No JEV model reported. Check the connector terminal.':'Download and restart the updated AI connector to choose models.'):'');
    if(becameReady)changed('ready');
   }catch(e){$('ai-connection').textContent='Local AI connection unavailable. Gameplay continues with fallback tactics.';}
  }

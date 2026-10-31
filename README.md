@@ -521,14 +521,14 @@ Select **AI commander · Ollama**, then check **JEV** beside the opponent select
 
 For **This computer**:
 
-1. Run a JEV-compatible decision service locally on its own port, with a compatible decision model installed. Enter that port under **JEV PORT**; no port is assumed.
+1. Run a JEV-compatible decision service locally on its own port, with a compatible decision model installed. Enter that port under **JEV PORT**; no port is assumed. The OpenJEV Python classifier (`ollama_nli_api.py`) uses port **8011** by default and is supported directly.
 2. Download and extract the updated **AI connector**. Launch **Start-JEV-AI.cmd**, or run `node local-ai.cjs --provider jev` on macOS/Linux.
 3. Click **Create pairing code**, then enter the game server address and code in the connector. The pairing supplies the port to the connector, which contacts only `http://127.0.0.1:<port>` on that computer.
-4. Choose an installed model from **JEV MODEL**. The default is `nimble` (including the `nimble:latest` tag); set `JEV_MODEL` before launching for a different default. Changing ports requires a new pairing code and connector restart.
+4. Choose an installed model from **JEV MODEL**. For System One the default is `nimble` (including the `nimble:latest` tag); set `JEV_MODEL` before launching for a different default. OpenJEV automatically uses the loaded adapter reported by `/health`, such as `qwen25-05b-openjev`; its single-model dropdown reflects the running service. Changing ports requires a new pairing code and connector restart.
 
 For **Game server**, set `JEV_PORT` and optionally `JEV_MODEL` in the game server's environment, then restart it. The port displayed in the browser is read-only in this mode. Its value is independent of `OLLAMA_URL`; JEV requests always go to the server's loopback interface. With no configured port, the game reports that JEV is unavailable and continues fallback tactics.
 
-The adapter in [`jev-commander.cjs`](jev-commander.cjs) uses the [JEV-compatible System One API](https://github.com/ollama/ollama/blob/main/docs/capabilities/decision.mdx): model discovery through `GET /api/tags` (or `GET /v1/models` if tags returns 404), then `POST /v1/systemone`. It sends the validated Strategy v2 battle summary as `state`, with a named `strategy` choice question, instructions and criteria for feasible operations. It does **not** send a chat prompt asking the model to generate JSON:
+The adapter in [`jev-commander.cjs`](jev-commander.cjs) detects two API formats. For the [JEV-compatible System One API](https://github.com/ollama/ollama/blob/main/docs/capabilities/decision.mdx), it discovers models through `GET /api/tags` (or `GET /v1/models` if tags returns 404), then calls `POST /v1/systemone`. It sends the validated Strategy v2 battle summary as `state`, with a named `strategy` choice question, instructions and criteria for feasible operations. It does **not** send a chat prompt asking the model to generate JSON:
 
 ```json
 {
@@ -548,6 +548,10 @@ The adapter in [`jev-commander.cjs`](jev-commander.cjs) uses the [JEV-compatible
 ```
 
 This is an abbreviated example; the actual instructions include income recovery, base threats, queued counters, affordability, and stalled or losing operations. If the shortlist contains only one operation, a conservative defend option supplies the protocol's second alternative. Only an offered `answers.strategy.choice` is accepted, then mapped through the same Strategy v2 production and targeting rules. Invalid responses, missing services and timeouts retain the existing unexpired plan or Balanced fallback.
+
+If both discovery endpoints return 404, the adapter checks **OpenJEV `GET /health`**, requiring a ready status, base model and adapter name. It then calls **`POST /classify`** with a natural-language battle `premise` and a `choices` array of factual hypotheses supporting feasible operations. For example, the anti-air hypothesis is “Enemy aircraft outnumber our anti-air counters, including queued counters.” The classifier returns entailment, contradiction and neutral probabilities for each hypothesis. The game validates the echoed choices and probability ranges/sums, ranks by `entailment - contradiction`, and maps the highest-ranked hypothesis to an operation. Ties retain the rule-based shortlist order. These scores measure textual support, not guaranteed strategic quality or calibrated confidence; even the highest score can be weak. This classifier does not generate plans or learn RTS tactics during play.
+
+**Paired** only confirms the connector-to-game-server link. **Connected to OpenJEV classifier on port 8011** confirms that the connector found the local service and its loaded adapter. Connection or discovery failures are displayed in the game and connector terminal. Keep both the Python classifier service and Node connector running.
 
 **AI order displays the measured JEV round-trip time in milliseconds**, including browser/server/connector overhead. The JEV connector checks for jobs every 100 ms; ordinary Ollama remains at 500 ms. Typed decisions may be faster than generated chat output, but selecting the checkbox does not guarantee subsecond inference. Service implementation, model, hardware, cold starts and network overhead all matter. The five-second inference deadline and ordinary 30-second strategy refresh cadence remain in place; tactics continue between decisions. API discovery alone cannot prove a model supports decisions: that is validated when a decision request completes.
 

@@ -32,9 +32,10 @@ async function handle(req,res,path,data,reply){
  }
  const worker=path==='work'||path==='result',s=session(req,worker);
  if(path==='disconnect'){s.job?.reject(fail(503,'Local AI disconnected.'));sessions.delete(s.clientToken);workers.delete(s.workerToken);codes.delete(s.code);reply(res,200,{ok:true});return;}
- if(path==='status'){reply(res,200,{connected:now-s.lastSeen<15000,ready:s.ready,model:s.model,models:s.models||[],decisionVersion:s.decisionVersion||1,provider:s.provider,port:s.port,configPort:s.configPort,code:s.workerToken?null:s.code,expires:s.expires});return;}
+ if(path==='status'){reply(res,200,{connected:now-s.lastSeen<15000,ready:s.ready,model:s.model,models:s.models||[],serviceMessage:s.serviceMessage,protocol:s.protocol,decisionVersion:s.decisionVersion||1,provider:s.provider,port:s.port,configPort:s.configPort,code:s.workerToken?null:s.code,expires:s.expires});return;}
  if(path==='work'){
   s.lastSeen=now;s.ready=Boolean(data.ready);s.decisionVersion=data.decisionVersion===2?2:1;s.models=modelList(data.models);s.model=String(data.model||s.model).slice(0,100);
+  s.serviceMessage=typeof data.serviceMessage==='string'?data.serviceMessage.slice(0,180):'';s.protocol=['systemone','openjev-nli'].includes(data.protocol)?data.protocol:undefined;
   const job=s.job&&!s.job.dispatched?s.job:null;if(job)job.dispatched=true;
   reply(res,200,{job:job?{id:job.id,summary:job.summary,model:job.model}:null});return;
  }
@@ -50,7 +51,7 @@ async function handle(req,res,path,data,reply){
   if(s.provider!=='openai'&&model!==s.model&&!(s.models||[]).some(m=>m.name===model))throw fail(400,'Choose an installed model from this computer.');
   if(s.provider!=='openai'&&(typeof model!=='string'||model.length>100))throw fail(400,'Invalid local model.');
   if(now-s.lastSeen>=15000)throw fail(503,'Start the local AI connector on this computer.');
-  if(!s.ready&&(!model||model===s.model))throw fail(503,s.provider==='openai'?'Enter your key using API key setup below.':s.provider==='jev'?'JEV service is not ready. Check its port and decision model.':'Your computer is warming up Ollama.');
+  if(!s.ready&&(!model||model===s.model))throw fail(503,s.provider==='openai'?'Enter your key using API key setup below.':s.provider==='jev'?s.serviceMessage||'JEV service is not ready. Check its port and decision model.':'Your computer is warming up Ollama.');
   if(s.job)throw fail(429,'Your computer is already planning.');
   const value=await new Promise((resolve,reject)=>{
    const job={id:token(),summary,model,dispatched:false};s.job=job;
