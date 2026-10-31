@@ -78,15 +78,15 @@ dialog{color:var(--text);background:var(--panel);border:1px solid #51635e;border
 #ai-settings{margin-top:9px}#ai-settings label{margin:7px 0 4px}#ai-pairing{margin-top:8px;font-size:11px}#ai-pairing summary{cursor:pointer;color:#b9d7a4}#ai-pairing p{line-height:1.5}#ai-pairing a{color:#9ce7bf}#ai-pair-code{display:block;margin-top:6px;padding:6px;background:#14231a;color:#f0dc9c;overflow-wrap:anywhere}#ai-pair{font-size:11px;padding:6px}
 
 /* Explanations expand in place, so they cannot be clipped by sidebar scrolling. */
-.sidebar .sidebar-info{margin:5px 0;font-size:11px;color:#b5c7a6}
-.sidebar .sidebar-info>summary{display:flex;align-items:center;justify-content:center;list-style:none;width:26px;height:26px;margin-left:auto;padding:0;border:1px solid #697d5b;border-radius:50%;background:#223629;color:#bce5bb;cursor:pointer;font:italic 700 15px Georgia,serif}
-.sidebar .sidebar-info>summary::-webkit-details-marker{display:none}
-.sidebar .sidebar-info>summary:hover,.sidebar .sidebar-info[open]>summary{background:#3a5138;color:#fff0ba;border-color:#c7b876}
-.sidebar .sidebar-info>summary:focus-visible{outline:2px solid #a8e9ce;outline-offset:3px}
-.sidebar .sidebar-info .info-content{padding:9px 10px;margin-top:6px;background:#122219;border-left:2px solid #71875e;overflow-wrap:anywhere}
-.sidebar .sidebar-info .info-content>p:first-child{margin-top:0}
-.sidebar .sidebar-info .catalog-tip{margin-top:0}
-.sidebar .sidebar-info .radar-caption{text-align:left}
+:is(.sidebar,.computer-sidebar) .sidebar-info{margin:5px 0;font-size:11px;color:#b5c7a6}
+:is(.sidebar,.computer-sidebar) .sidebar-info>summary{display:flex;align-items:center;justify-content:center;list-style:none;width:26px;height:26px;margin-left:auto;padding:0;border:1px solid #697d5b;border-radius:50%;background:#223629;color:#bce5bb;cursor:pointer;font:italic 700 15px Georgia,serif}
+:is(.sidebar,.computer-sidebar) .sidebar-info>summary::-webkit-details-marker{display:none}
+:is(.sidebar,.computer-sidebar) .sidebar-info>summary:hover,:is(.sidebar,.computer-sidebar) .sidebar-info[open]>summary{background:#3a5138;color:#fff0ba;border-color:#c7b876}
+:is(.sidebar,.computer-sidebar) .sidebar-info>summary:focus-visible{outline:2px solid #a8e9ce;outline-offset:3px}
+:is(.sidebar,.computer-sidebar) .sidebar-info .info-content{padding:9px 10px;margin-top:6px;background:#122219;border-left:2px solid #71875e;overflow-wrap:anywhere}
+:is(.sidebar,.computer-sidebar) .sidebar-info .info-content>p:first-child{margin-top:0}
+:is(.sidebar,.computer-sidebar) .sidebar-info .catalog-tip{margin-top:0}
+:is(.sidebar,.computer-sidebar) .sidebar-info .radar-caption{text-align:left}
 .sidebar .tech-tree.sidebar-info[open]{padding:0 0 8px}
 
 /* Keep opponent setup within one keyboard-accessible disclosure. */
@@ -104,3 +104,25 @@ dialog{color:var(--text);background:var(--panel);border:1px solid #51635e;border
 .model-choice{display:flex;gap:6px;align-items:center}.model-choice select{flex:1;min-width:0}.model-choice button{padding:8px 12px}#ollama-model-status{font-size:11px;line-height:1.4;color:#cbbd83;margin:4px 0 8px}
 
 .opponent-choice{display:flex;gap:8px;align-items:center}.opponent-choice select{min-width:0;flex:1}.opponent-controls .jev-toggle{display:flex;align-items:center;gap:5px;margin:0;white-space:nowrap}.jev-toggle input{width:auto;accent-color:#9ce7bf}#jev-port{width:100%;box-sizing:border-box;padding:8px;background:#14231a;color:#e5e8d0;border:1px solid #61784e;border-radius:3px}#jev-port-status{font-size:11px;line-height:1.4;color:#cbbd83}
+
+
+/* Computer controls occupy their own independently scrolling, collapsible rail. */
+.computer-sidebar{background:#17251c;border-right:1px solid #4c5942;min-width:0;overflow-y:auto;overflow-x:hidden}
+.computer-sidebar #opponent-panel{padding:0;border:0;min-height:100%}
+.computer-sidebar #opponent-panel>summary{position:sticky;top:0;z-index:2;background:#1d3023;padding:12px 10px;margin:0;border-bottom:1px solid #4c5942}
+.computer-sidebar #opponent-panel>summary .computer-panel-title{margin-left:0;color:#e3d59e}
+.computer-sidebar #opponent-panel>summary .computer-panel-mode{margin-left:auto}
+.computer-sidebar #opponent-panel[open]{padding:0 14px 16px}
+.computer-sidebar #opponent-panel[open]>summary{margin:0 -14px 10px;padding:12px 14px}
+.computer-sidebar #opponent-panel>details{margin-top:12px}
+.computer-sidebar #opponent-events{overflow-wrap:anywhere}
+@media(min-width:721px){
+ .layout{grid-template-columns:44px minmax(0,1fr) 310px}
+ .layout:has(#opponent-panel[open]){grid-template-columns:300px minmax(0,1fr) 310px}
+ .computer-sidebar #opponent-panel:not([open])>summary{writing-mode:vertical-rl;min-height:245px;justify-content:flex-start;gap:12px;padding:16px 12px}
+ .computer-sidebar #opponent-panel:not([open]) .computer-panel-mode{display:none}
+}
+@media(max-width:720px){
+ .computer-sidebar{border-right:0;border-bottom:1px solid #4c5942;max-height:55dvh;flex-shrink:0}
+ .computer-sidebar #opponent-panel>summary{min-height:28px}
+}

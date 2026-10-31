@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Iron Field — Combined Arms</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%236ce6b1'/%3E%3Ctext x='7' y='23' font-size='20'%3EIF%3C/text%3E%3C/svg%3E">
-  <link rel="stylesheet" href="style.css?v=27">
+  <link rel="stylesheet" href="style.css?v=28">
   <script defer src="vendor/three.min.js"></script>
   <script defer src="map.js?v=7"></script>
   <script defer src="data.js?v=16"></script>
@@ -26,20 +26,9 @@
     <div class="top-actions"><div class="music-controls" role="group" aria-label="Background music"><button id="music-toggle" aria-pressed="false" aria-label="Play background music">♫ Music</button><select id="music-track" aria-label="Background music track"><option value="auto">Auto · Calm</option></select><input id="music-volume" type="range" min="0" max="100" step="1" value="25" aria-label="Music volume" title="Music volume"></div><button id="network-open">Multiplayer</button><button id="pause" aria-pressed="false">Pause</button><button id="reset">New battle</button></div>
   </header>
   <main class="layout">
-    <section class="battlefield" aria-label="Interactive 3D battlefield">
-      <div id="viewport"><canvas id="game" tabindex="0" aria-label="3D battlefield. Left-click or drag to select. Right-click to move, attack, or harvest. Right-drag to pan. Use WASD to pan, Q and E to rotate, and the mouse wheel to zoom."></canvas></div>
-      <div class="view-tools"><button id="zoom-in" aria-label="Zoom in">+</button><button id="zoom-out" aria-label="Zoom out">−</button><button id="home" aria-label="Reset camera">Home</button></div>
-      <div id="selection-box" hidden></div>
-      <div id="labels" aria-hidden="true"></div>
-      <div id="announcement" class="announcement" role="status">Your miners are working. Build your strike force.</div>
-      <div id="reward-notice" class="reward-notice" role="status" hidden></div>
-      <div id="result" class="result" hidden><span class="eyebrow">EXERCISE COMPLETE</span><h2 id="result-title"></h2><p id="result-detail"></p><button id="play-again" class="primary">Try again</button></div>
-      <div class="field-footer"><span><i class="swatch friendly"></i> YOUR FORCE <i class="swatch enemy"></i> OPPOSITION</span><span id="render-stats">Starting 3D renderer…</span></div>
-    </section>
-    <aside class="sidebar">
-      <div class="radar-frame"><div class="radar-heading"><span>TACTICAL RADAR</span><span class="radar-live">● ONLINE</span></div><canvas id="radar" width="270" height="160" tabindex="0" aria-label="Tactical minimap. Left-click or drag to pan the camera. Right-click to issue an order."></canvas><details class="sidebar-info"><summary aria-label="Radar controls" title="Radar controls"><span aria-hidden="true">i</span></summary><div class="info-content"><div class="radar-caption">LMB: camera · RMB: orders · Scout to reveal</div></div></details><div id="raid-status" class="raid-status" aria-label="Battle status">Enemy status</div></div>
+    <aside class="computer-sidebar" aria-label="Computer configuration and monitoring">
       <details id="opponent-panel" class="opponent-controls">
-        <summary>COMPUTER OPPONENT <span>SOLO</span></summary>
+        <summary title="Expand or collapse computer controls"><span class="computer-panel-title">COMPUTER OPPONENT</span><span class="computer-panel-mode">SOLO</span></summary>
         <div class="opponent-choice"><select id="opponent-style" aria-label="Computer opponent style" aria-describedby="opponent-description opponent-status">
           <option value="balanced">Balanced</option><option value="rush">Rush commander</option><option value="fortress">Fortress commander</option><option value="economy">Economy commander</option><option value="air">Air commander</option><option value="ollama">AI commander · Ollama</option><option value="openai">AI commander · OpenAI Decisions</option>
         </select><label id="jev-toggle-label" class="jev-toggle" hidden><input id="jev-enabled" type="checkbox"> JEV</label></div>
@@ -68,6 +57,19 @@
         <details id="opponent-log" hidden><summary>Commander activity</summary><pre id="opponent-events">No orders executed yet.</pre></details>
         <details id="battle-log"><summary>Match analysis log</summary><p id="battle-log-status" role="status"></p><button id="battle-log-download">Download match log</button><button id="battle-log-previous" hidden>Download previous match</button><p>Records every game minute and AI decisions as they happen. Download JSON before refreshing or closing this page. Solo matches only.</p></details>
       </details>
+    </aside>
+    <section class="battlefield" aria-label="Interactive 3D battlefield">
+      <div id="viewport"><canvas id="game" tabindex="0" aria-label="3D battlefield. Left-click or drag to select. Right-click to move, attack, or harvest. Right-drag to pan. Use WASD to pan, Q and E to rotate, and the mouse wheel to zoom."></canvas></div>
+      <div class="view-tools"><button id="zoom-in" aria-label="Zoom in">+</button><button id="zoom-out" aria-label="Zoom out">−</button><button id="home" aria-label="Reset camera">Home</button></div>
+      <div id="selection-box" hidden></div>
+      <div id="labels" aria-hidden="true"></div>
+      <div id="announcement" class="announcement" role="status">Your miners are working. Build your strike force.</div>
+      <div id="reward-notice" class="reward-notice" role="status" hidden></div>
+      <div id="result" class="result" hidden><span class="eyebrow">EXERCISE COMPLETE</span><h2 id="result-title"></h2><p id="result-detail"></p><button id="play-again" class="primary">Try again</button></div>
+      <div class="field-footer"><span><i class="swatch friendly"></i> YOUR FORCE <i class="swatch enemy"></i> OPPOSITION</span><span id="render-stats">Starting 3D renderer…</span></div>
+    </section>
+    <aside class="sidebar">
+      <div class="radar-frame"><div class="radar-heading"><span>TACTICAL RADAR</span><span class="radar-live">● ONLINE</span></div><canvas id="radar" width="270" height="160" tabindex="0" aria-label="Tactical minimap. Left-click or drag to pan the camera. Right-click to issue an order."></canvas><details class="sidebar-info"><summary aria-label="Radar controls" title="Radar controls"><span aria-hidden="true">i</span></summary><div class="info-content"><div class="radar-caption">LMB: camera · RMB: orders · Scout to reveal</div></div></details><div id="raid-status" class="raid-status" aria-label="Battle status">Enemy status</div></div>
       <nav class="tabs" aria-label="Production category"><button id="play-tab" class="active" aria-pressed="true" title="Units"><span>▰</span>Units</button><button id="build-tab" aria-pressed="false" title="Structures"><span>▥</span>Structures</button><button id="defense-tab" aria-pressed="false" title="Defenses"><span>⌖</span>Defenses</button><button id="learn-tab" aria-pressed="false" title="Learning tools"><span>⚙</span>Lab</button></nav>
       <section id="superweapons" class="structure-controls" aria-label="Superweapons" hidden><strong>SUPERWEAPONS</strong><p id="super-warning" role="status"></p><div id="superweapon-list"></div></section>
       <section id="structure-actions" class="structure-controls" aria-label="Selected structure" hidden><strong id="structure-action-name"></strong><div class="structure-buttons"><button id="structure-repair" aria-pressed="false">Repair</button><button id="structure-sell">Sell</button></div><button id="structure-superweapon" hidden>Target superweapon</button><p id="structure-action-help" class="catalog-tip"></p></section>

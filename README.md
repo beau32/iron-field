@@ -695,3 +695,6 @@ Units remain assigned until at least 98% health, then rejoin orders. Miners resu
 
 
 Airfields repair one friendly aircraft at a time at 30 HP per simulation second, halved on low power. Select aircraft and right-click a completed airfield to send them to its service area. Aircraft hover at their flight height while receiving repairs, with range measured horizontally. Automatic repair spends half the aircraft purchase price per full health bar. AI aircraft use the same service and rejoin combat after recovery. Selecting the airfield shows its green service area.
+
+
+Computer configuration, AI activity and downloadable match logs live in the separate left **Computer opponent** sidebar. Click its header to collapse or expand it. The browser remembers this state. The production menu remains on the right.
