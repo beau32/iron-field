@@ -1454,7 +1454,15 @@
     if(healed>0){spend(b.team,Math.min(available,healed*price));b.hp=Math.min(b.maxHp,b.hp+healed);}
     if(b.maxHp-b.hp<1e-7){b.hp=b.maxHp;b.repairing=false;}
   }
-  const serviceCompatible=(b,u)=>Boolean(STRUCTURE[b.kind]?.serviceRange&&u?.type==='unit'&&u.team===b.team&&u.hp>0&&!isAir(u)&&!UNIT[u.kind].infantry&&(b.kind==='shipyard'?isNaval(u):!isNaval(u)));
+  const serviceCompatible=(b,u)=>{
+    if(!STRUCTURE[b.kind]?.serviceRange||u?.type!=='unit'||u.team!==b.team||u.hp<=0||UNIT[u.kind].infantry)return false;
+    if(b.kind==='airfield')return isAir(u);
+    if(isAir(u))return false;
+    return b.kind==='shipyard'?isNaval(u):!isNaval(u);
+  };
+  const serviceDistance=(b,u)=>isAir(u)
+    ?Math.hypot(u.mesh.position.x-b.exitPoint.x,u.mesh.position.z-b.exitPoint.z)
+    :u.mesh.position.distanceTo(b.exitPoint);
   function updateYardRepairs(dt){
     const serviced=new Set();
     for(const b of buildings){
@@ -1462,7 +1470,7 @@
       b.repairTarget=null;
       if(!active(b)||!baseOf(b.team)||money(b.team)<=0)continue;
       let target=null;
-      for(const u of units)if(serviceCompatible(b,u)&&u.hp<u.maxHp&&!serviced.has(u.id)&&u.mesh.position.distanceTo(b.exitPoint)<=def.serviceRange&&(!target||u.hp/u.maxHp<target.hp/target.maxHp))target=u;
+      for(const u of units)if(serviceCompatible(b,u)&&u.hp<u.maxHp&&!serviced.has(u.id)&&serviceDistance(b,u)<=def.serviceRange&&(!target||u.hp/u.maxHp<target.hp/target.maxHp))target=u;
       if(!target)continue;
       const available=Math.max(0,money(b.team)),price=UNIT[target.kind].cost*.5/target.maxHp;
       const healed=Math.min(target.maxHp-target.hp,def.serviceRate*dt*(powerFor(b.team).low?.5:1),available/price);
@@ -1471,14 +1479,15 @@
   }
   function orderYardRepair(b,squad,team){
     const compatible=squad.filter(u=>serviceCompatible(b,u)),reserved=[];
-    if(!compatible.length){announce(b.kind==='shipyard'?'Naval shipyards repair ships only.':'War factories repair ground vehicles, including miners.');return;}
+    if(!compatible.length){announce(b.kind==='airfield'?'Airfields repair aircraft only.':b.kind==='shipyard'?'Naval shipyards repair ships only.':'War factories repair ground vehicles, including miners.');return;}
     if(!active(b)){announce('Complete the repair building first.');return;}
     for(const u of compatible){
       let spot=null;
       for(const r of [0,2.5,4]){
         for(let i=0;i<(r?16:1);i++){
           const a=i*Math.PI/8,p=b.exitPoint.clone().add(new THREE.Vector3(Math.sin(a)*r,0,Math.cos(a)*r));
-          if(!blocked(p.x,p.z,u.radius,isNaval(u))&&reserved.every(v=>p.distanceTo(v.p)>u.radius+v.radius+.3)&&units.every(v=>v===u||v.hp<=0||isAir(v)||p.distanceTo(v.mesh.position)>u.radius+v.radius+.3)){spot=p;break;}
+          if(isAir(u))p.y=u.mesh.position.y;
+          if((isAir(u)||!blocked(p.x,p.z,u.radius,isNaval(u)))&&reserved.every(v=>p.distanceTo(v.p)>u.radius+v.radius+.3)&&units.every(v=>v===u||v.hp<=0||isAir(v)||p.distanceTo(v.mesh.position)>u.radius+v.radius+.3)){spot=p;break;}
         }
         if(spot)break;
       }
@@ -2066,7 +2075,7 @@
       e.turret.position.z=(e.navalRig?Math.cos(e.body.rotation.y)*e.navalRig.mountZ:0)-Math.cos(e.turret.rotation.y)*recoil;
     }
     for(const b of buildings)if(b.repairBeam){
-      const target=b.repairTarget;b.repairBeam.visible=Boolean(active(b)&&target?.hp>0&&visibleTo(target)&&target.mesh.position.distanceTo(b.exitPoint)<=STRUCTURE[b.kind].serviceRange);
+      const target=b.repairTarget;b.repairBeam.visible=Boolean(active(b)&&target?.hp>0&&visibleTo(target)&&serviceDistance(b,target)<=STRUCTURE[b.kind].serviceRange);
       if(b.repairBeam.visible){const end=target.mesh.position.clone().sub(b.mesh.position).applyAxisAngle(new THREE.Vector3(0,1,0),-b.mesh.rotation.y);const a=b.repairBeam.geometry.attributes.position;a.setXYZ(0,0,2.8,0);a.setXYZ(1,end.x,1+(target.body?.position.y||0),end.z);a.needsUpdate=true;b.repairBeam.geometry.computeBoundingSphere();}
     }
     waterTexture.offset.x += dt * .002; waterTexture.offset.y += dt * .0007;
@@ -2511,19 +2520,20 @@
     for(const yard of yards){
       const range=STRUCTURE[yard.kind].serviceRange;
       const points=[];
-      if(unit.mesh.position.distanceTo(yard.exitPoint)<range-.3)points.push(unit.mesh.position.clone());
+      if(serviceDistance(yard,unit)<range-.3)points.push(unit.mesh.position.clone());
       for(const radius of [0,2.5,range-.4]){
         for(let i=0;i<(radius?16:1);i++){
           const angle=i*Math.PI/8;
           points.push(yard.exitPoint.clone().add(new THREE.Vector3(Math.sin(angle)*radius,0,Math.cos(angle)*radius)));
         }
       }
-      const point=points.find(p=>!blocked(p.x,p.z,unit.radius,isNaval(unit))&&
+      if(isAir(unit))for(const point of points)point.y=unit.mesh.position.y;
+      const point=points.find(p=>(isAir(unit)||!blocked(p.x,p.z,unit.radius,isNaval(unit)))&&
         reserved.every(v=>p.distanceTo(v.point)>unit.radius+v.radius+.3)&&
         own.every(v=>v===unit||isAir(v)||v.destination||p.distanceTo(v.mesh.position)>unit.radius+v.radius+.3));
       if(point)return {point,source:yard.id};
     }
-    if(!isNaval(unit)){
+    if(!isNaval(unit)&&!isAir(unit)){
       const crawler=own.filter(v=>v!==unit&&v.kind==='repair'&&!v.aiRetreat&&v.hp>0)
         .sort((a,b)=>distance(unit,a)-distance(unit,b))[0];
       if(crawler)return {point:crawler.mesh.position.clone(),source:crawler.id};
@@ -2532,7 +2542,7 @@
   }
   function aiServiceDamagedUnits(own,policy) {
     const reserved=[];
-    const vehicles=own.filter(u=>!isAir(u)&&!UNIT[u.kind].infantry);
+    const vehicles=own.filter(u=>!UNIT[u.kind].infantry);
     vehicles.sort((a,b)=>a.hp/a.maxHp-b.hp/b.maxHp);
     for(const unit of vehicles){
       const healthy=unit.hp>=unit.maxHp*.98;
@@ -3014,7 +3024,7 @@
       $('structure-sell').textContent=structure.kind==='base'?'HQ cannot be sold':`Sell · +$${saleValue(structure)}`;
       $('structure-sell').disabled=Boolean(outcome)||held||structure.kind==='base';
       $('structure-action-help').textContent=structure.repairing?(myCredits>0?'Repairing: 25 health/sec. Stops at full health.':'Repairs waiting for credits; resumes automatically.'):structure.buildLeft?'Repairs unlock when construction finishes. Selling returns half its cost, adjusted for damage.':structure.kind==='base'?'HQ repairs cost credits as health returns. Your HQ cannot be sold.':'Repair: pay as health returns (25 HP/sec). Sell: 50% value, reduced for damage. Production orders stay queued.';
-      if(STRUCTURE[structure.kind].serviceRange&&!structure.buildLeft){const def=STRUCTURE[structure.kind];$('structure-action-help').textContent+=` Auto repair: ${structure.repairTarget?UNIT[structure.repairTarget.kind].name:myCredits<=0?'waiting for credits':structure.kind==='shipyard'?'bring ships into the green bay':'bring vehicles into the green bay'}. One unit at ${def.serviceRate} HP/sec (half on low power). Cost: half its build price for a full health bar. Select units, then right-click this building.`;}
+      if(STRUCTURE[structure.kind].serviceRange&&!structure.buildLeft){const def=STRUCTURE[structure.kind];$('structure-action-help').textContent+=` Auto repair: ${structure.repairTarget?UNIT[structure.repairTarget.kind].name:myCredits<=0?'waiting for credits':structure.kind==='airfield'?'bring aircraft over the green service area':structure.kind==='shipyard'?'bring ships into the green bay':'bring vehicles into the green bay'}. One unit at ${def.serviceRate} HP/sec (half on low power). Cost: half its build price for a full health bar. Select units, then right-click this building.`;}
     }
     $('selection-name').textContent = first ? selected.size === 1 ? stats(first).name : `${selected.size} units selected` : 'Command your force';
     if (first) {

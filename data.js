@@ -27,7 +27,7 @@ const data = {
     missileSilo: { name:'Tempest missile silo', description:'Superweapon · 120s recharge · 4s warning · 450 area damage · 60 power · one per commander', superweapon:true, cost:1200, time:25, hp:900, radius:3, load:60, recharge:120, warning:4, strikeRadius:9, strikeDamage:450, icon:'▲' },
     empArray: { name:'Blackout EMP array', description:'Superweapon · 90s recharge · 3s warning · disables vehicles and defenses for 10s · 50 power · one per commander', superweapon:true, cost:900, time:20, hp:750, radius:2.7, load:50, recharge:90, warning:3, strikeRadius:11, disableTime:10, icon:'◎' },
     shipyard: { name:'Naval shipyard', description:'Produces and repairs ships at its exit · 25 power', serviceRange:5, serviceRate:35, cost:300, time:12, hp:850, radius:2.4, load:25, icon:'⚓' },
-    airfield: { name:'Airfield', description:'Unlocks gunships, interceptors and bombers · 30 power', cost:400, time:15, hp:850, radius:4.5, load:30, icon:'✈' },
+    airfield: { name:'Airfield', description:'Produces and repairs aircraft at its exit · 30 power', serviceRange:5.5, serviceRate:30, cost:400, time:15, hp:850, radius:4.5, load:30, icon:'✈' },
     base: { name: 'Command factory', hp: 1200, radius: 3.3, load: 20 },
     warFactory: { name: 'War factory', description: 'Produces and repairs ground vehicles at its exit · 25 power', serviceRange:4.5, serviceRate:25, cost: 300, time: 12, hp: 900, radius: 3, load: 25, icon: '▰' },
     garrison: { name: 'Troop garrison', description: 'Unlocks riflemen, rocket troopers and snipers · 10 power', cost: 180, time: 8, hp: 700, radius: 2.3, load: 10, icon: '♟' },

@@ -689,6 +689,9 @@ Ollama and JEV allocate separate nearby, weapon-compatible guards for each home 
 
 ### Computer unit repair
 
-Idle damaged ground vehicles, miners and ships seek compatible repair service before joining the next attack. Engaged vehicles use their policy's retreat threshold. War factories and naval shipyards receive separate repair positions with collision clearance. Repair crawlers can service ground vehicles and wait for assigned patients. The repair loop spends normal credits at factories and shipyards, including when less than $20 remains. Crawlers retain their ordinary repair behavior and cost.
+Idle damaged ground vehicles, miners, ships and aircraft seek compatible repair service before joining the next attack. Engaged vehicles use their policy's retreat threshold. War factories, naval shipyards and airfields receive separate repair positions with collision clearance. Repair crawlers can service ground vehicles and wait for assigned patients. The repair loop spends normal credits at factories and shipyards, including when less than $20 remains. Crawlers retain their ordinary repair behavior and cost.
 
-Units remain assigned until at least 98% health, then rejoin orders. Miners resume harvesting. Losing all compatible repair services cancels the repair order. Infantry and aircraft follow their existing combat behavior because these service facilities support vehicles and ships.
+Units remain assigned until at least 98% health, then rejoin orders. Miners resume harvesting. Losing all compatible repair services cancels the repair order. Infantry follows its existing combat behavior.
+
+
+Airfields repair one friendly aircraft at a time at 30 HP per simulation second, halved on low power. Select aircraft and right-click a completed airfield to send them to its service area. Aircraft hover at their flight height while receiving repairs, with range measured horizontally. Automatic repair spends half the aircraft purchase price per full health bar. AI aircraft use the same service and rejoin combat after recovery. Selecting the airfield shows its green service area.
