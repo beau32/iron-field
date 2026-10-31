@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Iron Field — Combined Arms</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%236ce6b1'/%3E%3Ctext x='7' y='23' font-size='20'%3EIF%3C/text%3E%3C/svg%3E">
-  <link rel="stylesheet" href="style.css?v=26">
+  <link rel="stylesheet" href="style.css?v=27">
   <script defer src="vendor/three.min.js"></script>
   <script defer src="map.js?v=7"></script>
   <script defer src="data.js?v=15"></script>
@@ -15,8 +15,8 @@
   <script defer src="fog.js?v=2"></script>
   <script defer src="opponent.js?v=2"></script>
   <script defer src="voice.js?v=4"></script>
-  <script defer src="ai-link.js?v=5"></script>
-  <script defer src="game.js?v=45"></script>
+  <script defer src="ai-link.js?v=6"></script>
+  <script defer src="game.js?v=46"></script>
   <script defer src="music.js?v=2"></script>
 </head>
 <body>
@@ -40,21 +40,23 @@
       <div class="radar-frame"><div class="radar-heading"><span>TACTICAL RADAR</span><span class="radar-live">● ONLINE</span></div><canvas id="radar" width="270" height="160" tabindex="0" aria-label="Tactical minimap. Left-click or drag to pan the camera. Right-click to issue an order."></canvas><details class="sidebar-info"><summary aria-label="Radar controls" title="Radar controls"><span aria-hidden="true">i</span></summary><div class="info-content"><div class="radar-caption">LMB: camera · RMB: orders · Scout to reveal</div></div></details><div id="raid-status" class="raid-status" aria-label="Battle status">Enemy status</div></div>
       <details id="opponent-panel" class="opponent-controls">
         <summary>COMPUTER OPPONENT <span>SOLO</span></summary>
-        <select id="opponent-style" aria-label="Computer opponent style" aria-describedby="opponent-description opponent-status">
+        <div class="opponent-choice"><select id="opponent-style" aria-label="Computer opponent style" aria-describedby="opponent-description opponent-status">
           <option value="balanced">Balanced</option><option value="rush">Rush commander</option><option value="fortress">Fortress commander</option><option value="economy">Economy commander</option><option value="air">Air commander</option><option value="ollama">AI commander · Ollama</option><option value="openai">AI commander · OpenAI Decisions</option>
-        </select>
+        </select><label id="jev-toggle-label" class="jev-toggle" hidden><input id="jev-enabled" type="checkbox"> JEV</label></div>
         <details class="sidebar-info"><summary aria-label="About computer opponents" title="About computer opponents"><span aria-hidden="true">i</span></summary><div class="info-content"><p id="opponent-description">Mixed forces, protected miners, and measured attacks.</p>
         <p id="opponent-aid">Solo AI support: +120 credits/min below $600 · emergency recovery funds.</p></div></details>
         <p id="opponent-status" role="status" hidden></p>
         <div id="ai-settings" hidden>
           <label for="ai-location">SEND AI REQUESTS THROUGH</label>
           <select id="ai-location"><option value="player">This computer</option><option value="server">Game server</option></select>
-          <div id="ollama-model-controls"><label for="ollama-model">OLLAMA MODEL</label><div class="model-choice"><select id="ollama-model" aria-describedby="ollama-model-status"><option value="">Loading models…</option></select><button id="ollama-model-refresh" aria-label="Refresh installed Ollama models" title="Refresh installed models">↻</button></div><p id="ollama-model-status" role="status"></p></div>
+          <div id="jev-port-controls" hidden><label for="jev-port">JEV PORT</label><input id="jev-port" type="number" min="1" max="65535" step="1" placeholder="Service port" aria-describedby="jev-port-status"><p id="jev-port-status" role="status"></p></div>
+          <div id="ollama-model-controls"><label id="ai-model-label" for="ollama-model">OLLAMA MODEL</label><div class="model-choice"><select id="ollama-model" aria-describedby="ollama-model-status"><option value="">Loading models…</option></select><button id="ollama-model-refresh" aria-label="Refresh installed AI models" title="Refresh installed models">↻</button></div><p id="ollama-model-status" role="status"></p></div>
           <details class="sidebar-info"><summary aria-label="About AI providers and API usage" title="About AI providers and API usage"><span aria-hidden="true">i</span></summary><div class="info-content"><p id="ai-cloud-notice" hidden>Uses OpenAI Decisions in the cloud. Sends game-state summaries; API usage is billed to your OpenAI account.</p>
           <p id="ai-server-info" hidden></p><p>Model choices come from the selected computer. Larger models may miss the five-second planning deadline. Selecting a model does not download it. For This computer, use the latest connector download.</p><p>This computer uses your paired local connector. Game server uses the provider configured on the host.</p></div></details>
           <details id="ai-pairing"><summary>Connect this computer</summary>
-            <p><a href="local-ai.zip?v=2" download>Download the AI connector</a> and extract it. Node.js 18+ required.</p>
+            <p><a href="local-ai.zip?v=3" download>Download the AI connector</a> and extract it. Node.js 18+ required.</p>
             <details class="sidebar-info"><summary aria-label="How to connect AI on this computer" title="How to connect AI on this computer"><span aria-hidden="true">i</span></summary><div class="info-content"><p id="ai-ollama-help">Run Ollama locally and start <strong>Start-Local-AI.cmd</strong>. On macOS/Linux run <code>node local-ai.cjs</code>.</p>
+            <p id="ai-jev-help" hidden>Run a JEV-compatible decision service on the port above. Start <strong>Start-JEV-AI.cmd</strong>, or run <code>node local-ai.cjs --provider jev</code>. Create a new pairing code after changing ports. Requests use <code>/v1/systemone</code>. Decision times shown include the connector round trip; speed depends on your service and model.</p>
             <p id="ai-openai-help" hidden>Start <strong>Start-OpenAI-AI.cmd</strong>. On macOS/Linux run <code>node local-ai.cjs --provider openai</code>. After pairing, open <strong>API key setup</strong> and enter your key in the local connector page. The key stays in memory until the connector closes.</p>
             <p>Use this game's server address, then enter the pairing code. Keep the connector running while you play.</p></div></details>
             <button id="ai-pair">Create pairing code</button><code id="ai-pair-code">Not paired</code>

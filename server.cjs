@@ -18,6 +18,7 @@ const definitions = require('./data.js');
 const aiCommander = require('./commander.cjs');
 const localCommander = require('./local-commander.cjs');
 const openaiCommander = require('./openai-commander.cjs');
+const jevCommander = require('./jev-commander.cjs');
 const unitKinds = Object.keys(definitions.units);
 const buildingKinds = Object.keys(definitions.buildings).filter(kind => definitions.buildings[kind].cost > 0);
 const token = () => crypto.randomBytes(24).toString('hex');
@@ -91,6 +92,7 @@ const server=http.createServer(async(req,res)=>{
     if(req.headers.origin && req.headers.origin!==`http://${req.headers.host}`)throw fail(403,'Open the game on this server to connect.');
     if(url.pathname==='/api/info'&&req.method==='GET'){reply(res,200,{version,links:lanLinks(req),port:PORT});return;}
     if(url.pathname==='/api/commander/status'&&req.method==='GET'){reply(res,200,await aiCommander.status(url.searchParams.get('model')||undefined));return;}
+    if(url.pathname==='/api/commander/jev/status'&&req.method==='GET'){reply(res,200,await jevCommander.status(url.searchParams.get('model')||undefined));return;}
     if(url.pathname==='/api/commander/openai/status'&&req.method==='GET'){reply(res,200,openaiCommander.status());return;}
     if(url.pathname==='/api/events'&&req.method==='GET') {
       const seat=authenticate(req),room=seat.room;
@@ -105,10 +107,10 @@ const server=http.createServer(async(req,res)=>{
     if(!req.headers['content-type']?.startsWith('application/json'))throw fail(415,'Use application/json.');
     const data=await body(req);
     if(url.pathname.startsWith('/api/commander/local/')){await localCommander.handle(req,res,url.pathname.slice('/api/commander/local/'.length),data,reply);return;}
-    if(['/api/commander/plan','/api/commander/openai/plan'].includes(url.pathname)) {
+    if(['/api/commander/plan','/api/commander/openai/plan','/api/commander/jev/plan'].includes(url.pathname)) {
       const controller=new AbortController();
       const cancel=()=>controller.abort();res.on('close',cancel);
-      try {const result=await (url.pathname==='/api/commander/openai/plan'?openaiCommander:aiCommander).plan(data,controller.signal);if(!res.destroyed)reply(res,200,result);}
+      try {const result=await (url.pathname==='/api/commander/openai/plan'?openaiCommander:url.pathname==='/api/commander/jev/plan'?jevCommander:aiCommander).plan(data,controller.signal);if(!res.destroyed)reply(res,200,result);}
       finally {res.off('close',cancel);}return;
     }
     if(['/api/create','/api/join'].includes(url.pathname)&&data.version!==version)throw fail(409,'Game updated. Refresh this page before hosting or joining.');

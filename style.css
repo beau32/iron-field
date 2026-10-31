@@ -102,3 +102,5 @@ dialog{color:var(--text);background:var(--panel);border:1px solid #51635e;border
 #superweapon-list{display:grid;gap:6px;margin-top:8px}#superweapon-list button{text-align:left;font-size:11px;padding:9px}#superweapon-list .ready{border-color:#efd285;color:#fff0be;background:#4c4930}#super-warning{color:#ffad85;font-size:12px;margin:5px 0}#super-warning:empty{display:none}#structure-superweapon{width:100%;margin-top:8px}
 
 .model-choice{display:flex;gap:6px;align-items:center}.model-choice select{flex:1;min-width:0}.model-choice button{padding:8px 12px}#ollama-model-status{font-size:11px;line-height:1.4;color:#cbbd83;margin:4px 0 8px}
+
+.opponent-choice{display:flex;gap:8px;align-items:center}.opponent-choice select{min-width:0;flex:1}.opponent-controls .jev-toggle{display:flex;align-items:center;gap:5px;margin:0;white-space:nowrap}.jev-toggle input{width:auto;accent-color:#9ce7bf}#jev-port{width:100%;box-sizing:border-box;padding:8px;background:#14231a;color:#e5e8d0;border:1px solid #61784e;border-radius:3px}#jev-port-status{font-size:11px;line-height:1.4;color:#cbbd83}

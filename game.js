@@ -2105,7 +2105,7 @@
     return { nextThink: 0, nextBuild: 6, nextRecruit: 0, mode: 'Preparing', intent:'', events:[], decisions:0, plan:null, planAt:0, nextModel:0, pending:false, modelStatus:'', model:'', targetId: null, raidSize: 0, raidStarted: 0, regroupUntil: 0, battleEvents:[],incomeSamples:[],progressAt:0,operationAt:0,lastModelRequest:-Infinity,modelRetryUntil:0 };
   }
   function isModelOpponent(){return ['ollama','openai'].includes(opponentStyle);}
-  function modelProvider(){return opponentStyle==='openai'?'OpenAI Decisions':'Ollama';}
+  function modelProvider(){return opponentStyle==='openai'?'OpenAI Decisions':window.FieldLocalAI?.provider==='jev'?'JEV':'Ollama';}
   function currentModelPlan() {
     return isModelOpponent() && commander.plan && performance.now()-commander.planAt<180000 ? commander.plan : null;
   }
@@ -2177,6 +2177,7 @@
       if(!plan)throw Error(modelProvider()+' returned an invalid plan');
       if(state!==commander||controller.signal.aborted||net?.active||!raids||!isModelOpponent())return;
       acceptAIPlan(plan,result.model);
+      state.decisionMs=Math.round(performance.now()-state.lastModelRequest);
       state.modelRetryUntil=0;
       state.nextModel=performance.now()+30000;
     } catch(error) {
@@ -2192,7 +2193,7 @@
     $('opponent-description').textContent=multiplayer?'Human opponents control this multiplayer match.':model?modelProvider()+' chooses operations; local tactics counter threats, coordinate fire and avoid losing fights.':FIELD_OPPONENT.styles[opponentStyle].description;
     $('opponent-aid').hidden=multiplayer||!raids;
     const label=$('opponent-status');label.hidden=!model||multiplayer;label.dataset.live=String(Boolean(plan)&&raids);
-    label.textContent=!raids?'Computer strategy is off. Enable it in Lab.':plan?`AI order: ${aiPlanName(plan)}${commander.pending?' · refreshing…':commander.modelStatus!=='AI plan active'?' · last plan (refresh unavailable)':''}`:`${commander.modelStatus||'Waiting for '+modelProvider()} · Balanced fallback active`;
+    label.textContent=!raids?'Computer strategy is off. Enable it in Lab.':plan?`AI order: ${aiPlanName(plan)}${modelProvider()==='JEV'&&Number.isFinite(commander.decisionMs)?' · '+commander.decisionMs+' ms':''}${commander.pending?' · refreshing…':commander.modelStatus!=='AI plan active'?' · last plan (refresh unavailable)':''}`:`${commander.modelStatus||'Waiting for '+modelProvider()} · Balanced fallback active`;
     $('opponent-order').hidden=multiplayer||!model||!raids;
     $('opponent-order').textContent='Tactics: '+(commander.intent||'Assessing the battlefield');
     $('opponent-log').hidden=multiplayer||!model;

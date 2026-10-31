@@ -515,6 +515,42 @@ The computer is a prototype opponent with global strategic knowledge: its army s
 
 There is no training or persistent learning between matches, and no search through simulated future battles. The small LLM chooses among scored, feasible operations using a compact assessment and recent battle feedback; local rules perform the combat. Its richer behavior comes from those rules plus the operation choice. This explains why Ollama may resemble a preset for a while, especially when funds, prerequisites, a shortlist, or a fallback constrain its choices.
 
+### Optional JEV decision mode
+
+Select **AI commander · Ollama**, then check **JEV** beside the opponent selector. Uncheck it to return to ordinary Ollama chat. Each mode remembers its own model choices and pairing; JEV does not change the normal Ollama port or install a model.
+
+For **This computer**:
+
+1. Run a JEV-compatible decision service locally on its own port, with a compatible decision model installed. Enter that port under **JEV PORT**; no port is assumed.
+2. Download and extract the updated **AI connector**. Launch **Start-JEV-AI.cmd**, or run `node local-ai.cjs --provider jev` on macOS/Linux.
+3. Click **Create pairing code**, then enter the game server address and code in the connector. The pairing supplies the port to the connector, which contacts only `http://127.0.0.1:<port>` on that computer.
+4. Choose an installed model from **JEV MODEL**. The default is `nimble` (including the `nimble:latest` tag); set `JEV_MODEL` before launching for a different default. Changing ports requires a new pairing code and connector restart.
+
+For **Game server**, set `JEV_PORT` and optionally `JEV_MODEL` in the game server's environment, then restart it. The port displayed in the browser is read-only in this mode. Its value is independent of `OLLAMA_URL`; JEV requests always go to the server's loopback interface. With no configured port, the game reports that JEV is unavailable and continues fallback tactics.
+
+The adapter in [`jev-commander.cjs`](jev-commander.cjs) uses the [JEV-compatible System One API](https://github.com/ollama/ollama/blob/main/docs/capabilities/decision.mdx): model discovery through `GET /api/tags` (or `GET /v1/models` if tags returns 404), then `POST /v1/systemone`. It sends the validated Strategy v2 battle summary as `state`, with a named `strategy` choice question, instructions and criteria for feasible operations. It does **not** send a chat prompt asking the model to generate JSON:
+
+```json
+{
+  "model": "nimble",
+  "state": "{...validated battle summary...}",
+  "questions": {
+    "strategy": {
+      "type": "choice",
+      "instructions": "Choose the best feasible operation for our army.",
+      "criteria": {
+        "rush": "pressure production or finish vulnerable HQ",
+        "balanced": "mixed force; attack exposed economy"
+      }
+    }
+  }
+}
+```
+
+This is an abbreviated example; the actual instructions include income recovery, base threats, queued counters, affordability, and stalled or losing operations. If the shortlist contains only one operation, a conservative defend option supplies the protocol's second alternative. Only an offered `answers.strategy.choice` is accepted, then mapped through the same Strategy v2 production and targeting rules. Invalid responses, missing services and timeouts retain the existing unexpired plan or Balanced fallback.
+
+**AI order displays the measured JEV round-trip time in milliseconds**, including browser/server/connector overhead. The JEV connector checks for jobs every 100 ms; ordinary Ollama remains at 500 ms. Typed decisions may be faster than generated chat output, but selecting the checkbox does not guarantee subsecond inference. Service implementation, model, hardware, cold starts and network overhead all matter. The five-second inference deadline and ordinary 30-second strategy refresh cadence remain in place; tactics continue between decisions. API discovery alone cannot prove a model supports decisions: that is validated when a decision request completes.
+
 ### Run with your own Ollama
 
 For **Game server** execution, the server adapter expects Ollama on the server machine with `qwen2.5:0.5b` installed by default:
