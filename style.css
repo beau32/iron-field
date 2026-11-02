@@ -90,13 +90,13 @@ dialog{color:var(--text);background:var(--panel);border:1px solid #51635e;border
 .sidebar .tech-tree.sidebar-info[open]{padding:0 0 8px}
 
 /* Keep opponent setup within one keyboard-accessible disclosure. */
-#opponent-panel>summary{display:flex;align-items:center;gap:8px;min-height:28px;list-style:none;cursor:pointer;font:10px Consolas,monospace;letter-spacing:1px;color:#e3d59e}
-#opponent-panel>summary::-webkit-details-marker{display:none}
-#opponent-panel>summary::before{content:"▸";font-size:14px;color:#b9d7a4}
-#opponent-panel[open]>summary::before{content:"▾"}
-#opponent-panel>summary>span{margin-left:auto;color:#90a583}
-#opponent-panel>summary:hover{color:#fff0ba}
-#opponent-panel>summary:focus-visible{outline:2px solid #a8e9ce;outline-offset:3px}
+:is(#opponent-panel,#lab-panel)>summary{display:flex;align-items:center;gap:8px;min-height:28px;list-style:none;cursor:pointer;font:10px Consolas,monospace;letter-spacing:1px;color:#e3d59e}
+:is(#opponent-panel,#lab-panel)>summary::-webkit-details-marker{display:none}
+:is(#opponent-panel,#lab-panel)>summary::before{content:"▸";font-size:14px;color:#b9d7a4}
+:is(#opponent-panel,#lab-panel)[open]>summary::before{content:"▾"}
+:is(#opponent-panel,#lab-panel)>summary>span{margin-left:auto;color:#90a583}
+:is(#opponent-panel,#lab-panel)>summary:hover{color:#fff0ba}
+:is(#opponent-panel,#lab-panel)>summary:focus-visible{outline:2px solid #a8e9ce;outline-offset:3px}
 
 
 #superweapon-list{display:grid;gap:6px;margin-top:8px}#superweapon-list button{text-align:left;font-size:11px;padding:9px}#superweapon-list .ready{border-color:#efd285;color:#fff0be;background:#4c4930}#super-warning{color:#ffad85;font-size:12px;margin:5px 0}#super-warning:empty{display:none}#structure-superweapon{width:100%;margin-top:8px}
@@ -108,21 +108,87 @@ dialog{color:var(--text);background:var(--panel);border:1px solid #51635e;border
 
 /* Computer controls occupy their own independently scrolling, collapsible rail. */
 .computer-sidebar{background:#17251c;border-right:1px solid #4c5942;min-width:0;overflow-y:auto;overflow-x:hidden}
-.computer-sidebar #opponent-panel{padding:0;border:0;min-height:100%}
-.computer-sidebar #opponent-panel>summary{position:sticky;top:0;z-index:2;background:#1d3023;padding:12px 10px;margin:0;border-bottom:1px solid #4c5942}
-.computer-sidebar #opponent-panel>summary .computer-panel-title{margin-left:0;color:#e3d59e}
-.computer-sidebar #opponent-panel>summary .computer-panel-mode{margin-left:auto}
-.computer-sidebar #opponent-panel[open]{padding:0 14px 16px}
-.computer-sidebar #opponent-panel[open]>summary{margin:0 -14px 10px;padding:12px 14px}
-.computer-sidebar #opponent-panel>details{margin-top:12px}
+.computer-sidebar :is(#opponent-panel,#lab-panel){padding:0;border:0;min-height:100%}
+.computer-sidebar :is(#opponent-panel,#lab-panel)>summary{position:sticky;top:0;z-index:2;background:#1d3023;padding:12px 10px;margin:0;border-bottom:1px solid #4c5942}
+.computer-sidebar :is(#opponent-panel,#lab-panel)>summary .computer-panel-title{margin-left:0;color:#e3d59e}
+.computer-sidebar :is(#opponent-panel,#lab-panel)>summary .computer-panel-mode{margin-left:auto}
+.computer-sidebar :is(#opponent-panel,#lab-panel)[open]{padding:0 14px 16px}
+.computer-sidebar :is(#opponent-panel,#lab-panel)[open]>summary{margin:0 -14px 10px;padding:12px 14px}
+.computer-sidebar :is(#opponent-panel,#lab-panel)>details{margin-top:12px}
 .computer-sidebar #opponent-events{overflow-wrap:anywhere}
 @media(min-width:721px){
  .layout{grid-template-columns:44px minmax(0,1fr) 310px}
- .layout:has(#opponent-panel[open]){grid-template-columns:300px minmax(0,1fr) 310px}
- .computer-sidebar #opponent-panel:not([open])>summary{writing-mode:vertical-rl;min-height:245px;justify-content:flex-start;gap:12px;padding:16px 12px}
- .computer-sidebar #opponent-panel:not([open]) .computer-panel-mode{display:none}
+ .layout:has(:is(#opponent-panel,#lab-panel)[open]){grid-template-columns:300px minmax(0,1fr) 310px}
+ .computer-sidebar :is(#opponent-panel,#lab-panel):not([open])>summary{writing-mode:vertical-rl;min-height:245px;justify-content:flex-start;gap:12px;padding:16px 12px}
+ .computer-sidebar :is(#opponent-panel,#lab-panel):not([open]) .computer-panel-mode{display:none}
 }
 @media(max-width:720px){
  .computer-sidebar{border-right:0;border-bottom:1px solid #4c5942;max-height:55dvh;flex-shrink:0}
- .computer-sidebar #opponent-panel>summary{min-height:28px}
+ .computer-sidebar :is(#opponent-panel,#lab-panel)>summary{min-height:28px}
+}
+
+
+/* Keep the production frame fixed while its item list uses the remaining space. */
+.computer-sidebar{display:flex;flex-direction:column}
+.computer-sidebar :is(#opponent-panel,#lab-panel){min-height:0;flex:0 0 auto}
+.computer-sidebar :is(#opponent-panel,#lab-panel)[open]{flex:1 1 0;overflow-y:auto;min-height:80px}
+.computer-sidebar:has(details[open]) :is(#opponent-panel,#lab-panel):not([open])>summary{writing-mode:horizontal-tb;min-height:28px;padding:10px 14px}
+.computer-sidebar #lab-panel:not([open])>summary{min-height:100px}
+.computer-sidebar #learn-panel{padding:0}
+.computer-sidebar #learn-panel h2{font-size:18px;margin:10px 0}
+.computer-sidebar #learn-panel .toggle{margin-top:14px;font-size:12px}
+.computer-sidebar #learn-panel small{font-size:10px}
+.structure-heading{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.structure-heading .sidebar-info{margin:0;flex-shrink:0}
+.structure-info[open] .info-content{position:absolute;top:100%;left:8px;right:8px;z-index:10;box-shadow:0 6px 18px #0008}
+.structure-controls{position:relative}
+@media(min-width:721px){
+ body{height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+ .topbar{flex:0 0 auto;min-height:56px;padding:6px 14px}
+ .layout{height:auto;min-height:0;flex:1;grid-template-columns:40px minmax(0,1fr) 280px}
+ .layout:has(:is(#opponent-panel,#lab-panel)[open]){grid-template-columns:280px minmax(0,1fr) 280px}
+ .sidebar{overflow:hidden;min-height:0}
+ .sidebar>.radar-frame,.sidebar>.tabs,.sidebar>.structure-controls,.sidebar>.selection-console,.sidebar>.production-console{flex:0 0 auto}
+ .sidebar>.panel{display:flex;flex-direction:column;flex:1 1 0;min-height:0;padding:8px 10px;overflow:hidden}
+ .sidebar .catalog,.sidebar .building-catalog{flex:1;min-height:0;overflow-y:auto;align-content:start;grid-auto-rows:minmax(120px,max-content);gap:5px;margin-top:6px;max-height:none}
+ .sidebar .build-card .portrait{height:45px;flex:0 0 45px}
+ .sidebar .build-card strong{font-size:10px;line-height:13px;min-height:22px;flex:0 0 auto}
+ .sidebar .build-card .card-meta,.sidebar .build-card .card-state{flex:0 0 auto}
+ .sidebar .build-card small{font-size:9px}
+ .sidebar .radar-frame{padding:6px 10px}
+ .sidebar #radar{height:clamp(68px,13vh,115px);width:auto;max-width:100%;aspect-ratio:270/160;margin:auto}
+ .sidebar .radar-heading{font-size:8px;margin-bottom:4px}
+ .sidebar .radar-frame>.sidebar-info{position:absolute;right:12px;top:4px}
+ .sidebar .radar-live{margin-right:26px}
+ .sidebar .radar-frame{position:relative}
+ .sidebar .raid-status{font-size:9px;padding:5px;margin-top:4px}
+ .sidebar .tabs{grid-template-columns:repeat(3,minmax(0,1fr));padding:0 8px;gap:6px;justify-content:space-around}
+ .sidebar .tabs button{flex:1;padding:7px 2px;font-size:10px}
+ .sidebar .tabs button span{display:inline;margin:0 4px 0 0;font-size:16px}
+ .sidebar .structure-controls{padding:6px 10px}
+ .sidebar .structure-controls strong{font-size:11px}
+ .sidebar .structure-buttons{gap:5px;margin-top:4px}
+ .sidebar .structure-buttons button{padding:6px;font-size:10px}
+ .sidebar .roster-filters{gap:3px;margin-top:5px;flex-wrap:wrap}
+ .sidebar .roster-filters button{padding:4px;font-size:9px}
+ .sidebar .selection-console{padding:7px 10px}
+ .sidebar .selection-console h2{font-size:12px;margin:4px 0}
+ .sidebar .selection-extra{font-size:9px;max-height:28px;overflow:auto}
+ .sidebar .command-grid{margin-top:5px}
+ .sidebar .command-grid button{padding:5px 2px}
+ .sidebar .group-strip{margin-top:5px}
+ .sidebar .production-console{padding:3px 10px}
+ .sidebar .production-console:has(#build-status:empty):not(:has(#cancel-build:not([hidden]))) {display:none}
+ .sidebar .selection-console>.sidebar-info{position:absolute;right:10px;top:4px;margin:0}
+ .sidebar .selection-console{position:relative}
+ .sidebar .selection-console .section-heading{padding-right:28px}
+ .sidebar .selection-console>.sidebar-info[open] .info-content{position:absolute;bottom:30px;right:0;width:230px;z-index:10}
+ .sidebar .side-footer{display:none}
+}
+
+@media(min-width:721px){
+ .sidebar>.panel{position:relative}
+ .sidebar>.panel>.section-heading{padding-right:30px}
+ .sidebar>.panel>.sidebar-info{position:absolute;top:3px;right:8px;margin:0;z-index:5}
+ .sidebar>.panel>.sidebar-info .info-content{position:absolute;top:27px;right:0;width:250px;box-shadow:0 6px 18px #0008}
 }

@@ -1830,12 +1830,12 @@
   $('zoom-in').onclick = () => { view.span = Math.max(22, view.span - 5); updateCamera(); };
   $('zoom-out').onclick = () => { view.span = Math.min(Math.max(85, fitSpan() * 1.35), view.span + 5); updateCamera(); };
   $('cancel-build').onclick = cancelPlacement;
-  for (const which of ['play', 'build', 'defense', 'learn']) $(`${which}-tab`).onclick = () => {
-    for (const panel of ['play', 'build', 'defense', 'learn']) {
+  for (const which of ['play', 'build', 'defense']) $(`${which}-tab`).onclick = () => {
+    for (const panel of ['play', 'build', 'defense']) {
       $(`${panel}-panel`).hidden = panel !== which; $(`${panel}-tab`).classList.toggle('active', panel === which); $(`${panel}-tab`).setAttribute('aria-pressed', String(panel === which));
     }
     cancelPlacement();
-    $('catalog-help').textContent = which === 'play' ? 'Left-click to produce. Right-click a unit icon to cancel one of that type and refund it.' : which === 'learn' ? 'Explore the renderer and simulation with the learning tools.' : 'Choose a blueprint, then left-click the battlefield to deploy. Right-click cancels placement.';
+    $('catalog-help').textContent = which === 'play' ? 'Left-click to produce. Right-click a unit icon to cancel one of that type and refund it.' : 'Choose a blueprint, then left-click the battlefield to deploy. Right-click cancels placement.';
     document.querySelector('.sidebar').scrollTop = 0;
   };
   $('wireframe').onchange = e => materials.forEach(m => m.wireframe = e.target.checked);

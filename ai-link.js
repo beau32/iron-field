@@ -13,6 +13,12 @@
   if(event.target!==panel)return;
   try{localStorage.setItem('iron-field-opponent-panel',panel.open?'open':'closed');}catch{}
  });
+ const labPanel=$('lab-panel');
+ try{labPanel.open=localStorage.getItem('iron-field-lab-panel')==='open';}catch{}
+ labPanel.addEventListener('toggle',event=>{
+  if(event.target!==labPanel)return;
+  try{localStorage.setItem('iron-field-lab-panel',labPanel.open?'open':'closed');}catch{}
+ });
  try{mode=localStorage.getItem('iron-field-ai-location')||'player';}catch{}
  if(!['player','server'].includes(mode))mode='player';
  const storageKey=()=>provider==='openai'?'iron-field-local-ai-openai':provider==='jev'?'iron-field-local-ai-jev':'iron-field-local-ai';

@@ -55,7 +55,7 @@ You start with **600 credits**, a scout buggy, two battle tanks, artillery, and 
 4. Press **F** to select combat vehicles. Right-click the ground to move or an enemy to attack. Left-click empty ground clears selection.
 5. Protect your miners when the raid countdown ends. Destroy the enemy HQ to win; losing your own HQ ends the game.
 
-**Lab** contains wireframe, a world grid, perspective, slow motion, and a live object inspector. Turn off raids and reinforcements for a quieter learning session; enemies still defend their base.
+**Lab**, in the collapsible left sidebar, contains wireframe, a world grid, perspective, slow motion, and a live object inspector. Turn off raids and reinforcements for a quieter learning session; enemies still defend their base.
 
 ## Recognizing ground units
 
@@ -356,7 +356,7 @@ The solo commander can build airfields later in a match and responds to aircraft
 
 ## Choose a computer opponent
 
-Use **Computer opponent**, directly below the radar. Your choice is saved in this browser and can change during a solo match. Switching styles recalls existing raiders, clears the previous model plan, and schedules the next attack opportunity using the new style's first-raid delay. It does not grant credits or units. **Lab → Computer strategy & raids** disables strategic orders, construction, recruitment, and raids; mining and local defensive combat continue. Re-enabling it uses the selected style's first-raid delay again.
+Use **Computer opponent** in the collapsible left sidebar. Your choice is saved in this browser and can change during a solo match. Switching styles recalls existing raiders, clears the previous model plan, and schedules the next attack opportunity using the new style's first-raid delay. It does not grant credits or units. **Lab → Computer strategy & raids** disables strategic orders, construction, recruitment, and raids; mining and local defensive combat continue. Re-enabling it uses the selected style's first-raid delay again.
 
 Computer opponents are **solo-only**. Human multiplayer disables the selector and makes no model planning requests; empty multiplayer seats do not become computer players.
 
@@ -700,3 +700,5 @@ Airfields repair one friendly aircraft at a time at 30 HP per simulation second,
 
 
 Computer configuration, AI activity and downloadable match logs live in the separate left **Computer opponent** sidebar. Click its header to collapse or expand it. The browser remembers this state. The production menu remains on the right.
+
+The right production sidebar keeps the radar, production tabs, selected-structure actions and squad commands in fixed positions on desktop screens. The production item list scrolls independently when space is limited. Repair and sell details are available from the information icon beside the selected structure. Lab has its own collapsible section in the left sidebar.
