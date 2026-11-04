@@ -1,8 +1,6 @@
 'use strict';
 // Fixed Decisions endpoint; credentials and prompts are never supplied by remote players.
-const {summarize,choices}=require('./commander.cjs');
-const {validPlan}=require('./opponent.js');
-const definitions=require('./data.js');
+const {summarize,choices,offeredOperations,planFor}=require('./commander.cjs');
 const MODEL='gpt-6-luna';
 const descriptions={
  balanced:'Maintain a mixed army and attack exposed economy.',
@@ -33,13 +31,16 @@ function createCommander({fetchImpl=fetch,initialKey=process.env.OPENAI_API_KEY|
   signal.addEventListener('abort',cancel,{once:true});if(signal.aborted)cancel();
   const timer=setTimeout(cancel,timeoutMs);
   try{
-   const options=Object.keys(choices).filter(name=>name!=='naval'||summary.context.water);
+   const baseOptions=Object.keys(choices).filter(name=>name!=='naval'||summary.context.water);
+   const directives=offeredOperations(summary).filter(option=>!Object.hasOwn(choices,option.name));
+   const options=[...baseOptions,...directives.map(option=>option.name)];
+   const extraDescriptions=Object.fromEntries(directives.map(option=>[option.name,option.why]));
    const response=await fetchImpl('https://api.openai.com/v1/decisions',{
     method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+key},signal:controller.signal,
     body:JSON.stringify({model:MODEL,input:JSON.stringify(summary),questions:[{
      type:'choice',name:'strategy',
      instructions:'Choose the best next high-level operation for our computer army in a fictional RTS game. own is our army; opponent is the human. Credits, production buildings, miners, power and visible base pressure matter. Recover income if miners or refinery are lost; defend immediate threats; otherwise exploit enemy weaknesses. Avoid expensive technology without income or prerequisites. Use naval only when water exists. Ordinary local tactics handle movement, combat and recovery. Choose one operation.',
-     choices:options.map(value=>({value,description:descriptions[value]}))
+     choices:options.map(value=>({value,description:descriptions[value]||extraDescriptions[value]}))
     }]})
    });
    if(!response.ok){
@@ -51,7 +52,7 @@ function createCommander({fetchImpl=fetch,initialKey=process.env.OPENAI_API_KEY|
    const answer=Array.isArray(data.answers)?data.answers.find(a=>a?.name==='strategy'):null;
    if(answer?.type==='refusal')throw fail(503,'OpenAI declined this decision. Keeping fallback tactics.');
    if(answer?.type!=='choice'||typeof answer.choice!=='string'||!options.includes(answer.choice))throw fail(503,'OpenAI returned an invalid strategy choice.');
-   const plan=validPlan(choices[answer.choice],Object.keys(definitions.units),Object.keys(definitions.buildings).filter(k=>definitions.buildings[k].cost));
+   const plan=planFor(answer.choice,summary);
    if(!plan)throw fail(503,'OpenAI returned an invalid plan.');
    return {plan,model:MODEL,provider:'openai'};
   }catch(error){
