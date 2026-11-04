@@ -23,7 +23,15 @@ const choices={
   'anti-armor':{style:'balanced',focus:'army',unit:'destroyer',building:'auto'},
   naval:{style:'balanced',focus:'production',unit:'frigate',building:'shipyard'}
 };
-const decisionVersion=2;
+const decisionVersion=3;
+// Each variant is still subject to its parent operation's feasibility checks.
+const variants={
+  'raid-economy':{operation:'rush',focus:'economy',unit:'scout',why:'Use fast scouts to raid enemy miners and refineries.'},
+  'raid-production':{operation:'rush',focus:'production',unit:'tank',why:'Use tanks to attack enemy production buildings.'},
+  'siege-production':{operation:'siege',focus:'production',unit:'artillery',why:'Use artillery to pressure enemy production behind defenses.'},
+  'air-economy':{operation:'air',focus:'economy',unit:'gunship',why:'Use gunships to attack exposed miners and refineries.'},
+  'defend-counterattack':{operation:'defend',style:'balanced',focus:'army',unit:'tank',why:'Defend against the enemy force and assemble tanks for a counterattack.'}
+};
 const operationEvidence={
   economy:'Ore remains available and our mining income needs recovery or expansion.',
   defend:'Our base is under threat, or our army is losing and needs to recover.',
@@ -35,6 +43,13 @@ const operationEvidence={
   naval:'Waterways are present and our fleet needs reinforcement.',
   balanced:'Our army can build a mixed force and attack exposed enemy economic targets.'
  };
+Object.assign(operationEvidence,{
+  'raid-economy':'Enemy miners or refineries are valuable targets for a fast scout raid.',
+  'raid-production':'Enemy production buildings are valuable targets for a tank raid.',
+  'siege-production':'Enemy defenses protect production that artillery can pressure.',
+  'air-economy':'Gunships can raid enemy miners or refineries while bypassing ground defenses.',
+  'defend-counterattack':'Our base needs protection and tanks can prepare a counterattack.'
+});
 // Keep the evidence dictionary fixed so Ollama can reuse its prompt prefix on a small CPU.
 const prefix=[
   'Command our army. Match the battle evidence to one offered operation. Defend immediate danger, then exploit a winning attack. Queued counters count. If tied, prefer the first offered option.',
@@ -125,6 +140,19 @@ function offeredOperations(summary){
   }
   // System One needs two options. Holding the base is always feasible.
   if(offered.length===1)offered.push({name:'defend',why:'hold the base and assemble a stronger force'});
+  // Keep an emergency shortlist focused and preserve a finishing attack on a weak HQ.
+  if(!(summary.context.pressure>=3&&summary.own.hqHealth<=45)&&summary.opponent.hqHealth>50){
+    const available=new Set(offered.map(c=>c.name));
+    for(const [name,variant] of Object.entries(variants)){
+      if(offered.length>=6)break;
+      const enemy=summary.opponent;
+      const economyTarget=Boolean(enemy.units.miner||enemy.buildings.refinery);
+      const productionTarget=Boolean(enemy.buildings.warFactory||enemy.buildings.garrison||enemy.buildings.airfield||enemy.buildings.shipyard);
+      if((name==='raid-economy'||name==='air-economy')&&!economyTarget)continue;
+      if((name==='raid-production'||name==='siege-production')&&!productionTarget)continue;
+      if(available.has(variant.operation))offered.push({name,why:variant.why});
+    }
+  }
   return offered;
 }
 function relevantStrategies(summary){return candidates(summary).map(c=>c.name);}
@@ -137,6 +165,7 @@ function facts(summary){
   if(m.armor>=3)lines.push(`Armor/counters ${m.armor}/${m.armorCounters}.`);
   if(m.defenses>=2)lines.push(`Defenses/siege ${m.defenses}/${m.siege}.`);
   if(summary.context.water)lines.push(`Ships ours/theirs ${m.ownShips}/${m.ships}.`);
+  lines.push(`Enemy miners/refineries ${summary.opponent.units.miner||0}/${summary.opponent.buildings.refinery||0}; factories/garrisons/airfields/shipyards ${summary.opponent.buildings.warFactory||0}/${summary.opponent.buildings.garrison||0}/${summary.opponent.buildings.airfield||0}/${summary.opponent.buildings.shipyard||0}.`);
   if(summary.opponent.hqHealth<=50)lines.push(`Enemy HQ ${summary.opponent.hqHealth}%.`);
   if(summary.own.hqHealth<45)lines.push(`Our HQ ${summary.own.hqHealth}%.`);
   if(summary.context.lowPower)lines.push('Low power.');
@@ -144,7 +173,8 @@ function facts(summary){
   return lines.join(' ');
 }
 function planFor(strategy,summary){
-  const plan={...choices[strategy],operation:strategy},m=assess(summary),ready=summary.own.ready;
+  const variant=variants[strategy],operation=variant?.operation||strategy;
+  const plan={...choices[operation],operation,...(variant?{directive:strategy,focus:variant.focus,unit:variant.unit,...(variant.style?{style:variant.style}:{})}:{})},m=assess(summary),ready=summary.own.ready;
   if(strategy==='anti-air'){
     plan.unit=ready.airfield&&summary.credits>=definitions.units.interceptor.cost?'interceptor':ready.garrison&&(!ready.warFactory||summary.credits<definitions.units.rocket.cost)?'rocketTrooper':'rocket';
     plan.building=summary.context.pressure&&ready.warFactory&&!ready.missileBattery&&summary.credits>=definitions.buildings.missileBattery.cost?'missileBattery':'auto';
@@ -157,7 +187,7 @@ function promptFor(summary,options=offeredOperations(summary)){
 }
 async function infer(model,summary,signal){
   const offered=offeredOperations(summary),options=offered.map(c=>c.name);
-  const r=await fetch(base+'/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},signal,body:JSON.stringify({model,stream:false,...((process.env.OLLAMA_THINK==='false'||installed.find(m=>m.name===model)?.thinking)?{think:false}:{}),format:schema(options),keep_alive:'30m',options:{temperature:0,num_predict:16,num_ctx:512,num_thread:4},messages:[{role:'user',content:promptFor(summary,offered)}]})});
+  const r=await fetch(base+'/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},signal,body:JSON.stringify({model,stream:false,...((process.env.OLLAMA_THINK==='false'||installed.find(m=>m.name===model)?.thinking)?{think:false}:{}),format:schema(options),keep_alive:'30m',options:{temperature:0,num_predict:24,num_ctx:768,num_thread:4},messages:[{role:'user',content:promptFor(summary,offered)}]})});
   if(!r.ok)throw Error('Ollama unavailable');
   const result=await r.json(),parsed=JSON.parse(result.message?.content);
   if(!options.includes(parsed))throw Error('Invalid model strategy');

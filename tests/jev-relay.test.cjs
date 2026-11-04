@@ -7,7 +7,7 @@ const mock=http.createServer(async(req,res)=>{
  res.setHeader('Content-Type','application/json');
  if(req.url==='/api/tags'){res.end(JSON.stringify({models}));return;}
  assert.equal(req.url,'/v1/systemone');const chunks=[];for await(const c of req)chunks.push(c);const body=JSON.parse(Buffer.concat(chunks));seen.push(body);
- res.end(JSON.stringify({answers:{strategy:{type:'choice',choice:'rush'}}}));
+ res.end(JSON.stringify({answers:{strategy:{type:'choice',choice:body.questions.strategy.criteria['raid-economy']?'raid-economy':'rush'}}}));
 });
 (async()=>{
  await new Promise(r=>mock.listen(0,'127.0.0.1',r));const port=mock.address().port;
@@ -23,9 +23,12 @@ const mock=http.createServer(async(req,res)=>{
   assert.equal((await post('local/connect',{code:session.code,provider:'ollama'})).status,400);
   worker=spawn(process.execPath,['local-ai.cjs','--server','http://127.0.0.1:8773','--code',session.code,'--provider','jev'],{cwd:root,env:{...env,JEV_PORT:'1'},windowsHide:true,stdio:'ignore'});
   let local;for(let i=0;i<40;i++){local=await post('local/status',{},session.clientToken);if(local.ready)break;await delay(100);}
-  assert(local.connected&&local.ready);assert.equal(local.port,port);assert.equal(local.models.length,2);
+  assert(local.connected&&local.ready);assert.equal(local.port,port);assert.equal(local.models.length,2);assert.equal(local.decisionVersion,3);
   const result=await post('local/plan',{...battle,model:'alternate:test'},session.clientToken);assert.equal(result.status,200);assert.equal(result.provider,'jev');assert.equal(result.execution,'player');assert.equal(result.model,'alternate:test');assert.equal(result.plan.focus,'hq');assert(Number.isFinite(result.latencyMs));
   assert.equal(seen.at(-1).model,'alternate:test');assert.equal(JSON.parse(seen.at(-1).state).opponent.hqHealth,25);assert(seen.at(-1).questions.strategy.criteria.rush);assert(!seen.at(-1).messages);
+  const rich={...battle,opponent:{units:{miner:2,tank:1},buildings:{base:1,refinery:1,warFactory:1},hqHealth:100}};
+  const directive=await post('local/plan',{...rich,model:'alternate:test'},session.clientToken);
+  assert.equal(directive.status,200);assert.equal(directive.plan.directive,'raid-economy');assert.equal(directive.plan.focus,'economy');assert.equal(directive.plan.unit,'scout');
   assert.equal((await post('local/plan',{...battle,model:'bad'},session.clientToken)).status,400);
   assert.equal((await post('local/status',{},'invalid')).status,401);
   await post('local/disconnect',{},session.clientToken);assert.equal((await post('local/plan',battle,session.clientToken)).status,401);

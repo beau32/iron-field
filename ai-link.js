@@ -101,7 +101,7 @@
    if(keySetup)$('ai-key-setup').href=`http://127.0.0.1:${result.configPort}/`;
    $('ai-connection').textContent=result.connected?provider==='openai'?`${result.ready?'Connector ready · key configured':'Connector paired · enter API key'} · ${result.model}`:`${result.ready?'Connected':provider==='jev'?'Check service port and model':'Warming up'} · ${result.model} · on your computer`:result.code&&Date.now()<result.expires?'Waiting for your local connector.':'Connector offline. Restart it, or pair again.';
    if(provider==='jev'&&result.connected)$('ai-connection').textContent=result.ready?`Connected to ${result.protocol==='openjev-nli'?'OpenJEV classifier':'JEV'} on port ${result.port} · ${result.model}`:'Connector paired · '+(result.serviceMessage||'Check the service port and model.');
-   if(provider==='ollama'&&result.connected)$('ai-connection').textContent+=result.decisionVersion>=2?' · Strategy v2':' · Update AI connector: download, extract and restart it for smarter strategy.';
+   if(provider!=='openai'&&result.connected)$('ai-connection').textContent+=result.decisionVersion>=3?' · Strategy v3':result.decisionVersion===2?' · Strategy v2 · Update connector for richer choices':' · Update AI connector: download, extract and restart it for smarter strategy.';
    if(provider!=='openai')showModels(result.connected?result.models:[],result.model,!result.connected?'Connect the local AI connector first.':!result.models?.length?(provider==='jev'?result.serviceMessage||'No JEV model reported. Check the connector terminal.':'Download and restart the updated AI connector to choose models.'):'');
    if(becameReady)changed('ready');
   }catch(e){$('ai-connection').textContent='Local AI connection unavailable. Gameplay continues with fallback tactics.';}

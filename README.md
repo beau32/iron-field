@@ -25,7 +25,7 @@ Browser battle summary → Node game server → paired local connector → Ollam
 Browser strategic plan ← validated result ← paired local connector ← JSON choice
 ```
 
-The LLM selects from a situation-dependent shortlist and returns a small JSON result such as `"siege"`. It does not control individual frames or learn between matches. Requests run asynchronously with a five-second default inference deadline; the game retains an unexpired plan or uses Balanced fallback when a response is unavailable. A successful plan is eligible for refresh 30 seconds after completion. Larger models must still meet the deadline, so model size alone does not guarantee a stronger opponent.
+The LLM selects from a situation-dependent shortlist and returns a small JSON result such as `"siege"`. It does not control individual frames or learn between matches. Requests run asynchronously with a five-second default inference deadline; the game retains an unexpired plan or uses Balanced fallback when a response is unavailable. A successful plan is eligible for refresh 12 seconds after completion for JEV, 20 seconds for Ollama, or 30 seconds for OpenAI. Larger models must still meet the deadline, so model size alone does not guarantee a stronger opponent.
 
 AI opponents are currently **solo-only**; 2–4 player multiplayer uses human opponents. See the [opponent logic guide](#choose-a-computer-opponent), [server-side Ollama setup](#run-with-your-own-ollama), and [player-local connector details](#run-ollama-on-the-players-computer) for strategy tables, timing, configuration, and limitations. The integration lives in [`commander.cjs`](commander.cjs), [`local-ai.cjs`](local-ai.cjs), [`local-commander.cjs`](local-commander.cjs), and [`ai-link.js`](ai-link.js).
 
@@ -441,7 +441,7 @@ Logs stay in browser memory; they are not uploaded or automatically saved to dis
 
 ### What Ollama sees and decides
 
-**Strategy v2 combines a small LLM with battle analysis.** In **Game server** mode, the browser sends `POST /api/commander/plan` a structured summary. In **This computer** mode, the same summary travels through the authenticated relay to the paired connector. Both use `commander.cjs`.
+**Strategy v3 combines a small model with battle analysis.** In **Game server** mode, the browser sends `POST /api/commander/plan` a structured summary. In **This computer** mode, the same summary travels through the authenticated relay to the paired connector. Both use `commander.cjs`.
 
 The summary includes living unit counts, owned and completed structures, the computer's production queue, average army health, both HQ health percentages, credits, remaining ore, low power, and visible pressure at the computer's base. It also includes the current operation, attack state, and the last 45 simulation seconds of destroyed/lost asset value and ore deliveries. Construction and queue progress identify stalled operations. Feedback resets with the match; there is no model training or persistent learning.
 
@@ -453,7 +453,7 @@ Ordinary Ollama chat and OpenJEV use the same operation shortlist, evidence stat
 
 Both modes offer at least two choices. When the HQ is at or below 45% health and at least three threats are near home, the shortlist narrows to defensive operations if at least two viable defensive choices exist.
 
-`candidates()` scores feasible operations and offers at most four. This replaces the old first-match rule that forced air-related choices whenever any enemy aircraft existed:
+`candidates()` scores up to four feasible base operations. The final shortlist can add up to two situational directives (six total). This replaces the old first-match rule that forced air-related choices whenever any enemy aircraft existed:
 
 | Situation | Strategic response |
 | --- | --- |
@@ -467,6 +467,8 @@ Both modes offer at least two choices. When the HQ is at or below 45% health and
 | A plan is stalled or losing heavily | Reduce its priority so alternatives can be offered |
 
 Healthy economy expansion and new air technology lose priority when an existing army can already apply pressure. When all ore is exhausted, the computer stops replacing or expanding mining solely for ore income and can fight for battle rewards instead.
+
+The model can also choose combined directives: scouts raiding the economy, tanks raiding production, artillery pressuring production, gunships raiding the economy, or defending while preparing a tank counterattack. A directive is offered only when its parent operation is feasible and its target category exists; critical HQ defense and finishing a weakened HQ keep their existing safety constraints. Each maps to a validated objective, force priority and posture. JEV classifies these as additional hypotheses in the same request, so latency depends on the model and the number of choices. The opponent panel and match log identify the chosen directive.
 
 The model returns one small choice, such as `"siege"`. The adapter maps it to a validated operation:
 
@@ -493,8 +495,8 @@ Run `node tests/commander.test.cjs` and `node tests/commander-feedback.test.cjs`
 | Setting | Current behavior |
 | --- | --- |
 | Default model | `qwen2.5:0.5b` |
-| Model request limits | 512-token context, at most 16 generated tokens, temperature 0, 4 threads |
-| Successful-plan refresh | Normally 30 **real seconds after completion**; major threat/income/stall changes can trigger an Ollama refresh, with at least 10 real seconds between requests and failure backoff respected |
+| Model request limits | 768-token context, at most 24 generated tokens, temperature 0, 4 threads |
+| Successful-plan refresh | Normally 12 **real seconds after completion** for JEV, 20 for Ollama, 30 for OpenAI; major threat/income/stall changes can trigger an Ollama/JEV refresh, with at least 10 real seconds between requests and failure backoff respected |
 | Plan lifetime | 180 real seconds after acceptance |
 | Live inference deadline | 5 seconds by default and at most 5 seconds on the server; browser timeout 6.5 seconds |
 | Failed request retry | Normally 10 real seconds; busy/warming responses request a 2-second retry |
@@ -529,7 +531,7 @@ For **This computer**:
 
 For **Game server**, set `JEV_PORT` and optionally `JEV_MODEL` in the game server's environment, then restart it. The port displayed in the browser is read-only in this mode. Its value is independent of `OLLAMA_URL`; JEV requests always go to the server's loopback interface. With no configured port, the game reports that JEV is unavailable and continues fallback tactics.
 
-The adapter in [`jev-commander.cjs`](jev-commander.cjs) detects two API formats. For the [JEV-compatible System One API](https://github.com/ollama/ollama/blob/main/docs/capabilities/decision.mdx), it discovers models through `GET /api/tags` (or `GET /v1/models` if tags returns 404), then calls `POST /v1/systemone`. It sends the validated Strategy v2 battle summary as `state`, with a named `strategy` choice question, instructions and criteria for feasible operations. It does **not** send a chat prompt asking the model to generate JSON:
+The adapter in [`jev-commander.cjs`](jev-commander.cjs) detects two API formats. For the [JEV-compatible System One API](https://github.com/ollama/ollama/blob/main/docs/capabilities/decision.mdx), it discovers models through `GET /api/tags` (or `GET /v1/models` if tags returns 404), then calls `POST /v1/systemone`. It sends the validated Strategy v3 battle summary as `state`, with a named `strategy` choice question, instructions and criteria for feasible operations. It does **not** send a chat prompt asking the model to generate JSON:
 
 ```json
 {
@@ -548,7 +550,7 @@ The adapter in [`jev-commander.cjs`](jev-commander.cjs) detects two API formats.
 }
 ```
 
-This is an abbreviated example; the actual instructions include income recovery, base threats, queued counters, affordability, and stalled or losing operations. If the shortlist contains only one operation, a conservative defend option supplies the protocol's second alternative. Only an offered `answers.strategy.choice` is accepted, then mapped through the same Strategy v2 production and targeting rules. Invalid responses, missing services and timeouts retain the existing unexpired plan or Balanced fallback.
+This is an abbreviated example; the actual instructions include income recovery, base threats, queued counters, affordability, and stalled or losing operations. If the shortlist contains only one operation, a conservative defend option supplies the protocol's second alternative. Only an offered `answers.strategy.choice` is accepted, then mapped through the same Strategy v3 production and targeting rules. Invalid responses, missing services and timeouts retain the existing unexpired plan or Balanced fallback.
 
 When Ollama tags are absent, the connector checks both `/v1/models` and **OpenJEV `GET /health`**. A ready health response with a base model and adapter name identifies the classifier, including versions that publish multiple models. A registry can also belong to a System One service. It then calls **`POST /classify`** with a natural-language battle `premise` and a `choices` array of factual hypotheses supporting feasible operations. For example, the anti-air hypothesis is “Enemy aircraft outnumber our anti-air counters, including queued counters.” The classifier returns entailment, contradiction and neutral probabilities for each hypothesis. The game validates the echoed choices and probability ranges/sums, ranks by `entailment - contradiction`, and maps the highest-ranked hypothesis to an operation. Ties retain the rule-based shortlist order. These scores measure textual support, not guaranteed strategic quality or calibrated confidence; even the highest score can be weak. This classifier does not generate plans or learn RTS tactics during play.
 
@@ -580,7 +582,7 @@ Select **AI commander · Ollama → Send AI requests through → Game server** t
 1. Install/run Ollama and have a local model available. The connector prefers `qwen2.5:0.5b`, then the smallest installed completion model. It does not download models automatically. Set `OLLAMA_MODEL` before launching to choose another installed model.
 2. In the game, choose **AI commander · Ollama → This computer → Connect this computer**. Download and extract **AI connector** (`local-ai.zip`). It requires Node.js 18 or newer.
 3. Click **Create pairing code**, then run `Start-Local-AI.cmd` on Windows or `node local-ai.cjs` on macOS/Linux. Enter the game server address and the 12-character code. The code expires in five minutes and can be used once.
-4. Keep the connector running. For Strategy v2, download/extract the updated connector and restart it; old connectors retain the older strategy logic and show an update notice. The game reports **Strategy v2** alongside the local model once the new connector is paired, and whether it is warming up, connected, or offline. The pairing survives page reloads in that browser tab. Re-pair after a game-server restart or session expiry.
+4. Keep the connector running. For Strategy v3, download/extract the updated connector and restart it; old connectors retain the older strategy logic and show an update notice. The game reports **Strategy v3** alongside the local model once the new connector is paired, and whether it is warming up, connected, or offline. The pairing survives page reloads in that browser tab. Re-pair after a game-server restart or session expiry.
 
 The connector makes outbound requests to the game server and contacts Ollama on its own `127.0.0.1:11434`. It opens no listening port and requires no Ollama CORS changes or LAN exposure. The game server relays only the validated battle summary and model plan; it does not perform inference for **This computer** requests. Separate browser and connector tokens isolate each pairing. Pairing codes are displayed to the player; tokens are kept out of URLs.
 

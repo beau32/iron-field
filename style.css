@@ -152,6 +152,7 @@ dialog{color:var(--text);background:var(--panel);border:1px solid #51635e;border
  .sidebar>.radar-frame,.sidebar>.tabs,.sidebar>.structure-controls,.sidebar>.selection-console,.sidebar>.production-console{flex:0 0 auto}
  .sidebar>.panel{display:flex;flex-direction:column;flex:1 1 0;min-height:0;padding:8px 10px;overflow:hidden}
  .sidebar .catalog,.sidebar .building-catalog{flex:1;min-height:0;overflow-y:auto;align-content:start;grid-auto-rows:minmax(120px,max-content);gap:5px;margin-top:6px;max-height:none}
+ .sidebar #unit-catalog{max-height:none}
  .sidebar .build-card .portrait{height:45px;flex:0 0 45px}
  .sidebar .build-card strong{font-size:10px;line-height:13px;min-height:22px;flex:0 0 auto}
  .sidebar .build-card .card-meta,.sidebar .build-card .card-state{flex:0 0 auto}

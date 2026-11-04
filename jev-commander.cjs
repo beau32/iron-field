@@ -15,6 +15,7 @@ function classificationRequest(summary,offered){
   `Ore remaining: ${summary.context.oreRemaining}. We have ${m.miners} miners including queues and ${summary.own.ready.refinery||0} completed refineries. Recent mining income: ${f.income}.`,
   `Enemy aircraft: ${m.air}; our anti-air including queues: ${m.aa}. Enemy armor: ${m.armor}; our armor counters: ${m.armorCounters}.`,
   `Enemy defensive structures: ${m.defenses}; our siege weapons: ${m.siege}. Enemy anti-air: ${m.enemyAA}. Waterways: ${summary.context.water?'present':'absent'}; our ships: ${m.ownShips}; enemy ships: ${m.ships}.`,
+  `Enemy economy: ${summary.opponent.units.miner||0} miners and ${summary.opponent.buildings.refinery||0} refineries. Enemy production: ${summary.opponent.buildings.warFactory||0} war factories, ${summary.opponent.buildings.garrison||0} garrisons, ${summary.opponent.buildings.airfield||0} airfields, ${summary.opponent.buildings.shipyard||0} shipyards.`,
   `Recent losses cost ${f.lostValue}; enemy losses cost ${f.destroyedValue}. Previous operation ${f.operation||'none'} is ${f.stalled?'stalled':f.mode}.`,
   'Feasible operations after checking resources and technology: '+offered.map(c=>c.name+' ('+c.why+')').join('; ')+'.'
  ].join(' ');

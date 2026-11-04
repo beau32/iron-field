@@ -2179,6 +2179,7 @@
     if(commander.urgentModel&&currentModelPlan()&&!commander.pending&&now-commander.lastModelRequest>=10000&&now>=commander.modelRetryUntil){commander.nextModel=Math.min(commander.nextModel,now);commander.urgentModel=false;}
   }
   function aiPlanName(plan) {
+    if(plan.directive)return ({'raid-economy':'Scout raid on economy','raid-production':'Tank raid on production','siege-production':'Siege enemy production','air-economy':'Gunship raid on economy','defend-counterattack':'Defend and counterattack'})[plan.directive];
     if(plan.focus==='hq')return 'HQ assault';
     if(plan.operation)return ({balanced:'Balanced operation',rush:plan.focus==='hq'?'HQ assault':'Production raid',defend:'Base defense',economy:'Economy recovery',air:'Air operation','anti-air':'Anti-air screen',siege:'Siege operation','anti-armor':'Armor hunters',naval:'Naval operation'})[plan.operation];
     return plan.unit==='frigate'?'Naval operation':plan.unit==='rocket'?'Anti-air screen':plan.unit==='destroyer'?'Armor hunters':plan.unit==='artillery'?'Siege operation':FIELD_OPPONENT.styles[plan.style].name;
@@ -2217,7 +2218,7 @@
       // A strategy refresh changes spending and objectives, not the progress of a live attack.
       if(!commander.raidSize)nextRaid=Math.min(nextRaid,elapsed+(plan.style==='rush'?8:20));
     }
-    if(commander.raidSize){const target=aiObjective(unitsFor('enemy').filter(u=>u.raid));commander.targetId=target?.id||null;}
+    if(changed&&commander.raidSize){const target=aiObjective(unitsFor('enemy').filter(u=>u.raid));commander.targetId=target?.id||null;}
   }
   async function requestModelPlan() {
     if(net?.active||!raids||outcome||!isModelOpponent()||commander.pending||performance.now()<commander.nextModel)return;
@@ -2239,7 +2240,7 @@
       battleLog.event(elapsed,'ai-decision',{requestId,provider:modelProvider(),model:result.model,execution:result.execution||window.FieldLocalAI?.mode,protocol:result.protocol,plan,roundTripMs:state.decisionMs,serviceMs:result.latencyMs});
       loggedResult=true;
       state.modelRetryUntil=0;
-      state.nextModel=performance.now()+30000;
+      state.nextModel=performance.now()+(opponentStyle==='openai'?30000:modelProvider()==='JEV'?12000:20000);
     } catch(error) {
       if(state!==commander||net?.active||!raids||!isModelOpponent())return;
       if(!currentModelPlan())state.plan=null;state.modelStatus=error.name==='AbortError'?modelProvider()+' timed out':String(error.message).slice(0,140);state.nextModel=performance.now()+retryAfterMs;state.modelRetryUntil=state.nextModel;

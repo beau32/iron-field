@@ -9,10 +9,12 @@
   };
   const focuses=['economy','production','hq','army'];
   const operations=['balanced','rush','defend','economy','air','anti-air','siege','anti-armor','naval'];
+  const directives=['raid-economy','raid-production','siege-production','air-economy','defend-counterattack'];
   function validPlan(plan,units,buildings){
     if(!plan||typeof plan!=='object'||Array.isArray(plan)||!Object.hasOwn(styles,plan.style)||!focuses.includes(plan.focus)||!['auto',...units].includes(plan.unit)||!['auto',...buildings].includes(plan.building))return null;
     if(plan.operation!==undefined&&!operations.includes(plan.operation))return null;
-    return {style:plan.style,focus:plan.focus,unit:plan.unit,building:plan.building,...(plan.operation?{operation:plan.operation}:{})};
+    if(plan.directive!==undefined&&!directives.includes(plan.directive))return null;
+    return {style:plan.style,focus:plan.focus,unit:plan.unit,building:plan.building,...(plan.operation?{operation:plan.operation}:{}),...(plan.directive?{directive:plan.directive}:{})};
   }
   return {styles,focuses,operations,validPlan};
 });
