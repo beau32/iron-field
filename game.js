@@ -2402,6 +2402,7 @@
     }
     if(!has('warFactory')&&aiPriorityBuild('warFactory'))return;
     if(aiMaintainDefenses(policy,own,ownBuildings))return;
+    if(aiReactiveProduction(own,count,policy))return;
     if(elapsed>360&&elapsed>=commander.nextBuild&&has('airfield')&&own.filter(u=>UNIT[u.kind].damage>0).length>=6){
       const kind=!has('missileSilo')?'missileSilo':!has('empArray')?'empArray':null;
       if(kind&&enemyCredits>STRUCTURE[kind].cost+400&&aiBuild(kind)){commander.nextBuild=elapsed+30;return;}
@@ -2462,6 +2463,23 @@
     if(remoteQueue.some(q=>UNIT[q.kind].producer===UNIT[kind].producer)||enemyCredits<UNIT[kind].cost)return false;
     queueUnit(kind,'enemy');commander.nextRecruit=elapsed+2;
     aiTactic(air?'Air threat spotted: reinforcing anti-air':'Base under pressure: reinforcing defenders');return true;
+  }
+  // Counter observed compositions without abandoning the current strategic operation.
+  // Queued units count, and a busy or unaffordable producer must not block the plan.
+  function aiReactiveProduction(own,count,policy){
+    if(elapsed<commander.nextRecruit||own.length+remoteQueue.length>=policy.cap)return false;
+    const seen=unitsFor('player').filter(u=>visibleTo(u,'enemy')&&stats(u).damage>0);
+    const armor=seen.filter(u=>!isAir(u)&&!isNaval(u)&&!UNIT[u.kind].infantry).length;
+    const infantry=seen.filter(u=>UNIT[u.kind].infantry).length;
+    const defenses=buildings.filter(b=>b.team==='player'&&active(b)&&STRUCTURE[b.kind].defense&&visibleTo(b,'enemy')).length;
+    let options=[],reason='';
+    if(armor>=3&&count('destroyer')<Math.min(4,Math.ceil(armor/3))){options=['destroyer'];reason='Countering enemy armor';}
+    else if(defenses>=2&&count('artillery')<Math.min(3,Math.ceil(defenses/2))){options=['artillery'];reason='Preparing siege against defenses';}
+    else if(infantry>=4&&count('flame')<Math.min(2,Math.ceil(infantry/4))){options=['flame'];reason='Countering enemy infantry';}
+    const kind=options.find(k=>producerFor(k,'enemy')&&enemyCredits>=UNIT[k].cost&&!remoteQueue.some(q=>UNIT[q.kind].producer===UNIT[k].producer));
+    if(!kind)return false;
+    queueUnit(kind,'enemy');commander.nextRecruit=elapsed+policy.recruit;
+    aiTactic(reason+': producing '+UNIT[kind].name);return true;
   }
   function aiFocusTarget(u,candidates,assigned){
     return candidates.filter(e=>canAttack(u,e)).sort((a,b)=>{
