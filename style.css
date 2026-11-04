@@ -132,8 +132,9 @@ dialog{color:var(--text);background:var(--panel);border:1px solid #51635e;border
 .computer-sidebar{display:flex;flex-direction:column}
 .computer-sidebar :is(#opponent-panel,#lab-panel){min-height:0;flex:0 0 auto}
 .computer-sidebar :is(#opponent-panel,#lab-panel)[open]{flex:1 1 0;overflow-y:auto;min-height:80px}
-.computer-sidebar:has(details[open]) :is(#opponent-panel,#lab-panel):not([open])>summary{writing-mode:horizontal-tb;min-height:28px;padding:10px 14px}
+.computer-sidebar:has(> :is(#opponent-panel,#lab-panel)[open]) :is(#opponent-panel,#lab-panel):not([open])>summary{writing-mode:horizontal-tb;min-height:28px;padding:10px 14px}
 .computer-sidebar #lab-panel:not([open])>summary{min-height:100px}
+.roster-filters button{flex:1 1 auto;white-space:nowrap}
 .computer-sidebar #learn-panel{padding:0}
 .computer-sidebar #learn-panel h2{font-size:18px;margin:10px 0}
 .computer-sidebar #learn-panel .toggle{margin-top:14px;font-size:12px}
