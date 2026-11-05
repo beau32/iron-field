@@ -1128,6 +1128,61 @@
     fx.scars.dispose();fx.smoke.dispose();fx.smoke.material.dispose();fx.fire.material.dispose();fx.root.removeFromParent();u.damageVisual=null;
   }
 
+  // Distinct aircraft silhouettes are built from the same lightweight, team-colored parts.
+  function buildAircraftModel(body,turret,kind,color,trim){
+    const wing=(points,material,y)=>{
+      const shape=new THREE.Shape();shape.moveTo(points[0][0],-points[0][1]);
+      for(const p of points.slice(1))shape.lineTo(p[0],-p[1]);shape.closePath();
+      const part=mesh(new THREE.ShapeGeometry(shape),material,body,0,y,0);part.rotation.x=-Math.PI/2;return part;
+    };
+    const pod=(x,y,z,r,length)=>{const p=cylinder(body,groundMat.steel,x,y,z,r,length,10);p.rotation.x=Math.PI/2;return p;};
+    let rotor=null;
+    if(kind==='gunship'){
+      armoredBox(body,color,0,.36,.15,1,.7,2.9);
+      const nose=mesh(new THREE.ConeGeometry(.55,1.15,6),color,body,0,.36,1.95);nose.rotation.x=Math.PI/2;
+      const canopy=box(body,groundMat.glass,0,.78,1.02,.7,.28,1.05);canopy.rotation.x=-.15;
+      armoredBox(body,trim,0,.43,-1.9,.38,.32,1.5);
+      const fin=box(body,trim,0,.8,-2.45,.12,.95,.52);fin.rotation.x=-.25;
+      for(const side of [-1,1]){
+        box(body,trim,side*.94,.24,-.1,1.2,.12,.65);
+        pod(side*1.08,.08,.03,.2,.8);
+        box(body,groundMat.rubber,side*.57,-.27,.05,.12,.12,2.6);
+        for(const z of [-.8,.8])box(body,groundMat.steel,side*.5,-.05,z,.12,.5,.12);
+      }
+      cylinder(body,groundMat.steel,0,1.02,-.1,.12,.7,8);
+      rotor=new THREE.Group();rotor.position.set(0,1.37,-.1);body.add(rotor);
+      cylinder(rotor,groundMat.steel,0,0,0,.22,.16,8);
+      box(rotor,groundMat.rubber,0,.05,0,5.5,.06,.18);box(rotor,groundMat.rubber,0,.05,0,.18,.06,5.5);
+      const tailRotor=new THREE.Group();tailRotor.position.set(.18,.82,-2.55);body.add(tailRotor);
+      box(tailRotor,groundMat.rubber,0,0,0,.06,1.05,.09);box(tailRotor,groundMat.rubber,0,0,0,.06,.09,1.05);
+      turret.position.y=-.05;groundBarrel(turret,[0,.05,.85],[0,.05,1.65],.055);
+    }else if(kind==='interceptor'){
+      const nose=mesh(new THREE.ConeGeometry(.65,3.9,6),color,body,0,.36,.2);nose.rotation.x=Math.PI/2;
+      const canopy=box(body,groundMat.glass,0,.75,.65,.53,.24,1.05);canopy.rotation.x=-.12;
+      wing([[-.35,1.05],[-2.55,-1.25],[-2.35,-1.7],[0,-1.05],[2.35,-1.7],[2.55,-1.25],[.35,1.05]],trim,.33);
+      for(const side of [-1,1]){
+        const fin=box(body,color,side*.36,.84,-1.25,.12,.85,.9);fin.rotation.z=-side*.22;
+        pod(side*.42,.26,-1.5,.26,.72);
+        box(body,groundMat.sand,side*1.45,.17,-.6,.16,.16,1.05);
+      }
+      turret.position.y=.12;groundBarrel(turret,[0,.05,.8],[0,.05,1.9],.035);
+    }else{
+      armoredBox(body,color,0,.38,0,1.55,.65,3.6);
+      const nose=mesh(new THREE.ConeGeometry(.78,1.25,6),color,body,0,.38,2.35);nose.rotation.x=Math.PI/2;
+      box(body,groundMat.glass,0,.76,1.35,1,.22,.8);
+      wing([[-.65,1.15],[-3.35,-.45],[-3.55,-1.45],[-.65,-1.15],[.65,-1.15],[3.55,-1.45],[3.35,-.45],[.65,1.15]],trim,.3);
+      for(const side of [-1,1]){
+        pod(side*1.55,.12,-.15,.43,1.8);
+        const intake=cylinder(body,groundMat.rubber,side*1.55,.12,.79,.32,.08,10);intake.rotation.x=Math.PI/2;
+        box(body,groundMat.sand,side*.43,-.05,.1,.46,.12,1.4);
+        const fin=box(body,color,side*.58,.92,-1.45,.12,1.05,1);fin.rotation.z=-side*.16;
+        box(body,trim,side*1.15,.32,-1.65,1.25,.12,.55);
+      }
+      turret.position.y=-.12;box(turret,groundMat.rubber,0,.04,.05,.55,.12,1.1);
+    }
+    return rotor;
+  }
+
   function createUnit(kind, team, x, z) {
     const def = UNIT[kind], group = new THREE.Group(), body = new THREE.Group(), turret = new THREE.Group();
     group.position.set(x, 0, z); group.add(body, turret); actors.add(group);
@@ -1137,21 +1192,7 @@
       navalRig=buildNavalModel(body,turret,kind,color,trim);
     } else if(def.aircraft){
       group.position.y=def.altitude;
-      armoredBox(body,color,0,.3,0,kind==='bomber'?1.5:.85,.6,3.1);
-      box(body,mat.window,0,.65,.75,.65,.25,.85);
-      box(body,color,0,.3,-1.35,2.2,.15,.65);
-      for(const side of [-1,1]){
-        const wing=box(body,trim,side*1.5,.25,-.1,2.2,.12,kind==='bomber'?1.8:.8);wing.rotation.y=side*.2;
-        cylinder(body,mat.dark,side*1.4,.05,-.1,.3,.5,10);
-        box(body,mat.ore,side*1.35,.02,.65,.18,.18,.7);
-      }
-      if(kind==='gunship'){
-        flightRotor=new THREE.Group();flightRotor.position.y=1.1;body.add(flightRotor);
-        cylinder(body,mat.metal,0,.85,0,.09,.5,6);
-        box(flightRotor,mat.dark,0,0,0,5.2,.06,.2);box(flightRotor,mat.dark,0,0,0,.2,.06,5.2);
-      }else{const tail=box(body,color,0,.75,-1.3,.12,1.1,.8);tail.rotation.x=-.25;}
-      turret.position.y=.1;
-      box(turret,mat.dark,0,0,1.25,.18,.18,1);
+      flightRotor=buildAircraftModel(body,turret,kind,color,trim);
     } else if (def.infantry) {
       legs=buildInfantryModel(body,turret,kind,color,trim);
     } else {
@@ -1329,7 +1370,10 @@
     const pos=u.mesh.position, previous=u.mineAccess;
     if(previous&&previous.phase===phase&&previous.version===navVersion&&sites.includes(previous.site)&&!blocked(previous.point.x,previous.point.z,u.radius)){
       const d=pos.distanceTo(previous.point);
-      if(d<previous.distance-.3){previous.distance=d;previous.progressAt=elapsed;}
+      // A valid route may initially lead away from its destination to reach a bridge.
+      // Count real movement as progress, not just decreasing straight-line distance.
+      previous.progressPoint||=pos.clone();
+      if(d<previous.distance-.3||pos.distanceTo(previous.progressPoint)>.8){previous.distance=d;previous.progressAt=elapsed;previous.progressPoint=pos.clone();}
       const servicing=phase==='return'?u.mineState==='unload':u.mineState==='harvest';
       if(d<.6||servicing&&d<1.2||elapsed-previous.progressAt<3)return previous;
       // A stationary vehicle can obstruct a lane even though the terrain route is valid.
@@ -1351,7 +1395,7 @@
         // A* may return a nearby cell for blocked goals; require the actual service point.
         if(!path.length||path[path.length-1].distanceTo(point)>.1)continue;
         u.path=path;u.pathGoal=point.clone();u.pathVersion=navVersion;u.repath=1;u.navProgress=null;u.mineRetry=null;
-        return u.mineAccess={site,point,phase,version:navVersion,distance:pos.distanceTo(point),progressAt:elapsed};
+        return u.mineAccess={site,point,phase,version:navVersion,distance:pos.distanceTo(point),progressAt:elapsed,progressPoint:pos.clone()};
       }
     }
     clearRoute(u);u.mineRetry={phase,version:navVersion,at:elapsed+2};return null;
@@ -2899,7 +2943,7 @@
       for(const team of ['player','enemy','team3','team4']) {
         const [sx,sz]=corners[team];createField((42+MAP.spawnOffsetX)*sx,(10+MAP.spawnOffsetZ)*sz,6000,`${team.toUpperCase()} ORE`);
       }
-      createField(0,0,14000,'CENTRAL ORE');createField(-39,15,6000,'WEST EXPANSION');createField(39,-15,6000,'EAST EXPANSION');
+      createField(0,0,14000,'CENTRAL ORE');createField(-62,19,6000,'WEST EXPANSION');createField(62,-19,6000,'EAST EXPANSION');
       for(const team of matchTeams){
         const [sx,sz]=corners[team];
         createBuilding('base',team,(39+MAP.spawnOffsetX)*sx,(29+MAP.spawnOffsetZ)*sz);createBuilding('refinery',team,(43+MAP.spawnOffsetX)*sx,(20+MAP.spawnOffsetZ)*sz);
@@ -2911,7 +2955,7 @@
       }
     } else {
     createField(-73,28,6000,'WEST ORE');createField(0,0,10000,'CENTRAL ORE');createField(73,-26,6000,'EAST ORE');
-    createField(-39,15,6000,'WEST EXPANSION');createField(39,-15,6000,'EAST EXPANSION');
+    createField(-62,19,6000,'WEST EXPANSION');createField(62,-19,6000,'EAST EXPANSION');
     spawnBuilding('base', 'player', -17, 12); spawnBuilding('refinery', 'player', -22, 3);
     spawnBuilding('power', 'player', -8, 17); spawnBuilding('turret', 'player', -6, 7);
     spawnBuilding('base', 'enemy', 17, -12); spawnBuilding('refinery', 'enemy', 22, 1);
