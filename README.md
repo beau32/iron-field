@@ -33,7 +33,7 @@ AI opponents are currently **solo-only**; 2–4 player multiplayer uses human op
 
 **New: 2–4 player LAN multiplayer and fog of war.** Run `Start-Multiplayer.cmd`, open the server address, then use Multiplayer → Host / Join. See [MULTIPLAYER.md](MULTIPLAYER.md) for setup, reconnect behavior, and the networking source walkthrough. The rest of this guide describes the solo game and shared controls.
 
-Each battlefield is **132 × 104 world units**, with widely separated bases, shared ore deposits, and rocky ridges. Choose Iron Valley, River Front, or Four Shores before starting. Use WASD to pan, the mouse wheel to zoom, and Home to return to your base. `map.js` defines shared movement and server boundaries.
+Each battlefield is **186 × 148 world units** (about twice the previous playable area), with widely separated bases, shared ore deposits, and rocky ridges. Choose Iron Valley, River Front, or Four Shores before starting. Use WASD to pan, the mouse wheel to zoom, and Home to return to your base. `map.js` defines shared movement and server boundaries.
 
 Ground units cross bridges through the ramp ends and stay within the deck edges. Routes account for unit size, check corners before turning, and recover from traffic pushing a unit past a waypoint. Ships continue to pass beneath bridges, and aircraft can fly over them.
 
@@ -658,7 +658,7 @@ Each class has its own model and matching production portrait. The patrol boat i
 
 Ships share the 24-unit army limit. Select them and right-click water to move, or a visible enemy to attack. They can bombard land targets within range while staying in water. Select a shipyard and right-click clear water to set its rally point. A blocked exit holds completed production until space clears. Selling or losing the shipyard pauses its pending line until another completed shipyard is available. Repair crawlers escort and repair land vehicles only. Solo computer opponents can expand to the shore, build shipyards, and recruit naval units.
 
-Multiplayer hosts choose the map in the lobby. Changing it clears guests' ready status. The map is locked once the match starts, checked by the relay, and restored together with naval units after host or guest reconnects. All players must refresh for protocol v13.
+Multiplayer hosts choose the map in the lobby. Changing it clears guests' ready status. The map is locked once the match starts, checked by the relay, and restored together with naval units after host or guest reconnects. All players must refresh for protocol v14.
 
 
 ## Superweapons
@@ -672,7 +672,7 @@ Complete an **Airfield** and **Power plant**, then build a superweapon from **St
 
 Construction takes 25 / 20 seconds respectively. Charging starts empty after completion. Low power pauses charging and prevents launches, even when charged. Match pauses freeze all timers. Firing consumes the full charge; selling and rebuilding starts empty. A launched strike continues if its launcher is sold or destroyed. Strikes do not harm friendly units. EMP preserves orders, so affected units resume after recovery; already-fired projectiles still land.
 
-The sidebar displays recharge and incoming-strike countdowns, with battlefield warning rings, distinct missile/EMP effects and optional voice alerts. All four multiplayer seats use the same host-validated targeting, power and charge rules; strikes and EMP expiry are replicated in snapshots. Network protocol is now 13: every player must refresh after updating.
+The sidebar displays recharge and incoming-strike countdowns, with battlefield warning rings, distinct missile/EMP effects and optional voice alerts. All four multiplayer seats use the same host-validated targeting, power and charge rules; strikes and EMP expiry are replicated in snapshots. Network protocol is now 14: every player must refresh after updating.
 
 Solo opponents can invest in superweapons after six minutes when they have an airfield, at least six combat units and 400 credits left over. Their local tactical controller targets worthwhile visible enemy groups with the same recharge and vision restrictions. This targeting works with every opponent style, including Ollama and OpenAI; it does not require a separate LLM request.
 

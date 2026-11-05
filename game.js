@@ -2854,7 +2854,7 @@
     const rect=(r,color)=>{ctx.fillStyle=color;ctx.fillRect((r.x-r.width/2+HALF_X)*sx,(r.z-r.depth/2+HALF_Z)*sz,r.width*sx,r.depth*sz);};
     map.water.forEach(r=>rect(r,'#438eae'));map.bridges.forEach(r=>rect(r,'#c6c4ab'));
     for(const o of map.obstacles){ctx.fillStyle='#9a9b7d';ctx.beginPath();ctx.ellipse((o.x+HALF_X)*sx,(o.z+HALF_Z)*sz,o.radius*sx,o.radius*sz,0,0,Math.PI*2);ctx.fill();}
-    for(const [x,z,color] of [[-49,37,'#6ce6b1'],[49,-37,'#f67962'],[-49,-37,'#6fb7ff'],[49,37,'#f3cf65']]){ctx.fillStyle=color;ctx.fillRect((x+HALF_X)*sx-4,(z+HALF_Z)*sz-4,8,8);}
+    for(const [x,z,color] of [[-1,1,'#6ce6b1'],[1,-1,'#f67962'],[-1,-1,'#6fb7ff'],[1,1,'#f3cf65']]){ctx.fillStyle=color;ctx.fillRect((x*(39+map.spawnOffsetX)+HALF_X)*sx-4,(z*(29+map.spawnOffsetZ)+HALF_Z)*sz-4,8,8);}
     $('map-description').textContent=map.description;
   }
   for(const id of ['map-select','network-map'])for(const map of FIELD_MAP.catalog){const option=document.createElement('option');option.value=map.id;option.textContent=map.name;$(id).append(option);}
@@ -2899,7 +2899,7 @@
       for(const team of ['player','enemy','team3','team4']) {
         const [sx,sz]=corners[team];createField((42+MAP.spawnOffsetX)*sx,(10+MAP.spawnOffsetZ)*sz,6000,`${team.toUpperCase()} ORE`);
       }
-      createField(0,0,14000,'CENTRAL ORE');createField(-17,0,6000,'WEST EXPANSION');createField(17,0,6000,'EAST EXPANSION');
+      createField(0,0,14000,'CENTRAL ORE');createField(-39,15,6000,'WEST EXPANSION');createField(39,-15,6000,'EAST EXPANSION');
       for(const team of matchTeams){
         const [sx,sz]=corners[team];
         createBuilding('base',team,(39+MAP.spawnOffsetX)*sx,(29+MAP.spawnOffsetZ)*sz);createBuilding('refinery',team,(43+MAP.spawnOffsetX)*sx,(20+MAP.spawnOffsetZ)*sz);
@@ -2910,8 +2910,8 @@
         assignMining(createUnit('miner',team,(39+MAP.spawnOffsetX)*sx,(14+MAP.spawnOffsetZ)*sz),field);assignMining(createUnit('miner',team,(44+MAP.spawnOffsetX)*sx,(14+MAP.spawnOffsetZ)*sz),field);
       }
     } else {
-    createField(-53,13,6000,'WEST ORE');createField(0,0,10000,'CENTRAL ORE');createField(53,-11,6000,'EAST ORE');
-    createField(-25,5,6000,'WEST EXPANSION');createField(25,-5,6000,'EAST EXPANSION');
+    createField(-73,28,6000,'WEST ORE');createField(0,0,10000,'CENTRAL ORE');createField(73,-26,6000,'EAST ORE');
+    createField(-39,15,6000,'WEST EXPANSION');createField(39,-15,6000,'EAST EXPANSION');
     spawnBuilding('base', 'player', -17, 12); spawnBuilding('refinery', 'player', -22, 3);
     spawnBuilding('power', 'player', -8, 17); spawnBuilding('turret', 'player', -6, 7);
     spawnBuilding('base', 'enemy', 17, -12); spawnBuilding('refinery', 'enemy', 22, 1);
@@ -2919,11 +2919,11 @@
     spawnUnit('scout', 'player', -10, 8); spawnUnit('tank', 'player', -13, 7); spawnUnit('tank', 'player', -10, 11); spawnUnit('artillery', 'player', -12, 16);
     const miner1 = spawnUnit('miner', 'player', -18, 0), miner2 = spawnUnit('miner', 'player', -20, -2);
     assignMining(miner1, fields[0]); assignMining(miner2, fields[0]);
-    createBuilding('warFactory', 'enemy', 39, -41);
+    spawnBuilding('warFactory', 'enemy', 7, -21);
     spawnUnit('tank', 'enemy', 13, -7); spawnUnit('tank', 'enemy', 18, -6); spawnUnit('scout', 'enemy', 10, -14); spawnUnit('heavy', 'enemy', 22, -10);
     const enemyMiner = spawnUnit('miner', 'enemy', 24, 6); assignMining(enemyMiner, fields[2]);
     }
-    if(!net?.active)battleLog.start({game:'Iron Field',protocolVersion:13,loggingVersion:1,map:{id:MAP.id,name:MAP.name},mode:'solo',timeBasis:'simulation seconds; snapshots at minute boundaries',opponentStyle},battleLogSnapshot);
+    if(!net?.active)battleLog.start({game:'Iron Field',protocolVersion:14,loggingVersion:1,map:{id:MAP.id,name:MAP.name},mode:'solo',timeBasis:'simulation seconds; snapshots at minute boundaries',opponentStyle},battleLogSnapshot);
     refreshFog(); shadeScene(); homeCamera(); updatePause(); updateUI(); announce('Miners are harvesting. Build your army and protect the supply line.');
   }
 
@@ -3272,7 +3272,7 @@
   }
   // Console diagnostics return copies, so inspection cannot alter the simulation.
   window.IronField = Object.freeze({
-    snapshot: () => ({ version: 13, matchTeams:[...matchTeams],eliminated:[...eliminated],winner,fog:fog.summary(localTeam), map: { id:MAP.id,name:MAP.name,water:MAP.water,bridges:MAP.bridges,width: HALF_X * 2, depth: HALF_Z * 2, buildRadius: MAP.buildRadius }, localTeam, network: { active: Boolean(net?.active), role: net?.role, code: net?.session?.code, phase: net?.room?.phase, playable: Boolean(net?.playable) }, credits: money(localTeam), delivered: deliveredFor(localTeam), rewards: battleRewards[localTeam]||0, enemyCredits, queue: queueFor(localTeam).map(q => ({ ...q })), paused, outcome, elapsed,
+    snapshot: () => ({ version: 14, matchTeams:[...matchTeams],eliminated:[...eliminated],winner,fog:fog.summary(localTeam), map: { id:MAP.id,name:MAP.name,water:MAP.water,bridges:MAP.bridges,width: HALF_X * 2, depth: HALF_Z * 2, buildRadius: MAP.buildRadius }, localTeam, network: { active: Boolean(net?.active), role: net?.role, code: net?.session?.code, phase: net?.room?.phase, playable: Boolean(net?.playable) }, credits: money(localTeam), delivered: deliveredFor(localTeam), rewards: battleRewards[localTeam]||0, enemyCredits, queue: queueFor(localTeam).map(q => ({ ...q })), paused, outcome, elapsed,
       camera: camera.type, cameraView: { ...view }, power: powerFor(localTeam), raids, nextRaid, wave, ai: net?.active ? null : {style:opponentStyle,policy:aiPolicy().name,plan:currentModelPlan()?{...currentModelPlan()}:null,intent:commander.intent,decisions:commander.decisions,events:commander.events.map(e=>({...e})),model:commander.model,pending:commander.pending,status:commander.modelStatus,mode:commander.mode,targetId:commander.targetId,queue:remoteQueue.map(q=>({...q}))}, placement, selected: [...selected].map(u => u.id),
       fields: fields.map(f => ({ id: f.id, name: f.name, amount: f.amount, x: f.mesh.position.x, z: f.mesh.position.z })),
       entities: living().map(e => ({ visible:visibleTo(e),rendered:e.mesh.visible,labelHidden:e.label.hidden,id: e.id, type: e.type, kind: e.kind, team: e.team, hp: e.hp, maxHp: e.maxHp,
