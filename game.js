@@ -1328,6 +1328,34 @@
     return false;
   }
   function clearRoute(u) { u.path = []; u.pathGoal = null; u.repath = 0; u.navProgress=null; }
+  // Project a land order onto water the ship can actually reach, keeping its hull clear.
+  function navalShoreDestination(u,goal,reserved=[]) {
+    if(!MAP.water.length)return null;
+    const candidates=[],seen=new Set(),pad=u.radius+.35;
+    const add=(x,z)=>{
+      x=THREE.MathUtils.clamp(x,-HALF_X+u.radius,HALF_X-u.radius);
+      z=THREE.MathUtils.clamp(z,-HALF_Z+u.radius,HALF_Z-u.radius);
+      const key=x.toFixed(2)+':'+z.toFixed(2);if(seen.has(key))return;seen.add(key);
+      if(blocked(x,z,u.radius,true)||reserved.some(p=>Math.hypot(x-p.x,z-p.z)<u.radius+p.radius+.4))return;
+      candidates.push(new THREE.Vector3(x,0,z));
+    };
+    for(const w of MAP.water){
+      const minX=w.x-w.width/2+pad,maxX=w.x+w.width/2-pad,minZ=w.z-w.depth/2+pad,maxZ=w.z+w.depth/2-pad;
+      if(minX>maxX||minZ>maxZ)continue;
+      const x=THREE.MathUtils.clamp(goal.x,minX,maxX),z=THREE.MathUtils.clamp(goal.z,minZ,maxZ);
+      add(x,z);
+      // Include the banks and interior so blocked or occupied closest points have alternatives.
+      for(let cx=minX;cx<=maxX;cx+=4){add(cx,z);add(cx,minZ);add(cx,maxZ);}
+      for(let cz=minZ;cz<=maxZ;cz+=4){add(x,cz);add(minX,cz);add(maxX,cz);}
+    }
+    candidates.sort((a,b)=>a.distanceToSquared(goal)-b.distanceToSquared(goal));
+    for(const point of candidates){
+      if(u.mesh.position.distanceTo(point)<.4||clearSegment(u.mesh.position,point,u.radius,true))return point;
+      const path=route(u.mesh.position,point,u.radius,true);
+      if(path.length&&path[path.length-1].distanceTo(point)<.1)return point;
+    }
+    return null;
+  }
   function resolveCollisions() {
     for (let i = 0; i < units.length; i++) {
       const u = units[i];
@@ -1712,10 +1740,11 @@
     const crawlers=squad.filter(u=>u.kind==='repair');
     const formation=escorts.length?squad.filter(u=>u.kind!=='repair'):squad;
     const columns = Math.ceil(Math.sqrt(formation.length));
+    const shipSlots=[];let shipsWithoutWater=0;
     formation.forEach((u, i) => {
       clearRoute(u);
       u.supportIds=[];
-      if(isNaval(u)&&!hostile(team,target?.team)&&!terrainAllows(point.x,point.z,u.radius,true)){u.destination=null;u.attackTarget=null;return;}
+      u.navalApproach=null;
       if (u.kind === 'miner' && target?.type === 'ore') { assignMining(u, target); return; }
       if (u.kind === 'miner' && target?.kind === 'refinery' && target.team === team) {
         u.mining = true; u.mineState = 'return'; u.destination = null; u.preferredRefinery = target;
@@ -1726,11 +1755,16 @@
       u.destination = u.attackTarget ? null : new THREE.Vector3(
         THREE.MathUtils.clamp(point.x + (i % columns - (columns - 1) / 2) * 2.65, -HALF_X + 2, HALF_X - 2), 0,
         THREE.MathUtils.clamp(point.z + (Math.floor(i / columns) - (Math.ceil(formation.length / columns) - 1) / 2) * 2.65, -HALF_Z + 2, HALF_Z - 2));
+      if(isNaval(u)&&!u.attackTarget){
+        const destination=navalShoreDestination(u,u.destination,shipSlots);
+        if(destination){u.destination=destination;shipSlots.push({x:destination.x,z:destination.z,radius:u.radius});}
+        else {u.destination=null;shipsWithoutWater++;}
+      }
     });
     if(escorts.length)crawlers.forEach((u,i)=>setRepairEscort(u,escorts,point,(i-(crawlers.length-1)/2)*2.4));
     if(team===localTeam){const marker = ring(effects, targetRing, target && isBuilding(target) ? target.radius : 1.2);
     marker.position.set(point.x,waterAt(point.x,point.z)?.24+bridgeHeight(point.x,point.z):.09,point.z); markers.push({ mesh: marker, life: 1.2 });}
-    announce(squad.some(isNaval)&&!waterAt(point.x,point.z)&&!hostile(team,target?.team)?'Ships need a destination in water.':target?.type === 'ore' ? 'Miners assigned to ore. Cargo is delivered automatically.' : hostile(team,target?.team) ? 'Attack order confirmed.' : 'Move order confirmed.');
+    announce(shipsWithoutWater?'Some ships cannot reach water near the destination.':target?.type === 'ore' ? 'Miners assigned to ore. Cargo is delivered automatically.' : hostile(team,target?.team) ? 'Attack order confirmed.' : squad.some(isNaval)&&!waterAt(point.x,point.z)?'Ships moving to the nearest reachable shore.':'Move order confirmed.');
   }
   let drag = null, pointer = null;
   const controlGroups = new Map();
@@ -2127,7 +2161,7 @@
   function updateCombat(u, dt) {
     if(isAir(u)&&u.mesh.position.y<UNIT[u.kind].altitude){u.mesh.position.y=Math.min(UNIT[u.kind].altitude,u.mesh.position.y+dt*3);u.state='Taking off';return;}
     u.cooldown -= dt; u.state = isAir(u)?'Air patrol':'Guarding';
-    if (u.attackTarget && (u.attackTarget.hp <= 0 || !canAttack(u,u.attackTarget) || !visibleTo(u.attackTarget,u.team))) { u.attackTarget = null; clearRoute(u); }
+    if (u.attackTarget && (u.attackTarget.hp <= 0 || !canAttack(u,u.attackTarget) || !visibleTo(u.attackTarget,u.team))) { u.attackTarget = null;u.navalApproach=null; clearRoute(u); }
     let target = u.attackTarget;
     if (!target && u.team === 'enemy' && !net?.active && (!raids || !u.aiControlled)) target = closestEnemy(u, 13);
     if (u.destination) { if (moveToward(u, u.destination, dt)) u.destination = null; }
@@ -2135,7 +2169,15 @@
       const offset = u.mesh.position.clone().sub(target.mesh.position); offset.y = 0;
       if (!offset.lengthSq()) offset.set(1, 0, 0);
       const standoff = target.mesh.position.clone().addScaledVector(offset.normalize(), Math.max(3, reach(u, target) - 1));
-      standoff.y=u.mesh.position.y;moveToward(u, standoff, dt, .3);
+      if(isNaval(u)&&blocked(standoff.x,standoff.z,u.radius,true)){
+        const cache=u.navalApproach;
+        if(!cache||cache.id!==target.id||cache.version!==navVersion||cache.target.distanceTo(target.mesh.position)>2){
+          u.navalApproach={id:target.id,version:navVersion,target:target.mesh.position.clone(),point:navalShoreDestination(u,target.mesh.position)};
+        }
+        const shore=u.navalApproach.point;
+        if(shore&&u.mesh.position.distanceTo(shore)>.6)moveToward(u,shore,dt,.6);
+        else u.state=shore?'Holding near shore':'No reachable shore';
+      }else{standoff.y=u.mesh.position.y;moveToward(u, standoff, dt, .3);}
     }
     const inRange = target && distance(u, target) <= reach(u, target);
     const fireTarget = inRange ? target : closestEnemy(u, UNIT[u.kind].range);

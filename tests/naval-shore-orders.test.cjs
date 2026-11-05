@@ -1,0 +1,31 @@
+'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),THREE=require('../vendor/three.min.js'),FIELD_MAP=require('../map.js');
+const src=fs.readFileSync(require.resolve('../game.js'),'utf8');
+const part=(a,b)=>src.slice(src.indexOf(a),src.indexOf(b,src.indexOf(a)));
+const MAP=FIELD_MAP.get('crossroads'),HALF_X=MAP.halfWidth,HALF_Z=MAP.halfDepth;
+const ctx={THREE,FIELD_MAP,MAP,HALF_X,HALF_Z,buildings:[],navVersion:0,terrainBlocked:(x,z,r)=>MAP.obstacles.some(o=>Math.hypot(x-o.x,z-o.z)<o.radius+r+.2),
+ isAir:()=>false,isNaval:u=>u.naval,stats:u=>({damage:u.damage??10}),visibleTo:()=>true,hostile:(a,b)=>!!b&&a!==b,canAttack:()=>true,outcome:false,localTeam:'player',sendAction:()=>false,selected:[],targetRing:{},effects:{},markers:[],STRUCTURE:{},ring:()=>({position:{set(){}}}),waterAt:(x,z)=>FIELD_MAP.waterAt(MAP,x,z),bridgeHeight:()=>0,announce:s=>ctx.message=s};
+vm.createContext(ctx);
+vm.runInContext(part('  const bridgeRails =','  function bridgeHeight(')+part('  const CELL = 1.5,','  function rotateToward(')+part('  function clearRoute(u)','  function resolveCollisions()')+part('  function issueOrder(','  let drag =')+'\nthis.findShore=navalShoreDestination;this.order=issueOrder;',ctx);
+const ship=(x,z)=>({type:'unit',kind:'frigate',team:'player',naval:true,radius:1.5,mesh:{position:new THREE.Vector3(x,0,z)},path:[],hp:100});
+const ground={type:'unit',kind:'tank',team:'player',radius:1,mesh:{position:new THREE.Vector3(-55,0,30)},path:[],hp:100};
+const a=ship(-50,0),b=ship(-45,0),land=new THREE.Vector3(58,0,42);
+ctx.order(land,null,[ground,a,b],'player');
+for(const s of [a,b]){assert(s.destination,'ship gets a water destination');assert(FIELD_MAP.navigable(MAP,s.destination.x,s.destination.z,s.radius,true));assert(s.destination.distanceTo(land)<50,'ships approach the relevant shore');}
+assert(a.destination.distanceTo(b.destination)>=a.radius+b.radius+.4-1e-6,'ships get separate positions');
+assert(ground.destination&&ground.destination.distanceTo(land)<5,'land unit retains the land destination');
+assert.match(ctx.message,/shore/);
+const shipOnly=ship(-40,0);ctx.order(new THREE.Vector3(25,0,3),null,[shipOnly],'player');assert(FIELD_MAP.navigable(MAP,shipOnly.destination.x,shipOnly.destination.z,shipOnly.radius,true));
+const saved=ctx.MAP;ctx.MAP=FIELD_MAP.get('classic');assert.equal(ctx.findShore(a,land),null);ctx.MAP=saved;
+ctx.MAP={...MAP,id:'separate-lakes',water:[{x:-30,z:0,width:20,depth:14},{x:30,z:0,width:20,depth:14}],bridges:[],obstacles:[]};ctx.navVersion++;
+const isolated=ship(-30,0),reachable=ctx.findShore(isolated,new THREE.Vector3(35,0,25));
+assert(reachable&&reachable.x<0,'ships choose reachable water rather than an isolated nearer lake');ctx.MAP=saved;ctx.navVersion++;
+Object.assign(ctx,{UNIT:{frigate:{range:20}},net:null,raids:true,distance:(u,t)=>u.mesh.position.distanceTo(t.mesh.position),reach:()=>20,closestEnemy:()=>null,rotateToward:()=>{},fire:()=>{throw Error('target out of range');},moveToward:(u,p)=>{u.movedTo=p.clone();return false;}});
+vm.runInContext(part('  function updateCombat(','  function updateEffects(')+'\nthis.combat=updateCombat;',ctx);
+const target={id:91,team:'enemy',hp:100,mesh:{position:new THREE.Vector3(58,0,42)}};
+const attacker=ship(-50,0);Object.assign(attacker,{attackTarget:target,cooldown:1,body:{rotation:{y:0}},turret:{rotation:{y:0}}});
+ctx.combat(attacker,.1);assert(attacker.movedTo,'ship advances on distant land target');assert(FIELD_MAP.navigable(MAP,attacker.movedTo.x,attacker.movedTo.z,attacker.radius,true),'shore attack approach stays in water');
+const approach=attacker.navalApproach;ctx.combat(attacker,.1);assert.equal(attacker.navalApproach,approach,'stable target reuses shore path');
+attacker.mesh.position.copy(approach.point);ctx.combat(attacker,.1);assert.equal(attacker.state,'Holding near shore','out-of-range target does not send the ship onto land');
+target.mesh.position.x+=4;ctx.combat(attacker,.1);assert.notEqual(attacker.navalApproach,approach,'moving target refreshes the shore approach');
+console.log('PASS mixed land/naval orders, reachable shore positions, ship spacing, water orders, shore attacks and no-water fallback.');
