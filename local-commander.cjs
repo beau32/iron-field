@@ -32,12 +32,16 @@ async function handle(req,res,path,data,reply){
  }
  const worker=path==='work'||path==='result',s=session(req,worker);
  if(path==='disconnect'){s.job?.reject(fail(503,'Local AI disconnected.'));sessions.delete(s.clientToken);workers.delete(s.workerToken);codes.delete(s.code);reply(res,200,{ok:true});return;}
- if(path==='status'){reply(res,200,{connected:now-s.lastSeen<15000,ready:s.ready,model:s.model,models:s.models||[],serviceMessage:s.serviceMessage,protocol:s.protocol,decisionVersion:s.decisionVersion||1,provider:s.provider,port:s.port,configPort:s.configPort,code:s.workerToken?null:s.code,expires:s.expires});return;}
+ if(path==='status'){
+  if(s.provider!=='openai'&&data.model!==undefined){if(typeof data.model!=='string'||data.model.length>100)throw fail(400,'Invalid selected model.');s.selectedModel=data.model;}
+  reply(res,200,{connected:now-s.lastSeen<15000,ready:s.ready,model:s.model,defaultModel:s.defaultModel||s.model,models:s.models||[],serviceMessage:s.serviceMessage,protocol:s.protocol,decisionVersion:s.decisionVersion||1,provider:s.provider,port:s.port,configPort:s.configPort,code:s.workerToken?null:s.code,expires:s.expires});return;
+ }
  if(path==='work'){
   s.lastSeen=now;s.ready=Boolean(data.ready);s.decisionVersion=[2,3,4,5].includes(data.decisionVersion)?data.decisionVersion:1;s.models=modelList(data.models);s.model=String(data.model||s.model).slice(0,100);
+  if(typeof data.defaultModel==='string')s.defaultModel=data.defaultModel.slice(0,100);
   s.serviceMessage=typeof data.serviceMessage==='string'?data.serviceMessage.slice(0,180):'';s.protocol=['systemone','openjev-nli'].includes(data.protocol)?data.protocol:undefined;
   const job=s.job&&!s.job.dispatched?s.job:null;if(job)job.dispatched=true;
-  reply(res,200,{job:job?{id:job.id,summary:job.summary,model:job.model}:null});return;
+  reply(res,200,{job:job?{id:job.id,summary:job.summary,model:job.model}:null,selectedModel:s.selectedModel??null});return;
  }
  if(path==='result'){
   s.lastSeen=now;const job=s.job;if(!job||job.id!==data.id){reply(res,200,{ignored:true});return;}

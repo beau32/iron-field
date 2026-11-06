@@ -45,7 +45,7 @@
   showModels([], '', 'Loading installed models…');
   try{
    if(location==='player'&&!session?.clientToken){showModels([], '', 'Pair the local connector to list models on this computer.');return;}
-   const response=location==='server'?await fetch(serverPath()+'status'+(modelChoice()?'?model='+encodeURIComponent(modelChoice()):''),{signal:AbortSignal.timeout(5000)}):await api('status',{},AbortSignal.timeout(5000));
+   const response=location==='server'?await fetch(serverPath()+'status'+(modelChoice()?'?model='+encodeURIComponent(modelChoice()):''),{signal:AbortSignal.timeout(5000)}):await api('status',{model:modelChoice()},AbortSignal.timeout(5000));
    const result=await response.json();if(id!==modelRequestId||mode!==location||provider!==service)return;
    if(!response.ok)throw Error(result.error||'Could not load installed models.');
    if(service==='jev'&&location==='server'){$('jev-port').value=result.port||'';$('jev-port-status').textContent=result.port?'Server port · configured by the host.':'Host must configure JEV_PORT and restart the game server.';}
@@ -90,7 +90,7 @@
   if(mode!=='player'||!session?.clientToken||document.hidden||$('ai-settings').hidden)return;
   const token=session.clientToken,service=provider;
   try{
-   const response=await api('status',{},AbortSignal.timeout(3000),token),result=await response.json();if(session?.clientToken!==token||mode!=='player'||provider!==service)return;
+   const response=await api('status',provider==='openai'?{}:{model:modelChoice()},AbortSignal.timeout(3000),token),result=await response.json();if(session?.clientToken!==token||mode!=='player'||provider!==service)return;
    if(response.status===401){session=null;save();render();$('ai-connection').textContent='Connection expired. Pair this computer again.';return;}
    if(!response.ok)throw Error(result.error||'Connection unavailable.');
    const becameReady=result.connected&&result.ready&&!session.ready;
@@ -101,8 +101,9 @@
    if(keySetup)$('ai-key-setup').href=`http://127.0.0.1:${result.configPort}/`;
    $('ai-connection').textContent=result.connected?provider==='openai'?`${result.ready?'Connector ready · key configured':'Connector paired · enter API key'} · ${result.model}`:`${result.ready?'Connected':provider==='jev'?'Check service port and model':'Warming up'} · ${result.model} · on your computer`:result.code&&Date.now()<result.expires?'Waiting for your local connector.':'Connector offline. Restart it, or pair again.';
    if(provider==='jev'&&result.connected)$('ai-connection').textContent=result.ready?`Connected to ${result.protocol==='openjev-nli'?'OpenJEV classifier':'JEV'} on port ${result.port} · ${result.model}`:'Connector paired · '+(result.serviceMessage||'Check the service port and model.');
+   if(provider!=='openai'&&result.connected&&modelChoice()&&result.model!==modelChoice())$('ai-connection').textContent+=` · Switching to ${modelChoice()}`;
    if(result.connected)$('ai-connection').textContent+=result.decisionVersion>=5?' · Strategy v5 · Player assessment':result.decisionVersion>=2?` · Strategy v${result.decisionVersion} · Update connector for player assessment`:' · Update AI connector: download, extract and restart it for player assessment.';
-   if(provider!=='openai')showModels(result.connected?result.models:[],result.model,!result.connected?'Connect the local AI connector first.':!result.models?.length?(provider==='jev'?result.serviceMessage||'No JEV model reported. Check the connector terminal.':'Download and restart the updated AI connector to choose models.'):'');
+   if(provider!=='openai')showModels(result.connected?result.models:[],result.defaultModel||result.model,!result.connected?'Connect the local AI connector first.':!result.models?.length?(provider==='jev'?result.serviceMessage||'No JEV model reported. Check the connector terminal.':'Download and restart the updated AI connector to choose models.'):'');
    if(becameReady)changed('ready');
   }catch(e){$('ai-connection').textContent='Local AI connection unavailable. Gameplay continues with fallback tactics.';}
  }

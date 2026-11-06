@@ -35,7 +35,8 @@ async function main(){
  const initialStatus=await commander.status();
  const {workerToken,port}=await send('connect',{decisionVersion:initialStatus.decisionVersion,models:initialStatus.models,code:String(code).trim(),model:preferred,provider,configPort:keyUI?.port});
  if(provider==='jev')commander=require('./jev-commander.cjs').createCommander({port,model:preferred});
- const service=provider==='jev'?'Checking the JEV service on port '+port:(provider==='openai'?'OpenAI Decisions':'Local Ollama')+' · '+preferred;
+ const automaticModel=preferred;let lastSelection=null;
+ const service=provider==='jev'?'Checking the JEV service on port '+port:provider==='openai'?'OpenAI Decisions · '+preferred:'Local Ollama · initial model '+preferred+' (the game selection takes priority)';
  console.log('Paired with '+base.origin+'. '+service+'. Keep this connector running; Ctrl+C stops it.');
  let warming=false,lastServiceMessage='';
  while(true){
@@ -47,11 +48,15 @@ async function main(){
     if(message!==lastServiceMessage){console.log(message);lastServiceMessage=message;}
    }
    if(!status.ready&&!warming){warming=true;commander.warmup(preferred).finally(()=>warming=false);}
-   const {job}=await send('work',{ready:status.ready,decisionVersion:status.decisionVersion,models:status.models,model:preferred,serviceMessage:status.message,protocol:status.protocol,configPort:keyUI?.port},workerToken);
+   const {job,selectedModel}=await send('work',{ready:status.ready,decisionVersion:status.decisionVersion,models:status.models,model:preferred,defaultModel:automaticModel,serviceMessage:status.message,protocol:status.protocol,configPort:keyUI?.port},workerToken);
+   if(provider!=='openai'&&typeof selectedModel==='string'&&selectedModel!==lastSelection&&(!selectedModel||(status.models||[]).some(m=>m.name===selectedModel))){
+    lastSelection=selectedModel;preferred=selectedModel||automaticModel;
+    console.log(selectedModel?'Model selected in game: '+preferred:'Game selected Automatic; using connector default: '+preferred);
+   }
    if(job){
-    if(provider!=='openai'&&job.model)preferred=job.model;
+    if(provider!=='openai'&&job.model&&job.model!==preferred){preferred=job.model;console.log('Applying game request model: '+preferred);}
     const started=Date.now();let result;
-    try{result=await commander.plan({...job.summary,...(provider!=='openai'?{model:preferred}:{})},new AbortController().signal);console.log('Local strategy completed in '+(Date.now()-started)+' ms.');}
+    try{result=await commander.plan({...job.summary,...(provider!=='openai'?{model:preferred}:{})},new AbortController().signal);console.log('Local strategy completed with '+(result.model||preferred)+' in '+(Date.now()-started)+' ms.');}
     catch(error){result={error:error.message,retryAfterMs:error.retryAfterMs};console.log(error.message);}
     await send('result',{id:job.id,...result},workerToken);
    }
