@@ -10,6 +10,7 @@ const signal=()=>new AbortController().signal;
  assert.equal(result.plan.directive,'raid-economy');assert.equal(result.plan.focus,'economy');assert.equal(result.plan.unit,'scout');
  assert.deepEqual(JSON.parse(body.input).contacts,battle.contacts,'OpenAI receives visible sightings');
  assert.deepEqual(JSON.parse(body.input).profile,battle.profile,'OpenAI receives player history');
+ assert.match(JSON.parse(body.input).playerDescription,/fielded multiple aircraft in 2\/2/,'OpenAI receives the verbal player assessment');
  const options=body.questions[0].choices;assert(options.some(c=>c.value==='raid-economy'&&c.description));assert(options.some(c=>c.value==='air'));assert(!options.some(c=>c.value==='naval'));
  const base=await make('anti-air').plan(battle,signal());assert.equal(base.plan.operation,'anti-air');assert.equal(base.plan.unit,'rocket');
  await assert.rejects(make('naval').plan(battle,signal()),/invalid strategy/);

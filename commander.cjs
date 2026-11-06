@@ -23,7 +23,7 @@ const choices={
   'anti-armor':{style:'balanced',focus:'army',unit:'destroyer',building:'auto'},
   naval:{style:'balanced',focus:'production',unit:'frigate',building:'shipyard'}
 };
-const decisionVersion=4;
+const decisionVersion=5;
 // Each variant is still subject to its parent operation's feasibility checks.
 const variants={
   'raid-economy':{operation:'rush',focus:'economy',unit:'scout',why:'Use fast scouts to raid enemy miners and refineries.'},
@@ -84,8 +84,34 @@ function summarize(value){
     const p=value.profile,keys=['games','forwardGames','navalGames','airGames','economyGames'];
     if(!p||typeof p!=='object'||Array.isArray(p)||!keys.every(k=>integer(p[k],20))||!p.games||keys.slice(1).some(k=>p[k]>p.games))throw failure(400,'Invalid player history.');
     profile=Object.fromEntries(keys.map(k=>[k,p[k]]));
+    if(p.evidence!==undefined&&p.evidence!==null){
+      const e=p.evidence,ek=['completedGames','wins','economySamples','fastEconomyGames','eventSamples','minerLossGames','productionLossGames','enemyProductionLossGames'];
+      if(!e||typeof e!=='object'||Array.isArray(e)||!ek.every(k=>integer(e[k],p.games))||e.wins>e.completedGames||e.fastEconomyGames>e.economySamples||[e.minerLossGames,e.productionLossGames,e.enemyProductionLossGames].some(n=>n>e.eventSamples))throw failure(400,'Invalid player history evidence.');
+      profile.evidence=Object.fromEntries(ek.map(k=>[k,e[k]]));
+    }
   }
-  return {elapsed:value.elapsed,credits:value.credits,own:side(value.own),opponent:side(value.opponent),contacts,profile,context:{pressure:context.pressure||0,water:Boolean(context.water),lowPower:Boolean(context.lowPower),oreRemaining:bounded(context.oreRemaining,1,1000000)},feedback};
+  return {elapsed:value.elapsed,credits:value.credits,own:side(value.own),opponent:side(value.opponent),contacts,profile,playerDescription:describePlayer(profile),context:{pressure:context.pressure||0,water:Boolean(context.water),lowPower:Boolean(context.lowPower),oreRemaining:bounded(context.oreRemaining,1,1000000)},feedback};
+}
+// Translate only measured history into tentative language. Never accept free-form player text.
+function describePlayer(p){
+  if(!p)return 'No saved player history; strengths and weaknesses are unknown.';
+  const repeated=n=>p.games>=2&&n>=2&&n/p.games>=.5,style=[];
+  if(repeated(p.forwardGames))style.push(`moved armed units near our HQ early in ${p.forwardGames}/${p.games} matches`);
+  if(repeated(p.navalGames))style.push(`fielded multiple ships in ${p.navalGames}/${p.games}`);
+  if(repeated(p.airGames))style.push(`fielded multiple aircraft in ${p.airGames}/${p.games}`);
+  if(repeated(p.economyGames))style.push(`expanded to at least four miners in ${p.economyGames}/${p.games}`);
+  const parts=[style.length?'Observed player style: '+style.join('; ')+'.':'Player style: insufficient repeated evidence for a consistent tactic.'];
+  const e=p.evidence,strength=[],weakness=[];
+  if(e){
+    if(e.wins)strength.push(`won ${e.wins}/${e.completedGames} completed matches`);
+    if(e.fastEconomyGames)strength.push(`reached 3000 ore around minute three in ${e.fastEconomyGames}/${e.economySamples} eligible matches`);
+    if(e.enemyProductionLossGames)strength.push(`opposing production was destroyed in ${e.enemyProductionLossGames}/${e.eventSamples} recorded matches`);
+    if(e.minerLossGames)weakness.push(`lost at least two miners in ${e.minerLossGames}/${e.eventSamples} recorded matches`);
+    if(e.productionLossGames)weakness.push(`lost production structures in ${e.productionLossGames}/${e.eventSamples} recorded matches`);
+  }
+  parts.push(strength.length?'Possible strengths: '+strength.join('; ')+'.':'Possible strengths: insufficient evidence.');
+  parts.push(weakness.length?'Possible vulnerabilities: '+weakness.join('; ')+'.':'Possible vulnerabilities: insufficient evidence.');
+  parts.push('Samples can miss events; these patterns are not guarantees.');return parts.join(' ');
 }
 function contactFacts(summary){
   if(summary.contacts===null)return 'Visible contacts unavailable.';
@@ -94,7 +120,7 @@ function contactFacts(summary){
 }
 function profileFacts(summary){
   const p=summary.profile;if(!p)return 'No saved player history.';
-  return `Past ${p.games} solo matches (tendencies, not current sightings): early forward force ${p.forwardGames}/${p.games}; 2+ ships ${p.navalGames}/${p.games}; 2+ aircraft ${p.airGames}/${p.games}; 4+ miners ${p.economyGames}/${p.games}.`;
+  return `Past ${p.games} solo matches (tendencies, not current sightings): early forward force ${p.forwardGames}/${p.games}; 2+ ships ${p.navalGames}/${p.games}; 2+ aircraft ${p.airGames}/${p.games}; 4+ miners ${p.economyGames}/${p.games}. ${summary.playerDescription||describePlayer(p)}`;
 }
 async function status(requested){
   const model=modelName(requested);
