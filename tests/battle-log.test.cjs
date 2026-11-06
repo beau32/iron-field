@@ -1,7 +1,7 @@
 'use strict';
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const source=fs.readFileSync(require.resolve('../game.js'),'utf8');
-const start=source.indexOf('  function createBattleLog('),end=source.indexOf('  const battleLog=createBattleLog();',start);
+const start=source.indexOf('  function createBattleLog('),end=source.indexOf('  const battleLog=createBattleLog(',start);
 assert(start>=0&&end>start);const ctx={};vm.createContext(ctx);vm.runInContext(source.slice(start,end),ctx);
 const log=ctx.createBattleLog({snapshotLimit:4,eventLimit:3});let reads=0,state={credits:100,queue:[]};const snapshot=()=>{reads++;return state;};
 log.start({mode:'solo'},snapshot);assert.equal(reads,1);
@@ -17,4 +17,5 @@ const afterFinish=reads;log.tick(180,snapshot);log.event(200,'ignored');log.fini
 const detached=log.export();detached.events[0].type='changed';assert.notEqual(log.export().events[0].type,'changed');
 log.start({mode:'solo'},snapshot);assert.equal(log.export(true).ended.reason,'victory');assert.equal(log.export().events[0].id,1);assert.equal(log.export().snapshots[0].gameSeconds,0);
 log.finish(0,snapshot,'new-battle');log.start({mode:'solo'},snapshot);assert.equal(log.export(true).ended.reason,'victory','zero-length setup match does not replace previous real match');
+let finishes=0,saved;const callbackLog=ctx.createBattleLog({onFinish:match=>{finishes++;saved=match;}});callbackLog.start({mode:'solo'},snapshot);callbackLog.finish(80,snapshot,'victory');callbackLog.finish(81,snapshot,'victory');assert.equal(finishes,1,'one stored summary per match');assert.equal(saved.ended.reason,'victory');
 console.log('PASS minute cadence, paused clock, lazy capture, immutable exports, linked AI events, bounded retention, final state and previous-match preservation.');

@@ -1,0 +1,15 @@
+'use strict';
+const assert=require('node:assert/strict'),memory=require('../player-memory.js'),defs=require('../data.js'),commander=require('../commander.cjs'),jev=require('../jev-commander.cjs');
+let saved={};const store={getItem:key=>saved[key]??null,setItem:(key,value)=>{saved[key]=value;}};
+const snap=(t,units,near)=>({gameSeconds:t,state:{teams:{player:{units,entities:near?[{type:'unit',kind:'tank',position:{x:15,z:0}}]:[]},enemy:{entities:[{kind:'base',position:{x:0,z:0}}]}}}});
+const match=(id,reason='victory',duration=180)=>({metadata:{mode:'solo'},startedAt:id,ended:{reason,gameSeconds:duration},snapshots:[snap(0,{miner:2},false),snap(120,{miner:4,frigate:2,gunship:2},true)]});
+const m=memory.create(store,defs);assert.equal(m.profile(),null);assert(m.record(match('one')));assert(!m.record(match('one')),'same match saved only once');
+assert.deepEqual(m.profile(),{games:1,forwardGames:1,navalGames:1,airGames:1,economyGames:1});assert.match(m.describe(),/peak 2 ships, 2 aircraft, 4 miners/);
+const restored=memory.create(store,defs);assert.deepEqual(restored.profile(),m.profile());restored.setEnabled(false);assert.equal(restored.profile(),null);assert(!restored.record(match('disabled')));assert.equal(memory.create(store,defs).enabled(),false);
+restored.setEnabled(true);assert(restored.record(match('two','new-battle')));assert.equal(restored.profile().games,2);assert(!restored.record(match('short','new-battle',59)));assert(!restored.record({...match('multiplayer'),metadata:{mode:'multiplayer'}}));
+const battle={elapsed:100,credits:900,own:{units:{miner:2,tank:4},buildings:{base:1,power:2,refinery:1,garrison:1,warFactory:1}},opponent:{units:{tank:1},buildings:{base:1}},profile:restored.profile(),context:{water:true,oreRemaining:5000,pressure:0}};
+const s=commander.summarize(battle),opts=commander.offeredOperations(s).map(x=>x.name);assert(opts.includes('anti-air'),'recurring past aircraft offers preparation even when none visible');assert(opts.includes('naval'),'recurring naval use is considered');assert(commander.promptFor(s).includes('2+ aircraft 2/2'));assert(jev.classificationRequest(s,commander.offeredOperations(s)).premise.includes('2+ ships 2/2'));assert.equal(JSON.parse(jev.decisionRequest(battle,'test').body.state).profile.games,2);
+for(const profile of [{...battle.profile,games:0},{...battle.profile,airGames:3},{...battle.profile,navalGames:-1},{...battle.profile,games:21},'oops'])assert.throws(()=>commander.summarize({...battle,profile}));
+restored.clear();assert.equal(restored.profile(),null);assert.equal(memory.create(store,defs).profile(),null);
+for(let i=0;i<25;i++)restored.record(match('m'+i));assert.equal(restored.profile().games,20,'history is bounded to most recent 20');
+console.log('PASS local history summaries, persistence, opt-out, clearing, bounded retention and provider-ready strategic use.');

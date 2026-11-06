@@ -23,7 +23,7 @@ const choices={
   'anti-armor':{style:'balanced',focus:'army',unit:'destroyer',building:'auto'},
   naval:{style:'balanced',focus:'production',unit:'frigate',building:'shipyard'}
 };
-const decisionVersion=3;
+const decisionVersion=4;
 // Each variant is still subject to its parent operation's feasibility checks.
 const variants={
   'raid-economy':{operation:'rush',focus:'economy',unit:'scout',why:'Use fast scouts to raid enemy miners and refineries.'},
@@ -34,9 +34,9 @@ const variants={
 };
 const operationEvidence={
   economy:'Ore remains available and our mining income needs recovery or expansion.',
-  defend:'Our base is under threat, or our army is losing and needs to recover.',
+  defend:'Our base is under threat, our army is losing, or past early attacks suggest preparation.',
   rush:'Our ground attack force is strong enough to pressure the enemy now.',
-  'anti-air':'Enemy aircraft outnumber our anti-air counters, including queued counters.',
+  'anti-air':'Enemy aircraft or a recurring past air threat call for more anti-air counters.',
   'anti-armor':'The enemy has armored vehicles and our army lacks enough armor counters.',
   siege:'The enemy has multiple defensive structures and we need more long-range siege weapons.',
   air:'An air attack is feasible and can exploit weak enemy anti-air defenses.',
@@ -52,7 +52,7 @@ Object.assign(operationEvidence,{
 });
 // Keep the evidence dictionary fixed so Ollama can reuse its prompt prefix on a small CPU.
 const prefix=[
-  'Command our army. Match the battle evidence to one offered operation. Defend immediate danger, then exploit a winning attack. Queued counters count. If tied, prefer the first offered option.',
+  'Command our army. Match battle evidence to an offered operation. Defend immediate danger, then exploit a winning attack. Visible contacts are current; global estimates can include hidden enemies. Player history shows tendencies, not guarantees. Queued counters count. If tied, prefer the first option.',
   ...Object.entries(operationEvidence).map(([name, evidence]) => name+' = '+evidence),
   'Return the selected name as a JSON string.'
 ].join('\n');
@@ -71,7 +71,30 @@ function summarize(value){
   if(typeof f!=='object'||Array.isArray(f)||!['','balanced','rush','defend','economy','air','anti-air','siege','anti-armor','naval'].includes(f.operation||'')||!['Preparing','Building forces','Attacking','Defending','Regrouping'].includes(f.mode||'Preparing')||typeof(f.stalled??false)!=='boolean')throw failure(400,'Invalid operation feedback.');
   const feedback={operation:f.operation||'',mode:f.mode||'Preparing',stalled:f.stalled||false};
   for(const key of ['age','lostValue','destroyedValue','income','raidAge','raidSize'])feedback[key]=bounded(f[key],0,key==='raidSize'?400:1000000);
-  return {elapsed:value.elapsed,credits:value.credits,own:side(value.own),opponent:side(value.opponent),context:{pressure:context.pressure||0,water:Boolean(context.water),lowPower:Boolean(context.lowPower),oreRemaining:bounded(context.oreRemaining,1,1000000)},feedback};
+  let contacts=null;
+  if(value.contacts!==undefined&&value.contacts!==null){
+    if(!Array.isArray(value.contacts)||value.contacts.length>8)throw failure(400,'Invalid visible contacts.');
+    contacts=value.contacts.map(c=>{
+      if(!c||!['base',...units,...buildings].includes(c.kind)||!Number.isInteger(c.x)||Math.abs(c.x)>1024||!Number.isInteger(c.z)||Math.abs(c.z)>1024||!integer(c.health,100)||!integer(c.distance,4096))throw failure(400,'Invalid visible contact.');
+      return {kind:c.kind,x:c.x,z:c.z,health:c.health,distance:c.distance};
+    });
+  }
+  let profile=null;
+  if(value.profile!==undefined&&value.profile!==null){
+    const p=value.profile,keys=['games','forwardGames','navalGames','airGames','economyGames'];
+    if(!p||typeof p!=='object'||Array.isArray(p)||!keys.every(k=>integer(p[k],20))||!p.games||keys.slice(1).some(k=>p[k]>p.games))throw failure(400,'Invalid player history.');
+    profile=Object.fromEntries(keys.map(k=>[k,p[k]]));
+  }
+  return {elapsed:value.elapsed,credits:value.credits,own:side(value.own),opponent:side(value.opponent),contacts,profile,context:{pressure:context.pressure||0,water:Boolean(context.water),lowPower:Boolean(context.lowPower),oreRemaining:bounded(context.oreRemaining,1,1000000)},feedback};
+}
+function contactFacts(summary){
+  if(summary.contacts===null)return 'Visible contacts unavailable.';
+  if(!summary.contacts.length)return 'Visible contacts: none.';
+  return 'Visible contacts (kind x,z health% distance from our HQ): '+summary.contacts.map(c=>`${c.kind} ${c.x},${c.z} ${c.health}% ${c.distance}`).join('; ')+'.';
+}
+function profileFacts(summary){
+  const p=summary.profile;if(!p)return 'No saved player history.';
+  return `Past ${p.games} solo matches (tendencies, not current sightings): early forward force ${p.forwardGames}/${p.games}; 2+ ships ${p.navalGames}/${p.games}; 2+ aircraft ${p.airGames}/${p.games}; 4+ miners ${p.economyGames}/${p.games}.`;
 }
 async function status(requested){
   const model=modelName(requested);
@@ -109,6 +132,7 @@ function investmentCost(summary,unit){
 }
 function candidates(summary){
   const m=assess(summary),own=summary.own,f=summary.feedback,pressure=summary.context.pressure;
+  const prior=key=>summary.profile?.games>=2&&summary.profile[key]>=2&&summary.profile[key]/summary.profile.games>=.5;
   const income=Boolean(own.ready.refinery&&(own.units.miner||0)>0&&summary.context.oreRemaining&&(f.age<45||f.income>0));
   const canInvest=unit=>investmentCost(summary,unit)<=summary.credits+(income?350:0);
   const losing=f.lostValue>Math.max(200,f.destroyedValue*1.5),advantage=m.attackValue>Math.max(250,m.enemyValue*1.25);
@@ -117,12 +141,14 @@ function candidates(summary){
   if(summary.context.oreRemaining&&(m.miners<2||!own.buildings.refinery))add('economy',100,'restore ore income');
   else if(summary.context.oreRemaining&&m.miners<4&&pressure<2&&summary.credits>=120&&m.ownValue>=m.enemyValue*.8&&!(advantage&&m.army>=5))add('economy',42,'safe income expansion');
   if(pressure>=2||own.hqHealth<45&&pressure||losing||m.ownValue<m.enemyValue*.65)add('defend',pressure>=3?110:losing?65:55,'protect base and rebuild force');
+  else if(summary.elapsed<180&&prior('forwardGames'))add('defend',48,'prepare for previously observed early pressure');
   if(m.air>m.aa)add('anti-air',pressure?105:85,'aircraft exceed mobile anti-air, including queues');
+  else if(!m.air&&m.aa<2&&income&&!pressure&&prior('airGames')&&canInvest('rocketTrooper'))add('anti-air',48,'prepare for recurring aircraft use');
   if(m.defenses>=2&&m.siege<Math.max(2,Math.ceil(m.defenses/2))&&canInvest('artillery'))add('siege',75,'outrange enemy defenses');
   if(m.armor>=3&&m.armorCounters<Math.ceil(m.armor/3)&&canInvest('destroyer'))add('anti-armor',70,'fill armor-counter gap');
   if(!pressure&&m.army>=3&&!losing&&m.attackValue>=m.enemyValue*.85)add('rush',advantage||summary.opponent.hqHealth<45?90:50,'pressure production or finish vulnerable HQ');
   if(!pressure&&income&&(!advantage||m.defenses>=2)&&m.enemyAA<Math.max(2,m.army/3)&&canInvest('gunship'))add('air',m.defenses>=2?60:40,'bypass ground defenses with air power');
-  if(summary.context.water&&canInvest('frigate')&&m.ownShips<Math.max(2,m.ships))add('naval',m.ships>=2?75:38,'contest waterways and shore targets');
+  if(summary.context.water&&canInvest('frigate')&&m.ownShips<Math.max(2,m.ships))add('naval',m.ships>=2?75:prior('navalGames')?50:38,prior('navalGames')?'prepare for recurring naval use':'contest waterways and shore targets');
   // A successful operation gets continuity, not a permanent lock. Stalled/loss-heavy
   // operations lose their bonus; an emergency can still take precedence.
   for(const item of list)if(item.name===f.operation){
@@ -160,7 +186,7 @@ function facts(summary){
   const m=assess(summary),f=summary.feedback;
   const economy=!summary.context.oreRemaining?'ore exhausted':!summary.own.ready.refinery||!(summary.own.units.miner||0)?'broken':f.age>=45&&!f.income?'stalled':'working';
   const force=m.ownValue>m.enemyValue*1.25?'stronger':m.ownValue<m.enemyValue*.7?'weaker':'even';
-  const lines=[`Income ${economy}. Cash ${summary.credits}. Force ${force}. Attack ${m.army} units, ${m.attackValue} vs ${m.enemyValue}. Base threats ${summary.context.pressure}.`];
+  const lines=[`Income ${economy}. Cash ${summary.credits}. Global force estimate ${force}. Attack ${m.army} units, ${m.attackValue} vs ${m.enemyValue}. Base threats ${summary.context.pressure}.`];
   if(m.air)lines.push(`Aircraft/counters ${m.air}/${m.aa}.`);
   if(m.armor>=3)lines.push(`Armor/counters ${m.armor}/${m.armorCounters}.`);
   if(m.defenses>=2)lines.push(`Defenses/siege ${m.defenses}/${m.siege}.`);
@@ -170,6 +196,8 @@ function facts(summary){
   if(summary.own.hqHealth<45)lines.push(`Our HQ ${summary.own.hqHealth}%.`);
   if(summary.context.lowPower)lines.push('Low power.');
   if(f.operation)lines.push(`Previous ${f.operation}: ${f.stalled?'stalled':f.lostValue>Math.max(200,f.destroyedValue*1.5)?'losing':f.mode==='Attacking'?'attacking':'building'}.`);
+  lines.push(contactFacts(summary));
+  lines.push(profileFacts(summary));
   return lines.join(' ');
 }
 function planFor(strategy,summary){
@@ -187,7 +215,7 @@ function promptFor(summary,options=offeredOperations(summary)){
 }
 async function infer(model,summary,signal){
   const offered=offeredOperations(summary),options=offered.map(c=>c.name);
-  const r=await fetch(base+'/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},signal,body:JSON.stringify({model,stream:false,...((process.env.OLLAMA_THINK==='false'||installed.find(m=>m.name===model)?.thinking)?{think:false}:{}),format:schema(options),keep_alive:'30m',options:{temperature:0,num_predict:24,num_ctx:768,num_thread:4},messages:[{role:'user',content:promptFor(summary,offered)}]})});
+  const r=await fetch(base+'/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},signal,body:JSON.stringify({model,stream:false,...((process.env.OLLAMA_THINK==='false'||installed.find(m=>m.name===model)?.thinking)?{think:false}:{}),format:schema(options),keep_alive:'30m',options:{temperature:0,num_predict:24,num_ctx:1536,num_thread:4},messages:[{role:'user',content:promptFor(summary,offered)}]})});
   if(!r.ok)throw Error('Ollama unavailable');
   const result=await r.json(),parsed=JSON.parse(result.message?.content);
   if(!options.includes(parsed))throw Error('Invalid model strategy');
@@ -226,4 +254,4 @@ async function plan(input,signal){
   }catch(error){if(signal.aborted)throw failure(499,'Commander request cancelled.');throw failure(503,`${model} missed its five-second deadline or returned an invalid strategy. Try a smaller model.`);}
   finally{clearTimeout(timer);signal.removeEventListener('abort',cancel);busy=false;nextAllowed=Date.now()+2000;}
 }
-module.exports={offeredOperations,operationEvidence,status,plan,summarize,warmup,relevantStrategies,choices,assess,candidates,planFor,promptFor,decisionVersion};
+module.exports={offeredOperations,operationEvidence,status,plan,summarize,warmup,relevantStrategies,choices,assess,candidates,planFor,promptFor,contactFacts,profileFacts,decisionVersion};

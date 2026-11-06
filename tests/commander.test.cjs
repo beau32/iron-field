@@ -21,7 +21,7 @@ s=fixture({}, {frigate:3},{context:{water:true,oreRemaining:10000}});assert(name
 const productive=fixture({}, {},{feedback:{operation:'rush',age:60,mode:'Attacking',destroyedValue:600,lostValue:100}}),stalled=fixture({}, {},{feedback:{operation:'rush',age:60,mode:'Building forces',stalled:true}});
 assert(candidates(productive).find(c=>c.name==='rush').score>(candidates(stalled).find(c=>c.name==='rush')?.score??-Infinity));
 s=fixture({}, {},{feedback:{operation:'air',age:60,mode:'Regrouping',lostValue:1000,destroyedValue:50,income:180,raidAge:35,raidSize:2,stalled:true}});assert(names(s).includes('defend'));
-const prompt=promptFor(s);for(const value of ['Cash 650','Force ','Income working','Previous air: stalled'])assert(prompt.includes(value),value);
+const prompt=promptFor(s);for(const value of ['Cash 650','force estimate','Income working','Previous air: stalled'])assert(prompt.includes(value),value);
 const {offeredOperations,operationEvidence}=require('../commander.cjs');
 const {decisionRequest,classificationRequest}=require('../jev-commander.cjs');
 const emergency=fixture({}, {},{own:{units:{tank:2},buildings:ready,hqHealth:35},opponent:{units:{tank:8},buildings:{base:1}},context:{pressure:4,oreRemaining:9000}});

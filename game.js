@@ -5,14 +5,14 @@
 'use strict';
 (() => {
   // Bounded diagnostic history. Simulation minutes, not wall-clock intervals.
-  function createBattleLog({snapshotLimit=360,eventLimit=10000}={}) {
+  function createBattleLog({snapshotLimit=360,eventLimit=10000,onFinish=()=>{}}={}) {
     let current=null,previous=null,lastMinute=-1,sequence=0,generation=0;
     const copy=value=>JSON.parse(JSON.stringify(value));
     const stamp=seconds=>({gameSeconds:Math.round(seconds*100)/100,wallTime:new Date().toISOString()});
     const trim=(list,limit,key)=>{if(list.length>limit){current.dropped[key]+=list.length-limit;list.splice(0,list.length-limit);}};
     function event(seconds,type,data={}){if(!current||current.ended)return null;const id=++sequence;current.events.push({id,...stamp(seconds),type,data:copy(data)});trim(current.events,eventLimit,'events');return id;}
     function capture(seconds,reason,read){if(!current)return;current.snapshots.push({...stamp(seconds),minute:Math.floor(seconds/60),reason,state:copy(read())});trim(current.snapshots,snapshotLimit,'snapshots');}
-    function finish(seconds,read,reason='ended'){if(!current||current.ended)return;event(seconds,'match-ended',{reason});capture(seconds,'final',read);current.ended={...stamp(seconds),reason};}
+    function finish(seconds,read,reason='ended'){if(!current||current.ended)return;event(seconds,'match-ended',{reason});capture(seconds,'final',read);current.ended={...stamp(seconds),reason};try{onFinish(copy(current));}catch(e){console.warn('Could not save match history:',e);}}
     return {
       start(metadata,read){if(current&&current.snapshots.some(s=>s.gameSeconds>0))previous=current;current={schemaVersion:1,startedAt:new Date().toISOString(),metadata:copy(metadata),limits:{snapshots:snapshotLimit,events:eventLimit},dropped:{snapshots:0,events:0},snapshots:[],events:[]};generation++;sequence=0;lastMinute=0;event(0,'match-started');capture(0,'initial',read);},
       tick(seconds,read){if(!current||current.ended)return;if(Math.floor(seconds/60)>lastMinute){lastMinute=Math.floor(seconds/60);capture(seconds,'minute',read);}},
@@ -22,7 +22,7 @@
       info(){return {generation,active:Boolean(current&&!current.ended),hasCurrent:Boolean(current),hasPrevious:Boolean(previous),snapshots:current?.snapshots.length||0,events:current?.events.length||0,dropped:current?current.dropped.snapshots+current.dropped.events:0};}
     };
   }
-  const battleLog=createBattleLog();
+  const battleLog=createBattleLog({onFinish:match=>window.FieldPlayerMemory?.record(match)});
   const $ = id => document.getElementById(id);
   const canvas = $('game');
   let MAP = FIELD_MAP.get('river');
@@ -1901,6 +1901,9 @@
   $('select-all').onclick = selectArmy; $('select-miners').onclick = selectMiners; $('harvest').onclick = () => harvestSelected(); $('stop').onclick = () => stopSelected();
   $('pause').onclick = togglePause; $('reset').onclick = $('play-again').onclick = () => { if (net?.active) { if (net.isHost && outcome) net.control('rematch'); else net.open(); } else openMapSetup(); };
   $('battle-log-download').onclick=()=>downloadBattleLog();$('battle-log-previous').onclick=()=>downloadBattleLog(true);
+  $('memory-enabled').checked=window.FieldPlayerMemory.enabled();
+  $('memory-enabled').onchange=()=>{window.FieldPlayerMemory.setEnabled($('memory-enabled').checked);updateOpponentUI();};
+  $('memory-clear').onclick=()=>{window.FieldPlayerMemory.clear();updateOpponentUI();};
   $('structure-superweapon').onclick=()=>beginSuperTarget([...selected][0]);
   $('structure-repair').onclick=()=>{const b=[...selected][0];repairStructure(b,!b?.repairing);};
   $('structure-sell').onclick=()=>sellStructure([...selected][0]);
@@ -2235,6 +2238,15 @@
     const policy=FIELD_OPPONENT.styles[currentModelPlan()?.style || (isModelOpponent()?'balanced':opponentStyle)] || FIELD_OPPONENT.styles.balanced;
     return isModelOpponent()?{...policy,cap:Math.max(20,policy.cap),maxRaid:Math.max(10,policy.maxRaid)}:policy;
   }
+  function visibleEnemyContacts() {
+    const home=baseOf('enemy');
+    const contacts=[...unitsFor('player'),...buildings.filter(b=>b.team==='player')]
+      .filter(e=>e.hp>0&&visibleTo(e,'enemy'))
+      .map(e=>({kind:e.kind,x:Math.round(e.mesh.position.x),z:Math.round(e.mesh.position.z),health:Math.max(0,Math.min(100,Math.round(100*e.hp/e.maxHp))),distance:home?Math.round(distance(e,home)):1000,
+        priority:(home&&distance(e,home)<35?100:0)+(stats(e).damage>0?20:0)+(['miner','refinery','warFactory','shipyard','base'].includes(e.kind)?10:0)}));
+    return contacts.sort((a,b)=>b.priority-a.priority||a.distance-b.distance||a.kind.localeCompare(b.kind)).slice(0,8)
+      .map(({priority,...contact})=>contact);
+  }
   function modelBattleSummary() {
     const side=team=>{
       const count=list=>list.reduce((result,e)=>{result[e.kind]=(result[e.kind]||0)+1;return result;},{});
@@ -2242,7 +2254,7 @@
       return {units:count(army),buildings:count(structures),ready:count(structures.filter(active)),queued:team==='enemy'?count(remoteQueue):{},health:fighters.length?Math.round(100*fighters.reduce((n,u)=>n+u.hp,0)/fighters.reduce((n,u)=>n+u.maxHp,0)):100,hqHealth:hq?Math.round(100*hq.hp/hq.maxHp):0};
     };
     const recent=(commander.battleEvents||[]).filter(e=>elapsed-e.at<=45),plan=currentModelPlan();
-    return {elapsed:Math.floor(elapsed),credits:Math.floor(enemyCredits),own:side('enemy'),opponent:side('player'),context:{water:MAP.water.length>0,lowPower:powerFor('enemy').low,pressure:aiBaseThreats().length,oreRemaining:Math.floor(fields.reduce((n,f)=>n+f.amount,0))},feedback:{
+    return {elapsed:Math.floor(elapsed),credits:Math.floor(enemyCredits),own:side('enemy'),opponent:side('player'),contacts:visibleEnemyContacts(),profile:window.FieldPlayerMemory?.profile()||null,context:{water:MAP.water.length>0,lowPower:powerFor('enemy').low,pressure:aiBaseThreats().length,oreRemaining:Math.floor(fields.reduce((n,f)=>n+f.amount,0))},feedback:{
       operation:plan?.operation||'',mode:commander.mode,age:Math.floor(Math.max(0,elapsed-(commander.operationAt||0))),
       stalled:Boolean(plan&&!commander.raidSize&&elapsed-(commander.progressAt||0)>45),
       lostValue:recent.filter(e=>e.team==='enemy').reduce((n,e)=>n+e.value,0),destroyedValue:recent.filter(e=>e.team==='player').reduce((n,e)=>n+e.value,0),
@@ -2348,6 +2360,7 @@
     $('opponent-log').hidden=multiplayer||!model;
     $('opponent-events').textContent=commander.events.map(e=>`${Math.floor(e.at/60)}:${String(e.at%60).padStart(2,'0')} ${e.message}`).join('\n')||'No orders executed yet.';
     const logInfo=battleLog.info();$('battle-log').hidden=multiplayer;$('battle-log-download').disabled=!logInfo.hasCurrent;$('battle-log-previous').hidden=!logInfo.hasPrevious;
+    $('player-memory').hidden=multiplayer;$('memory-status').textContent=window.FieldPlayerMemory.describe();
     $('battle-log-status').textContent=`Snapshots: ${logInfo.snapshots} · Events: ${logInfo.events}${logInfo.dropped?' · older entries trimmed':''}`;
   }
   function aiMove(u, point) {

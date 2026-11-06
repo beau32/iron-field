@@ -73,7 +73,7 @@ function lanLinks(req) {
   const addresses=Object.values(os.networkInterfaces()).flat().filter(i=>i&&i.family==='IPv4'&&!i.internal).map(i=>`http://${i.address}:${PORT}/`);
   return [...new Set(addresses)].slice(0,8);
 }
-const allowed=new Set(['index.html','style.css','data.js','map.js','ui-art.js','weapon-fx.js','music.js','voice.js','fog.js','game.js','network.js','opponent.js','README.md','MULTIPLAYER.md','preview.png','vendor/three.min.js','vendor/THREE-LICENSE.txt']);
+const allowed=new Set(['index.html','style.css','data.js','player-memory.js','map.js','ui-art.js','weapon-fx.js','music.js','voice.js','fog.js','game.js','network.js','opponent.js','README.md','MULTIPLAYER.md','preview.png','vendor/three.min.js','vendor/THREE-LICENSE.txt']);
 const mime={'.html':'text/html; charset=utf-8','.css':'text/css','.js':'text/javascript','.md':'text/plain; charset=utf-8','.txt':'text/plain; charset=utf-8','.png':'image/png'};
 allowed.add('local-ai.zip');allowed.add('ai-link.js');mime['.zip']='application/zip';
 const server=http.createServer(async(req,res)=>{

@@ -1,11 +1,11 @@
 'use strict';
 // Jev/System One decision API. Keep its endpoint separate from Ollama chat.
-const {summarize,offeredOperations,operationEvidence,planFor,assess,decisionVersion}=require('./commander.cjs');
+const {summarize,offeredOperations,operationEvidence,planFor,assess,contactFacts,profileFacts,decisionVersion}=require('./commander.cjs');
 const fail=(status,message,retryAfterMs=5000)=>Object.assign(new Error(message),{status,retryAfterMs});
 function validPort(value){const port=Number(value);if(!Number.isInteger(port)||port<1||port>65535)throw fail(400,'Enter a JEV port from 1 to 65535.');return port;}
 function decisionRequest(input,model){
  const summary=summarize(input),offered=offeredOperations(summary);
- return {summary,offered,body:{model,state:JSON.stringify(summary),questions:{strategy:{type:'choice',instructions:'Command our army to destroy the enemy HQ. Choose the best feasible operation. Protect a threatened base, recover broken income if ore remains, fill unmet counters including queues, and exploit an army advantage. Continue productive attacks; replace stalled or losing plans. Consider credits and completed producers.',criteria:Object.fromEntries(offered.map(c=>[c.name,c.why]))}}}};
+ return {summary,offered,body:{model,state:JSON.stringify(summary),questions:{strategy:{type:'choice',instructions:'Command our army to destroy the enemy HQ. Choose the best feasible operation. Contacts are currently visible enemies; aggregate enemy totals can include hidden enemies. Profile describes past player tendencies, not current sightings or guarantees. Protect a threatened base, recover broken income if ore remains, fill unmet counters including queues, and exploit an army advantage. Continue productive attacks; replace stalled or losing plans. Consider credits and completed producers.',criteria:Object.fromEntries(offered.map(c=>[c.name,c.why]))}}}};
 }
 function classificationRequest(summary,offered){
  const m=assess(summary),f=summary.feedback;
@@ -17,6 +17,8 @@ function classificationRequest(summary,offered){
   `Enemy defensive structures: ${m.defenses}; our siege weapons: ${m.siege}. Enemy anti-air: ${m.enemyAA}. Waterways: ${summary.context.water?'present':'absent'}; our ships: ${m.ownShips}; enemy ships: ${m.ships}.`,
   `Enemy economy: ${summary.opponent.units.miner||0} miners and ${summary.opponent.buildings.refinery||0} refineries. Enemy production: ${summary.opponent.buildings.warFactory||0} war factories, ${summary.opponent.buildings.garrison||0} garrisons, ${summary.opponent.buildings.airfield||0} airfields, ${summary.opponent.buildings.shipyard||0} shipyards.`,
   `Recent losses cost ${f.lostValue}; enemy losses cost ${f.destroyedValue}. Previous operation ${f.operation||'none'} is ${f.stalled?'stalled':f.mode}.`,
+  'Enemy aggregate estimates may include hidden units. '+contactFacts(summary),
+  profileFacts(summary),
   'Feasible operations after checking resources and technology: '+offered.map(c=>c.name+' ('+c.why+')').join('; ')+'.'
  ].join(' ');
  return {premise,choices:offered.map(c=>operationEvidence[c.name])};

@@ -2,7 +2,8 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),data=require('../data.js');
 const source=fs.readFileSync(require.resolve('../game.js'),'utf8');
 function body(name){const start=source.indexOf('  function '+name+'('),end=source.indexOf('\n  function ',start+3);assert(start>=0&&end>start);return source.slice(start,end);}
-const state={elapsed:0,net:null,opponentStyle:'ollama',UNIT:data.units,MAP:{water:[]},remoteQueue:[],fields:[{amount:5000}],buildings:[],performance:{now:()=>now},unitsFor:t=>army.filter(u=>u.team===t&&u.hp>0),baseOf:t=>state.buildings.find(b=>b.team===t&&b.kind==='base'),active:b=>b.hp>0&&!b.buildLeft,powerFor:()=>({low:false}),aiBaseThreats:()=>threats,deliveredFor:()=>delivered,isAir:u=>Boolean(data.units[u.kind].aircraft),hostile:(a,b)=>a!==b&&Boolean(a&&b),emitVoiceAlert:()=>{},isBuilding:e=>e.type!=='unit',stats:e=>data.units[e.kind]||data.buildings[e.kind],awardBattleReward:()=>{},destroy:()=>{}};
+const state={elapsed:0,net:null,opponentStyle:'ollama',UNIT:data.units,MAP:{water:[]},remoteQueue:[],fields:[{amount:5000}],buildings:[],performance:{now:()=>now},unitsFor:t=>army.filter(u=>u.team===t&&u.hp>0),baseOf:t=>state.buildings.find(b=>b.team===t&&b.kind==='base'),active:b=>b.hp>0&&!b.buildLeft,powerFor:()=>({low:false}),aiBaseThreats:()=>threats,visibleEnemyContacts:()=>[],deliveredFor:()=>delivered,isAir:u=>Boolean(data.units[u.kind].aircraft),hostile:(a,b)=>a!==b&&Boolean(a&&b),emitVoiceAlert:()=>{},isBuilding:e=>e.type!=='unit',stats:e=>data.units[e.kind]||data.buildings[e.kind],awardBattleReward:()=>{},destroy:()=>{}};
+state.window={FieldPlayerMemory:{profile:()=>null}};
 let now=0,delivered=0,threats=[];
 const unit=(id,kind,team='enemy')=>({id,kind,team,type:'unit',hp:data.units[kind].hp,maxHp:data.units[kind].hp});
 const army=[unit(1,'miner'),unit(2,'tank'),unit(3,'tank','player')];

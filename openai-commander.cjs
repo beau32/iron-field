@@ -1,6 +1,6 @@
 'use strict';
 // Fixed Decisions endpoint; credentials and prompts are never supplied by remote players.
-const {summarize,choices,offeredOperations,planFor}=require('./commander.cjs');
+const {summarize,choices,offeredOperations,planFor,decisionVersion}=require('./commander.cjs');
 const MODEL='gpt-6-luna';
 const descriptions={
  balanced:'Maintain a mixed army and attack exposed economy.',
@@ -21,7 +21,7 @@ function createCommander({fetchImpl=fetch,initialKey=process.env.OPENAI_API_KEY|
   key=value; // Never log, return or persist this value.
  }
  function clearKey(){key='';}
- function status(){return {available:Boolean(key),ready:Boolean(key),model:MODEL,provider:'openai',message:key?'API key configured; access is checked on the next decision.':'Supply an OpenAI API key in the connector setup page.'};}
+ function status(){return {available:Boolean(key),ready:Boolean(key),model:MODEL,provider:'openai',decisionVersion,message:key?'API key configured; access is checked on the next decision.':'Supply an OpenAI API key in the connector setup page.'};}
  async function plan(input,signal){
   const summary=summarize(input);
   if(!key)throw fail(503,'Open the connector API key setup page first.');
@@ -39,7 +39,7 @@ function createCommander({fetchImpl=fetch,initialKey=process.env.OPENAI_API_KEY|
     method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+key},signal:controller.signal,
     body:JSON.stringify({model:MODEL,input:JSON.stringify(summary),questions:[{
      type:'choice',name:'strategy',
-     instructions:'Choose the best next high-level operation for our computer army in a fictional RTS game. own is our army; opponent is the human. Credits, production buildings, miners, power and visible base pressure matter. Recover income if miners or refinery are lost; defend immediate threats; otherwise exploit enemy weaknesses. Avoid expensive technology without income or prerequisites. Use naval only when water exists. Ordinary local tactics handle movement, combat and recovery. Choose one operation.',
+     instructions:'Choose the best next high-level operation for our computer army in a fictional RTS game. own is our army; opponent is the human. contacts are currently visible enemy units and structures, with coordinates, health and distance from our HQ; opponent totals can include hidden enemies. profile summarizes the human player’s past tendencies, not guarantees or current sightings. Credits, production buildings, miners, power and visible base pressure matter. Recover income if miners or refinery are lost; defend immediate threats; otherwise exploit enemy weaknesses. Avoid expensive technology without income or prerequisites. Use naval only when water exists. Ordinary local tactics handle movement, combat and recovery. Choose one operation.',
      choices:options.map(value=>({value,description:descriptions[value]||extraDescriptions[value]}))
     }]})
    });

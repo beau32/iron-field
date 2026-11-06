@@ -1,0 +1,20 @@
+'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),THREE=require('../vendor/three.min.js');
+const data=require('../data.js'),c=require('../commander.cjs'),jev=require('../jev-commander.cjs');
+const src=fs.readFileSync(require.resolve('../game.js'),'utf8'),start=src.indexOf('  function visibleEnemyContacts('),end=src.indexOf('\n  function ',start+3);
+const home={mesh:{position:new THREE.Vector3(0,0,0)}};
+function entity(kind,x,z,visible=true){const def=data.units[kind]||data.buildings[kind];return {kind,team:'player',hp:def.hp/2,maxHp:def.hp,visible,mesh:{position:new THREE.Vector3(x,0,z)}};}
+const troops=[entity('battleship',25,0),entity('tank',-40,30),entity('miner',-50,0),entity('heavy',2,0,false)];
+const structures=[entity('refinery',-60,0),entity('base',-70,0,false)];
+const state={unitsFor:()=>troops,buildings:structures,baseOf:()=>home,visibleTo:e=>e.visible,stats:e=>data.units[e.kind]||data.buildings[e.kind],distance:(a,b)=>a.mesh.position.distanceTo(b.mesh.position)};
+vm.createContext(state);vm.runInContext(src.slice(start,end),state);
+const contacts=JSON.parse(JSON.stringify(state.visibleEnemyContacts()));
+assert.deepEqual(contacts.map(x=>x.kind),['battleship','tank','miner','refinery']);assert.equal(contacts[0].health,50);assert.equal(contacts[0].distance,25);assert.equal(contacts[0].x,25);assert(!contacts.some(x=>x.kind==='heavy'||x.kind==='base'),'unseen units and HQ excluded');
+for(let i=0;i<20;i++)troops.push(entity('scout',i+5,1));assert.equal(state.visibleEnemyContacts().length,8,'bound report size');
+const battle={elapsed:100,credits:400,own:{units:{tank:4,miner:2},buildings:{base:1,power:1,refinery:1,garrison:1,warFactory:1}},opponent:{units:{tank:3},buildings:{base:1}},contacts,context:{water:true,oreRemaining:1000}};
+const summary=c.summarize(battle);assert.deepEqual(summary.contacts,contacts);assert(c.promptFor(summary).includes('battleship 25,0 50% 25'));assert(c.promptFor(summary).includes('global estimates can include hidden enemies'));
+assert(jev.classificationRequest(summary,c.offeredOperations(summary)).premise.includes('battleship 25,0 50% 25'));
+assert.equal(JSON.parse(jev.decisionRequest(battle,'test').body.state).contacts[0].kind,'battleship');
+assert.equal(c.summarize({...battle,contacts:[]}).contacts.length,0);assert.equal(c.summarize({...battle,contacts:undefined}).contacts,null);
+for(const invalid of [[...contacts,...Array(9).fill(contacts[0])],[{...contacts[0],x:1e9}],[{...contacts[0],kind:'arbitrary'}],[{...contacts[0],health:101}],[{...contacts[0],distance:-1}],'not-an-array'])assert.throws(()=>c.summarize({...battle,contacts:invalid}));
+console.log('PASS visible-only prioritised contacts, bounded validation, Ollama prompt, JEV premise and typed state.');

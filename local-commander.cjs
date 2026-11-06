@@ -26,7 +26,7 @@ async function handle(req,res,path,data,reply){
   limit(req.socket.remoteAddress);const s=codes.get(String(data.code||'').toUpperCase());
   if(!s||now>s.expires)throw fail(401,'Pairing code is invalid or expired.');
   if((data.provider||'ollama')!==s.provider)throw fail(400,'This pairing code is for '+s.provider+'. Start the matching connector.');
-  codes.delete(s.code);s.workerToken=token();s.lastSeen=now;s.model=String(data.model||'').slice(0,100);s.ready=false;s.decisionVersion=data.decisionVersion===3?3:data.decisionVersion===2?2:1;s.models=modelList(data.models);workers.set(s.workerToken,s);
+  codes.delete(s.code);s.workerToken=token();s.lastSeen=now;s.model=String(data.model||'').slice(0,100);s.ready=false;s.decisionVersion=[2,3,4].includes(data.decisionVersion)?data.decisionVersion:1;s.models=modelList(data.models);workers.set(s.workerToken,s);
   s.configPort=s.provider==='openai'&&Number.isInteger(data.configPort)&&data.configPort>0&&data.configPort<=65535?data.configPort:null;
   reply(res,200,{workerToken:s.workerToken,port:s.port});return;
  }
@@ -34,7 +34,7 @@ async function handle(req,res,path,data,reply){
  if(path==='disconnect'){s.job?.reject(fail(503,'Local AI disconnected.'));sessions.delete(s.clientToken);workers.delete(s.workerToken);codes.delete(s.code);reply(res,200,{ok:true});return;}
  if(path==='status'){reply(res,200,{connected:now-s.lastSeen<15000,ready:s.ready,model:s.model,models:s.models||[],serviceMessage:s.serviceMessage,protocol:s.protocol,decisionVersion:s.decisionVersion||1,provider:s.provider,port:s.port,configPort:s.configPort,code:s.workerToken?null:s.code,expires:s.expires});return;}
  if(path==='work'){
-  s.lastSeen=now;s.ready=Boolean(data.ready);s.decisionVersion=data.decisionVersion===3?3:data.decisionVersion===2?2:1;s.models=modelList(data.models);s.model=String(data.model||s.model).slice(0,100);
+  s.lastSeen=now;s.ready=Boolean(data.ready);s.decisionVersion=[2,3,4].includes(data.decisionVersion)?data.decisionVersion:1;s.models=modelList(data.models);s.model=String(data.model||s.model).slice(0,100);
   s.serviceMessage=typeof data.serviceMessage==='string'?data.serviceMessage.slice(0,180):'';s.protocol=['systemone','openjev-nli'].includes(data.protocol)?data.protocol:undefined;
   const job=s.job&&!s.job.dispatched?s.job:null;if(job)job.dispatched=true;
   reply(res,200,{job:job?{id:job.id,summary:job.summary,model:job.model}:null});return;

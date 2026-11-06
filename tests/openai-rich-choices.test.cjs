@@ -1,13 +1,15 @@
 'use strict';
 const assert=require('node:assert/strict');
 const {createCommander}=require('../openai-commander.cjs');
-const battle={elapsed:300,credits:800,own:{units:{miner:2,tank:8},buildings:{base:1,power:2,refinery:1,garrison:1,warFactory:1}},opponent:{units:{miner:2,tank:2},buildings:{base:1,refinery:1,warFactory:1},hqHealth:100},context:{water:false,oreRemaining:10000,pressure:0}};
+const battle={elapsed:300,credits:800,own:{units:{miner:2,tank:8},buildings:{base:1,power:2,refinery:1,garrison:1,warFactory:1}},opponent:{units:{miner:2,tank:2},buildings:{base:1,refinery:1,warFactory:1},hqHealth:100},contacts:[{kind:'tank',x:12,z:-7,health:65,distance:30}],profile:{games:2,forwardGames:1,navalGames:0,airGames:2,economyGames:1},context:{water:false,oreRemaining:10000,pressure:0}};
 const signal=()=>new AbortController().signal;
 (async()=>{
  let body;
  const make=(choice)=>createCommander({initialKey:'test-key',fetchImpl:async(url,opts)=>{body=JSON.parse(opts.body);return {ok:true,json:async()=>({answers:[{name:'strategy',type:'choice',choice}]})};}});
  const result=await make('raid-economy').plan(battle,signal());
  assert.equal(result.plan.directive,'raid-economy');assert.equal(result.plan.focus,'economy');assert.equal(result.plan.unit,'scout');
+ assert.deepEqual(JSON.parse(body.input).contacts,battle.contacts,'OpenAI receives visible sightings');
+ assert.deepEqual(JSON.parse(body.input).profile,battle.profile,'OpenAI receives player history');
  const options=body.questions[0].choices;assert(options.some(c=>c.value==='raid-economy'&&c.description));assert(options.some(c=>c.value==='air'));assert(!options.some(c=>c.value==='naval'));
  const base=await make('anti-air').plan(battle,signal());assert.equal(base.plan.operation,'anti-air');assert.equal(base.plan.unit,'rocket');
  await assert.rejects(make('naval').plan(battle,signal()),/invalid strategy/);
