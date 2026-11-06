@@ -17,7 +17,7 @@ const tank=unit('tank',0),miner=unit('miner',2),ship=unit('frigate',60);
 miner.mining=true;
 const factory={id:100,kind:'warFactory',team:'enemy',hp:900,exitPoint:new THREE.Vector3(10,0,0),mesh:{position:new THREE.Vector3(10,0,-6)}};
 const yard={id:101,kind:'shipyard',team:'enemy',hp:850,exitPoint:new THREE.Vector3(50,0,0),mesh:{position:new THREE.Vector3(50,0,-6)}};
-const ctx={THREE,UNIT,STRUCTURE,enemyCredits:10,buildings:[factory,yard],units:[tank,miner,ship],HALF_X:120,HALF_Z:100,
+const ctx={THREE,UNIT,STRUCTURE,elapsed:0,enemyCredits:10,buildings:[factory,yard],units:[tank,miner,ship],HALF_X:120,HALF_Z:100,
   isAir:u=>Boolean(UNIT[u.kind]?.aircraft),isNaval:u=>Boolean(UNIT[u.kind]?.naval),
   active:b=>b.hp>0&&!b.buildLeft,blocked:()=>false,living:()=>ctx.units,stats:e=>UNIT[e.kind]||STRUCTURE[e.kind],
   distance:(a,b)=>a.mesh.position.distanceTo(b.mesh.position),visibleTo:()=>true,
@@ -32,6 +32,8 @@ assert(tank.aiRetreat&&miner.aiRetreat&&ship.aiRetreat,'idle half-health units s
 assert.equal(tank.aiRepairSource,factory.id);
 assert.equal(ship.aiRepairSource,yard.id);
 assert.equal(miner.mining,false);
+const fleeing=unit('miner',5,.4);fleeing.aiFleeUntil=10;ctx.units.push(fleeing);
+ctx.aiServiceDamagedUnits(ctx.units,{retreat:.28});assert(!fleeing.aiRetreat,'miner fleeing an active threat is not redirected into repair');ctx.units.pop();
 assert(tank.destination.distanceTo(miner.destination)>tank.radius+miner.radius,'repair positions have clearance');
 assert(tank.destination.distanceTo(factory.exitPoint)<STRUCTURE.warFactory.serviceRange);
 tank.mesh.position.copy(tank.destination);

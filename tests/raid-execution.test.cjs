@@ -41,7 +41,7 @@ function battle(harassers,extraGuards=0){
     serviceCompatible:()=>false,clearRoute:noop,blocked:()=>false,rotateToward:noop,closestEnemy:()=>null,
     fire:(u,target)=>shots.push(target.id)};
   vm.createContext(ctx);
-  vm.runInContext(['resetCommander','aiMove','aiAttack','aiFocusTarget','aiObjective','aiEngagement','guardsForHarasser','guardsForThreats','raidHasStalled','aiRegroup','aiRepairDestination','aiServiceDamagedUnits','updateCommander','updateCombat'].map(gameFunction).join('\n'),ctx);
+  vm.runInContext(['resetCommander','aiMove','aiAttack','aiFocusTarget','aiObjective','aiEngagement','guardsForHarasser','guardsForThreats','raidHasStalled','aiRegroup','aiRepairDestination','aiServiceDamagedUnits','aiThreatensAsset','aiMinerShelter','updateCommander','updateCombat'].map(gameFunction).join('\n'),ctx);
   ctx.commander=ctx.resetCommander();
   ctx.updateCommander();
   return {ctx,guard,objective,threats,troops,shots};
@@ -64,4 +64,9 @@ assert(raiders.every(u=>!u.raid),'stalled raid eventually regroups');
 assert.equal(battle(['gunship']).ctx.commander.raidSize,0,'uncovered air threat keeps army home');
 assert(battle(['scout','tank'],2).ctx.commander.raidSize>=4,'covered threats release remaining strike force');
 assert.equal(battle(['gunship','gunship','gunship']).ctx.commander.raidSize,0,'uncovered threats retain defenders');
+const navalAttack=battle([]);
+assert(navalAttack.ctx.commander.raidSize>0,'force initially attacks');
+navalAttack.troops.push({id:999,team:'player',kind:'battleship',type:'unit',hp:UNIT.battleship.hp,maxHp:UNIT.battleship.hp,mesh:{position:new THREE.Vector3(25,0,0)}});
+navalAttack.ctx.elapsed=12;navalAttack.ctx.updateCommander();
+assert.equal(navalAttack.ctx.commander.raidSize,0,'single uncovered long-range attacker recalls raid to protect base');
 console.log('PASS covered scout, guard and HQ attack orders, actual firing, productive long raid, stalled raid, uncovered and multiple threats.');

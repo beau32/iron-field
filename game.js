@@ -2366,14 +2366,25 @@
     if(enemyCredits<STRUCTURE[kind].cost) return false;
     if(buildings.some(b=>b.team==='enemy'&&b.kind===kind&&b.hp>0&&b.buildLeft))return false;
     if(kind==='shipyard'){
+      if(!MAP.water.length)return false;
+      if(commander.shipyardSearch?.version===navVersion&&elapsed<commander.shipyardSearch.until)return false;
       for(let x=-HALF_X+6;x<HALF_X-6;x+=2)for(let z=-HALF_Z+6;z<HALF_Z-6;z+=2){
         const point=new THREE.Vector3(x,0,z);if(!placementError(kind,point,'enemy')){spend('enemy',STRUCTURE[kind].cost);createBuilding(kind,'enemy',x,z,true);aiLog('Building Naval shipyard');return true;}
       }
-      // Expand toward the nearest bank so the next completed outpost reaches water.
-      for(const r of [23,19,15])for(let i=0;i<32;i++){
-        const a=i*Math.PI/16,p=base.mesh.position.clone().add(new THREE.Vector3(Math.cos(a)*r,0,Math.sin(a)*r));
-        if(MAP.water.some(w=>Math.abs(p.x-w.x)<w.width/2+14&&Math.abs(p.z-w.z)<w.depth/2+14)&&!placementError('power',p,'enemy')){spend('enemy',STRUCTURE.power.cost);createBuilding('power','enemy',p.x,p.z,true);return true;}
+      // Completed outposts reveal and extend territory one step at a time toward water.
+      if(buildings.some(b=>b.team==='enemy'&&b.kind==='power'&&b.hp>0&&b.buildLeft))return false;
+      const shoreDistance=p=>Math.min(...MAP.water.map(w=>Math.hypot(Math.max(0,Math.abs(p.x-w.x)-w.width/2),Math.max(0,Math.abs(p.z-w.z)-w.depth/2))));
+      const anchors=buildings.filter(b=>b.team==='enemy'&&active(b)).sort((a,b)=>shoreDistance(a.mesh.position)-shoreDistance(b.mesh.position));
+      const best=anchors.length?shoreDistance(anchors[0].mesh.position):Infinity,options=[];
+      for(const anchor of anchors)for(const r of [10,8,12])for(let i=0;i<24;i++){
+        const a=i*Math.PI/12,p=anchor.mesh.position.clone().add(new THREE.Vector3(Math.cos(a)*r,0,Math.sin(a)*r));
+        const d=shoreDistance(p);if(d<best-4)options.push({p,d});
       }
+      options.sort((a,b)=>a.d-b.d);
+      for(const {p} of options)if(!placementError('power',p,'enemy')){
+        spend('enemy',STRUCTURE.power.cost);createBuilding('power','enemy',p.x,p.z,true);aiLog('Expanding construction territory toward shore');return true;
+      }
+      commander.shipyardSearch={version:navVersion,until:elapsed+8};
       return false;
     }
     const opponentBase=baseOf('player');
@@ -2401,7 +2412,7 @@
     if(current){commander.intent=`Constructing ${STRUCTURE[kind].name} · ${Math.ceil(current.buildLeft)}s`;return true;}
     if(enemyCredits<STRUCTURE[kind].cost)return aiBudgetWait('build:'+kind,STRUCTURE[kind].cost,STRUCTURE[kind].name);
     if(elapsed<commander.nextBuild){commander.intent=`Preparing ${STRUCTURE[kind].name}`;return true;}
-    if(aiBuild(kind)){if(commander.budgetWaits)delete commander.budgetWaits['build:'+kind];commander.nextBuild=elapsed+8;commander.intent=`Constructing ${STRUCTURE[kind].name}`;return true;}
+    if(aiBuild(kind)){if(commander.budgetWaits)delete commander.budgetWaits['build:'+kind];commander.nextBuild=elapsed+8;commander.intent=kind==='shipyard'&&!buildings.some(b=>b.team==='enemy'&&b.kind==='shipyard'&&b.hp>0)?'Expanding toward shore':`Constructing ${STRUCTURE[kind].name}`;return true;}
     commander.intent=`No clear site for ${STRUCTURE[kind].name}`;return false;
   }
   function aiCommittedProduction(plan,policy,own,ownBuildings,count) {
@@ -2488,6 +2499,12 @@
       if(plan&&aiBudgetWait('miner',UNIT.miner.cost,'miner'))return;
     }
     if(!has('warFactory')&&aiPriorityBuild('warFactory'))return;
+    // The starting AI has a factory but no garrison: unlock basic defenses early.
+    // Construction runs alongside normal unit production.
+    if(!has('garrison')&&elapsed>=commander.nextBuild&&enemyCredits>=STRUCTURE.garrison.cost&&aiBuild('garrison')){
+      commander.nextBuild=elapsed+12;
+      aiTactic('Building a garrison to unlock base defenses');
+    }
     if(aiMaintainDefenses(policy,own,ownBuildings))return;
     if(aiReactiveProduction(own,count,policy))return;
     if(elapsed>360&&elapsed>=commander.nextBuild&&has('airfield')&&own.filter(u=>UNIT[u.kind].damage>0).length>=6){
@@ -2522,8 +2539,8 @@
     if(kind) {queueUnit(kind,'enemy');commander.nextRecruit=elapsed+policy.recruit;}
   }
   function aiBaseThreats(){
-    const assets=buildings.filter(b=>b.team==='enemy'&&active(b));
-    return living().filter(e=>e.team==='player'&&stats(e).damage>0&&visibleTo(e,'enemy')&&assets.some(b=>distance(e,b)<Math.max(16,stats(e).range+2)));
+    const assets=[...buildings.filter(b=>b.team==='enemy'&&active(b)),...unitsFor('enemy').filter(u=>u.kind==='miner')];
+    return living().filter(e=>e.team==='player'&&visibleTo(e,'enemy')&&assets.some(a=>aiThreatensAsset(e,a)));
   }
   const aiStrength=e=>stats(e).damage?Math.sqrt(Math.max(0,e.hp))*stats(e).damage/Math.max(.3,stats(e).reload)*(1+(stats(e).range||0)/30):0;
   function aiEngagement(army,target){
@@ -2650,6 +2667,7 @@
     const vehicles=own.filter(u=>!UNIT[u.kind].infantry);
     vehicles.sort((a,b)=>a.hp/a.maxHp-b.hp/b.maxHp);
     for(const unit of vehicles){
+      if(unit.kind==='miner'&&unit.aiFleeUntil>elapsed)continue;
       const healthy=unit.hp>=unit.maxHp*.98;
       const safe=!living().some(e=>e.team==='player'&&stats(e).damage&&visibleTo(e,'enemy')&&distance(unit,e)<stats(e).range+4);
       const needsRepair=unit.hp/unit.maxHp<policy.retreat||(!unit.raid&&safe&&!healthy);
@@ -2689,6 +2707,19 @@
     }
     return elapsed-progress.at>=65;
   }
+  function aiThreatensAsset(attacker,asset) {
+    return stats(attacker).damage>0&&canAttack(attacker,asset)&&distance(attacker,asset)<Math.max(asset.kind==='miner'?12:16,reach(attacker,asset)+2);
+  }
+  function aiMinerShelter(miner,base,threats) {
+    const center=base.mesh.position,options=[];
+    for(const radius of [7,12,17])for(let i=0;i<16;i++){
+      const angle=i*Math.PI/8,p=center.clone().add(new THREE.Vector3(Math.cos(angle)*radius,0,Math.sin(angle)*radius));
+      if(blocked(p.x,p.z,miner.radius))continue;
+      const risk=Math.min(...threats.map(e=>Math.hypot(p.x-e.mesh.position.x,p.z-e.mesh.position.z)-reach(e,miner)));
+      options.push({p,score:risk-Math.hypot(p.x-center.x,p.z-center.z)*.1});
+    }
+    options.sort((a,b)=>b.score-a.score);return options[0]?.p||center.clone();
+  }
   function updateCommander() {
     if(net?.active || !raids || !baseOf('enemy') || elapsed<commander.nextThink)return;
     commander.nextThink=elapsed+1.5;
@@ -2700,16 +2731,15 @@
     aiEconomy();
     const base=baseOf('enemy'), own=unitsFor('enemy'),fighters=own.filter(u=>UNIT[u.kind].damage>0);
     const assets=[...buildings.filter(b=>b.team==='enemy'&&active(b)),...own.filter(u=>u.kind==='miner')];
-    const threats=unitsFor('player').filter(u=>UNIT[u.kind].damage>0&&assets.some(a=>distance(a,u)<(a.kind==='miner'?12:14)));
+    const threats=unitsFor('player').filter(u=>assets.some(a=>aiThreatensAsset(u,a)));
     const opponentBase=baseOf('player');
     const approach=opponentBase?opponentBase.mesh.position.clone().sub(base.mesh.position).setY(0).normalize():new THREE.Vector3(-1,0,0);
     const rally=base.mesh.position.clone().addScaledVector(approach,10);
-    aiServiceDamagedUnits(own,policy);
     for(const b of buildings.filter(b=>b.team==='enemy'&&active(b)&&b.hp<b.maxHp*.65&&!b.repairing)){if(!commander.recovering&&enemyCredits>180){b.repairing=true;aiLog('Repairing '+STRUCTURE[b.kind].name);}}
     for(const miner of own.filter(u=>u.kind==='miner')) {
-      if(miner.aiRetreat)continue;
-      const threat=living().find(e=>e.team==='player'&&stats(e).damage>0&&distance(e,miner)<11);
-      if(threat&&stats(threat).damage) {miner.aiFleeUntil=elapsed+8;miner.mining=false;aiMove(miner,base.mesh.position.clone().add(new THREE.Vector3(6,0,4)));}
+      const minerThreats=living().filter(e=>e.team==='player'&&aiThreatensAsset(e,miner));
+      if(minerThreats.length) {miner.aiRetreat=false;miner.aiRepairSource=null;miner.aiResumeMining=false;miner.aiFleeUntil=elapsed+8;miner.mining=false;aiMove(miner,aiMinerShelter(miner,base,minerThreats));}
+      else if(miner.aiRetreat)continue;
       else if(miner.aiFleeUntil && elapsed>=miner.aiFleeUntil) {miner.aiFleeUntil=0;assignMining(miner);}
       if(!miner.aiFleeUntil && (!miner.field || !miner.field.amount || miner.mineState==='travel')) {
         const safe=fields.filter(f=>f.amount>0).sort((a,b)=>{
@@ -2719,11 +2749,12 @@
         if(safe&&safe!==miner.field)assignMining(miner,safe);
       }
     }
+    aiServiceDamagedUnits(own,policy);
     let raiders=fighters.filter(u=>u.raid&&!u.aiRetreat);
     const adaptiveRaid=opponentStyle==='ollama';
     const homeGuards=adaptiveRaid?guardsForThreats(fighters.filter(u=>!u.raid&&!u.aiRetreat),threats):null;
     const timedOut=commander.raidSize&&(adaptiveRaid?raidHasStalled(raiders,living().find(e=>e.id===commander.targetId)):elapsed-commander.raidStarted>65);
-    if(commander.raidSize && (raiders.length<Math.ceil(commander.raidSize*.55)||timedOut||threats.length>=3&&!homeGuards)) {aiRegroup();raiders=[];}
+    if(commander.raidSize && (raiders.length<Math.ceil(commander.raidSize*.55)||timedOut||threats.length&&!homeGuards)) {aiRegroup();raiders=[];}
     if(!raiders.length && elapsed>=nextRaid && elapsed>=commander.regroupUntil && (!threats.length||adaptiveRaid)) {
       const available=fighters.filter(u=>!u.aiRetreat&&u.hp/u.maxHp>(commander.recovering?.25:.55));
       // Each style reserves its own number of guards near the miners.
