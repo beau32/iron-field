@@ -1205,7 +1205,7 @@
     if (repairBeam) { group.add(repairBeam); repairBeam.visible = false; repairBeam.raycast = () => {}; } else beamGeometry.dispose();
     const selectionRing = ring(group, friendlyRing, Math.max(1.5, def.radius * 1.25)); selectionRing.visible = false;
     const u = { id: nextId++, type: 'unit', kind, team, mesh: group, body, turret, ring: selectionRing, cargoMesh, drill, legs, flightRotor, navalRig, groundRig, muzzle, flashLeft: 0, repairBeam, repairTarget: null,
-      hp: def.hp, maxHp: def.hp, radius: def.radius, cooldown: random(), destination: null, attackTarget: null,
+      hp: def.hp, maxHp: def.hp, kills: 0, radius: def.radius, cooldown: random(), destination: null, attackTarget: null,
       path: [], pathVersion: -1, pathGoal: null, repath: 0, state: 'Idle', cargo: 0, mining: kind === 'miner', field: null, mineState: 'travel', unload: 0, raid: false };
     if(def.aircraft)selectionRing.position.y=.09-group.position.y;
     group.userData.entity = u; units.push(u); label(u, kind === 'miner' ? 'MINER' : kind === 'artillery' ? 'SIEGE' : kind === 'heavy' ? 'HEAVY' : '');
@@ -2020,13 +2020,23 @@
     const obj = mesh(burstGeometry, m, effects); obj.position.copy(point); obj.position.y += .9;
     bursts.push({ mesh: obj, life: .5, size });
   }
-  function damage(e, amount, attackerTeam = null) {
+  function veterancy(kills) {
+    if(kills>=6)return {name:'Heroic',stars:3,bonus:50};
+    if(kills>=3)return {name:'Elite',stars:2,bonus:30};
+    if(kills>=1)return {name:'Veteran',stars:1,bonus:15};
+    return {name:'Recruit',stars:0,bonus:0};
+  }
+  function damage(e, amount, attackerTeam = null, shooterId = null) {
     if (e.hp <= 0) return;
     if(amount>0&&hostile(e.team,attackerTeam))emitVoiceAlert(e.team,isBuilding(e)?'baseAttack':'unitsAttack');
     e.hp = Math.max(0, e.hp - amount); if (!e.hp) {
       if(!net?.active&&hostile(e.team,attackerTeam)&&['player','enemy'].includes(e.team)){
         commander.battleEvents||=[];commander.battleEvents.push({at:elapsed,team:e.team,value:stats(e).cost||600});
         if(commander.battleEvents.length>120)commander.battleEvents.shift();
+      }
+      if(shooterId!==null&&hostile(e.team,attackerTeam)){
+        const shooter=units.find(u=>u.id===shooterId&&u.hp>0&&u.team===attackerTeam);
+        if(shooter){shooter.kills=Math.min(9999,(shooter.kills||0)+1);if(!net?.active)battleLog.event(elapsed,'unit-kill',{id:shooter.id,team:shooter.team,kind:shooter.kind,targetId:e.id,targetKind:e.kind,kills:shooter.kills,rank:veterancy(shooter.kills).name});}
       }
       awardBattleReward(e,attackerTeam); destroy(e);
     }
@@ -2080,7 +2090,7 @@
     const obj = projectile(); obj.position.copy(origin);
     const arc = visual === 'artillery' ? Math.min(8, origin.distanceTo(aim)*.38) : visual === 'rocket' ? 1.5 : 0;
     const duration = Math.max(.025, origin.distanceTo(aim) / profile.speed);
-    shells.push({ id: nextShotId++, mesh: obj, target, team: e.team, damage: def.damage, splash: def.splash || 0, targetAir:isAir(target), weapon, visual, arc, origin, aim, age: 0, duration });
+    shells.push({ id: nextShotId++, mesh: obj, target, team: e.team, shooterId:e.type==='unit'?e.id:null, damage: def.damage*(1+(e.type==='unit'?veterancy(e.kills||0).bonus:0)/100), splash: def.splash || 0, targetAir:isAir(target), weapon, visual, arc, origin, aim, age: 0, duration });
     emitWeaponEvent({type:'shot', shooterId:e.id, visual, origin:{x:origin.x,y:origin.y,z:origin.z}, aim:{x:aim.x,y:aim.y,z:aim.z}, muzzle, arc, duration});
     e.cooldown = def.reload * (isBuilding(e) && powerFor(e.team).low ? 2 : 1);
   }
@@ -2204,9 +2214,9 @@
         if (shell.splash) {
           for (const e of living()) if (e.team !== shell.team && isAir(e)===Boolean(shell.targetAir)) {
             const d = Math.hypot(e.mesh.position.x - aim.x, e.mesh.position.z - aim.z);
-            if (d <= shell.splash + (isBuilding(e) ? e.radius * .5 : 0)) damage(e, shell.damage * (isBuilding(e) ? 1.4 : Math.max(.35, 1 - d / (shell.splash + 1))), shell.team);
+            if (d <= shell.splash + (isBuilding(e) ? e.radius * .5 : 0)) damage(e, shell.damage * (isBuilding(e) ? 1.4 : Math.max(.35, 1 - d / (shell.splash + 1))), shell.team, shell.shooterId);
           }
-        } else damage(shell.target, shell.damage, shell.team);
+        } else damage(shell.target, shell.damage, shell.team, shell.shooterId);
         effects.remove(shell.mesh); shells.splice(shells.indexOf(shell), 1);
         if (outcome) break;
       }
@@ -2294,7 +2304,7 @@
     for(const team of ['player','enemy']){
       const army=unitsFor(team).filter(u=>u.hp>0),structures=buildings.filter(b=>b.team===team&&b.hp>0);
       teams[team]={credits:Math.floor(money(team)),oreDelivered:deliveredFor(team),killRewards:battleRewards[team]||0,power:{...powerFor(team)},units:count(army),structures:count(structures),completedStructures:count(structures.filter(active)),queue:queueFor(team).map(q=>({kind:q.kind,progress:q.progress,producerId:q.producerId})),
-        entities:[...army,...structures].map(e=>({id:e.id,kind:e.kind,type:e.type,hp:Math.round(e.hp),maxHp:e.maxHp,position:point(e.mesh.position),state:e.state,destination:point(e.destination),attackTarget:e.attackTarget?.id,repairTarget:e.repairTarget?.id,raid:Boolean(e.raid),retreating:Boolean(e.aiRetreat),pathLength:e.path?.length,cargo:e.cargo,mining:e.mining,mineState:e.mineState,oreField:e.field?.id,buildLeft:e.buildLeft,repairing:Boolean(e.repairing)}))};
+        entities:[...army,...structures].map(e=>({id:e.id,kind:e.kind,type:e.type,hp:Math.round(e.hp),maxHp:e.maxHp,kills:e.type==='unit'?e.kills:undefined,position:point(e.mesh.position),state:e.state,destination:point(e.destination),attackTarget:e.attackTarget?.id,repairTarget:e.repairTarget?.id,raid:Boolean(e.raid),retreating:Boolean(e.aiRetreat),pathLength:e.path?.length,cargo:e.cargo,mining:e.mining,mineState:e.mineState,oreField:e.field?.id,buildLeft:e.buildLeft,repairing:Boolean(e.repairing)}))};
     }
     return {elapsed,paused,simulationSpeed:simSpeed,outcome,winner,raids,teams,ore:fields.map(f=>({id:f.id,amount:Math.round(f.amount)})),computerAid:{...computerAid},
       ai:{style:opponentStyle,provider:isModelOpponent()?modelProvider():null,execution:window.FieldLocalAI?.mode,model:commander.model,plan:currentModelPlan(),contacts:visibleEnemyContacts(),pending:commander.pending,status:commander.modelStatus,fallback:isModelOpponent()&&!currentModelPlan(),mode:commander.mode,intent:commander.intent,targetId:commander.targetId,raidSize:commander.raidSize,decisions:commander.decisions,lastDecisionMs:commander.decisionMs,nextRaid,feedback:modelBattleSummary().feedback}};
@@ -3053,7 +3063,7 @@
     spawnUnit('tank', 'enemy', 13, -7); spawnUnit('tank', 'enemy', 18, -6); spawnUnit('scout', 'enemy', 10, -14); spawnUnit('heavy', 'enemy', 22, -10);
     const enemyMiner = spawnUnit('miner', 'enemy', 24, 6); assignMining(enemyMiner, fields[2]);
     }
-    if(!net?.active)battleLog.start({game:'Iron Field',protocolVersion:14,loggingVersion:1,map:{id:MAP.id,name:MAP.name},mode:'solo',timeBasis:'simulation seconds; snapshots at minute boundaries',opponentStyle},battleLogSnapshot);
+    if(!net?.active)battleLog.start({game:'Iron Field',protocolVersion:15,loggingVersion:1,map:{id:MAP.id,name:MAP.name},mode:'solo',timeBasis:'simulation seconds; snapshots at minute boundaries',opponentStyle},battleLogSnapshot);
     refreshFog(); shadeScene(); homeCamera(); updatePause(); updateUI(); announce('Miners are harvesting. Build your army and protect the supply line.');
   }
 
@@ -3142,6 +3152,7 @@
       } else if(empDisabled(e))title='EMP DISABLED · '+Math.ceil(e.empUntil-elapsed)+'s';
       else if (e.kind === 'miner') title = `${Math.floor(e.cargo)} / ${UNIT.miner.capacity}`;
       else title = isSelected ? UNIT[e.kind].name.toUpperCase() : e.kind === 'artillery' ? 'SIEGE' : e.kind === 'heavy' ? 'HEAVY' : '';
+      if(e.type==='unit'&&e.kills>0)title=(title?title+' · ':'')+'★'.repeat(veterancy(e.kills).stars);
       if(e.labelTitle.textContent!==title)e.labelTitle.textContent=title;
     }
   }
@@ -3184,6 +3195,7 @@
       const counts = new Map(); selection.forEach(u => counts.set(u.kind, (counts.get(u.kind) || 0) + 1));
       $('selection-extra').textContent = [...counts].map(([kind, count]) => `${count} ${UNIT[kind]?.name || STRUCTURE[kind].name}`).join(' · ');
       if (first.kind === 'miner' && selection.length === 1) $('selection-extra').textContent = `${first.state} · cargo ${Math.floor(first.cargo)} / ${UNIT.miner.capacity}`;
+      if(first.type==='unit'&&selection.length===1&&UNIT[first.kind].damage>0){const rank=veterancy(first.kills||0);$('selection-extra').textContent=`${rank.name} · ${first.kills||0} kills · +${rank.bonus}% damage`;}
     } else {
       $('selection-detail').textContent = 'Left-click / drag to select. Right-click to command. Double-click selects matching units.'; $('selection-extra').textContent = '';
     }
@@ -3261,14 +3273,14 @@
   function exportNetworkState() {
     return { superStrikes:superStrikes.map(s=>({...s})), mapId:MAP.id, matchTeams, extraEconomies, eliminated, battleRewards, lastRewards, voiceEvents:voiceEvents.filter(e=>elapsed-e.time<12), nextVoiceId, attackAlertAt, powerAlertState, fogExplored:fog.save(true), elapsed, credits, enemyCredits, delivered, enemyDelivered, queue, remoteQueue, paused, winner, seed, nextId, nextShotId, nextFXId, fxEvents,
       fields: fields.map(f => ({ id: f.id, amount: f.amount, initialAmount:f.initialAmount,name:f.name,x:f.mesh.position.x,z:f.mesh.position.z })),
-      entities: living().map(e => ({ id: e.id, kind: e.kind, type: e.type, team: e.team, position: vectorJSON(e.mesh.position), hp: e.hp, rallyPoint:vectorJSON(e.rallyPoint),
+      entities: living().map(e => ({ id: e.id, kind: e.kind, type: e.type, team: e.team, position: vectorJSON(e.mesh.position), hp: e.hp, kills:e.type==='unit'?e.kills:undefined, rallyPoint:vectorJSON(e.rallyPoint),
         superCharge:e.superCharge||0,empUntil:e.empUntil||0,buildLeft: e.buildLeft || 0, repairing:Boolean(e.repairing), body: e.body?.rotation.y || 0, turret: e.turret?.rotation.y || 0, rotor: e.rotor?.rotation.y || 0,
         cooldown: e.cooldown, shotSide: e.shotSide || 1, flashLeft: e.flashLeft || 0, repairTargetId: e.repairTarget?.id, cargo: e.cargo, mining: e.mining, mineState: e.mineState, state: e.state,
         fieldId: e.field?.id, preferredRefineryId: e.preferredRefinery?.id, unload: e.unload,
         supportIds:e.supportIds, supportHeading:vectorJSON(e.supportHeading), supportSlot:e.supportSlot,
         harvestAccumulator: e.harvestAccumulator || 0, destination: vectorJSON(e.destination), targetId: e.attackTarget?.id,
         path: e.path?.map(vectorJSON), pathGoal: vectorJSON(e.pathGoal), repath: e.repath })),
-      shells: shells.map(s => ({ id: s.id, targetId: s.target.id, team: s.team, damage: s.damage, splash: s.splash, targetAir:s.targetAir, weapon: s.weapon, visual: s.visual, arc: s.arc,
+      shells: shells.map(s => ({ id: s.id, targetId: s.target.id, shooterId:s.shooterId, team: s.team, damage: s.damage, splash: s.splash, targetAir:s.targetAir, weapon: s.weapon, visual: s.visual, arc: s.arc,
         origin: vectorJSON(s.origin), aim: vectorJSON(s.aim), position: vectorJSON(s.mesh.position), age: s.age, duration: s.duration })),
       bursts: bursts.map(b => ({ position: vectorJSON(b.mesh.position), life: b.life, size: b.size })) };
   }
@@ -3312,6 +3324,7 @@
       if(fresh||restoring||net?.isHost){if(e.body)e.body.rotation.y=data.body;if(e.turret)e.turret.rotation.y=data.turret;if(e.rotor)e.rotor.rotation.y=data.rotor;}
       for (const key of ['superCharge','empUntil','cooldown','shotSide','flashLeft','cargo','mining','mineState','state','unload','harvestAccumulator','repath']) if (data[key] !== undefined) e[key] = data[key];
       if (e.type === 'unit') {
+        e.kills=Number.isInteger(data.kills)?Math.max(0,Math.min(9999,data.kills)):0;
         e.supportIds=[...(data.supportIds||[])];e.supportHeading=fromJSON(data.supportHeading);e.supportSlot=data.supportSlot||0;
         e.destination = fromJSON(data.destination); e.path = (data.path || []).map(fromJSON); e.pathGoal = fromJSON(data.pathGoal); e.pathVersion = -1;
         e.field = fields.find(f => f.id === data.fieldId) || null;
@@ -3402,7 +3415,7 @@
   }
   // Console diagnostics return copies, so inspection cannot alter the simulation.
   window.IronField = Object.freeze({
-    snapshot: () => ({ version: 14, matchTeams:[...matchTeams],eliminated:[...eliminated],winner,fog:fog.summary(localTeam), map: { id:MAP.id,name:MAP.name,water:MAP.water,bridges:MAP.bridges,width: HALF_X * 2, depth: HALF_Z * 2, buildRadius: MAP.buildRadius }, localTeam, network: { active: Boolean(net?.active), role: net?.role, code: net?.session?.code, phase: net?.room?.phase, playable: Boolean(net?.playable) }, credits: money(localTeam), delivered: deliveredFor(localTeam), rewards: battleRewards[localTeam]||0, enemyCredits, queue: queueFor(localTeam).map(q => ({ ...q })), paused, outcome, elapsed,
+    snapshot: () => ({ version: 15, matchTeams:[...matchTeams],eliminated:[...eliminated],winner,fog:fog.summary(localTeam), map: { id:MAP.id,name:MAP.name,water:MAP.water,bridges:MAP.bridges,width: HALF_X * 2, depth: HALF_Z * 2, buildRadius: MAP.buildRadius }, localTeam, network: { active: Boolean(net?.active), role: net?.role, code: net?.session?.code, phase: net?.room?.phase, playable: Boolean(net?.playable) }, credits: money(localTeam), delivered: deliveredFor(localTeam), rewards: battleRewards[localTeam]||0, enemyCredits, queue: queueFor(localTeam).map(q => ({ ...q })), paused, outcome, elapsed,
       camera: camera.type, cameraView: { ...view }, power: powerFor(localTeam), raids, nextRaid, wave, ai: net?.active ? null : {style:opponentStyle,policy:aiPolicy().name,plan:currentModelPlan()?{...currentModelPlan()}:null,intent:commander.intent,decisions:commander.decisions,events:commander.events.map(e=>({...e})),model:commander.model,pending:commander.pending,status:commander.modelStatus,mode:commander.mode,targetId:commander.targetId,queue:remoteQueue.map(q=>({...q}))}, placement, selected: [...selected].map(u => u.id),
       fields: fields.map(f => ({ id: f.id, name: f.name, amount: f.amount, x: f.mesh.position.x, z: f.mesh.position.z })),
       entities: living().map(e => ({ visible:visibleTo(e),rendered:e.mesh.visible,labelHidden:e.label.hidden,id: e.id, type: e.type, kind: e.kind, team: e.team, hp: e.hp, maxHp: e.maxHp,

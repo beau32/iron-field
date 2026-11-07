@@ -1,0 +1,23 @@
+'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),THREE=require('../vendor/three.min.js');
+const source=fs.readFileSync(require.resolve('../game.js'),'utf8');
+function body(name){const start=source.indexOf('  function '+name+'('),end=source.indexOf('\n  function ',start+3);assert(start>=0&&end>start,name);return source.slice(start,end);}
+const shells=[],units=[],events=[],rewards=[];
+const unit=(id,team)=>{const mesh=new THREE.Group(),turret=new THREE.Group();mesh.add(turret);return {id,team,type:'unit',kind:'tank',hp:100,mesh,turret,cooldown:0,kills:0};};
+const shooter=unit(1,'player'),victim=unit(2,'enemy');victim.mesh.position.x=20;units.push(shooter,victim);
+const ctx={THREE,units,shells,net:null,elapsed:10,commander:{battleEvents:[]},nextShotId:1,FIELD_WEAPONS:{kinds:{tank:'cannon'},profiles:{cannon:{speed:10}}},UNIT:{tank:{infantry:false}},stats:()=>({damage:20,reload:1,cost:140}),canAttack:()=>true,isBuilding:e=>e.type==='building',isAir:()=>false,hostile:(a,b)=>Boolean(b&&b!=='neutral'&&a!==b),emitVoiceAlert:()=>{},battleLog:{event:(...e)=>events.push(e)},awardBattleReward:(...a)=>rewards.push(a),destroy:e=>{e.hp=0;},muzzleOffset:()=>[0,0,0],projectile:()=>new THREE.Group(),emitWeaponEvent:()=>{},powerFor:()=>({low:false})};
+vm.createContext(ctx);vm.runInContext(['veterancy','damage','fire'].map(body).join('\n'),ctx);
+assert.deepEqual([0,1,3,6].map(k=>ctx.veterancy(k).bonus),[0,15,30,50]);
+ctx.fire(shooter,victim);assert.equal(shells.at(-1).damage,20);assert.equal(shells.at(-1).shooterId,1);
+ctx.damage(victim,100,'player',1);assert.equal(shooter.kills,1);assert.equal(events[0][1],'unit-kill');ctx.damage(victim,100,'player',1);assert.equal(shooter.kills,1,'dead targets cannot award kills twice');
+victim.hp=100;ctx.fire(shooter,victim);assert.equal(shells.at(-1).damage,23,'later shots get veteran damage');
+for(let i=0;i<5;i++){victim.hp=100;ctx.damage(victim,100,'player',1);}assert.equal(shooter.kills,6);ctx.fire(shooter,victim);assert.equal(shells.at(-1).damage,30,'heroic shots deal 50% more');
+victim.hp=100;ctx.damage(victim,100,'enemy',1);assert.equal(shooter.kills,6,'friendly fire earns no kill');
+victim.hp=100;shooter.hp=0;ctx.damage(victim,100,'player',1);assert.equal(shooter.kills,6,'a dead shooter cannot rank up');
+victim.hp=100;ctx.damage(victim,100,'player',999);assert.equal(shooter.kills,6,'unowned damage does not award a unit');
+Object.assign(ctx,{superStrikes:[],MAP:{id:'classic'},matchTeams:['player','enemy'],extraEconomies:{},eliminated:[],battleRewards:{},lastRewards:{},voiceEvents:[],nextVoiceId:1,attackAlertAt:{},powerAlertState:{},fog:{save:()=>({})},credits:0,enemyCredits:0,delivered:0,enemyDelivered:0,queue:[],remoteQueue:[],paused:false,winner:null,seed:1,nextId:3,nextFXId:1,fxEvents:[],fields:[],living:()=>units,vectorJSON:v=>v?{x:v.x,y:v.y,z:v.z}:null,bursts:[]});
+shooter.hp=victim.hp=100;vm.runInContext(body('exportNetworkState'),ctx);const state=ctx.exportNetworkState();assert.equal(state.entities.find(e=>e.id===1).kills,6);assert.equal(state.shells.at(-1).shooterId,1);assert.equal(state.shells.at(-1).damage,30);
+const noop=()=>{};shooter.hp=victim.hp=100;shooter.ring={};victim.ring={};shooter.kills=0;
+Object.assign(ctx,{chooseMap:noop,performance:{now:()=>100},networkRenderTime:null,networkFogAt:0,localTeam:'player',buildings:[],effects:{remove:noop},deposits:{remove:noop},actors:{remove:noop},selected:new Set(),fromJSON:v=>v?new THREE.Vector3(v.x,v.y||0,v.z):null,structuredClone,window:{},$:()=>({getAttribute:()=>String(false)}),releaseUnitDamage:noop,updatePause:noop,updateUI:noop,refreshFog:noop,playWeaponEvent:noop,syncVoiceState:noop,showResult:noop,shadeScene:noop,lastVisualEvent:0,lastVoiceId:0,navVersion:0});ctx.fog.restore=noop;
+vm.runInContext(body('importNetworkState'),ctx);ctx.importNetworkState(state,true);assert.equal(shooter.kills,6,'restored host keeps the unit rank');assert.equal(ctx.shells.at(-1).shooterId,1,'in-flight projectile keeps its shooter');ctx.damage(victim,100,'player',ctx.shells.at(-1).shooterId);assert.equal(shooter.kills,7,'restored projectile can award a kill');
+console.log('PASS rank thresholds, damage bonuses, kill credit, dead/friendly-fire exclusions, and network snapshot fields.');

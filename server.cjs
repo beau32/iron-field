@@ -10,7 +10,7 @@ const os = require('node:os');
 const crypto = require('node:crypto');
 const ROOT = __dirname, PORT = Number(process.env.PORT || 8766), HOST = process.env.HOST || '0.0.0.0';
 const rooms = new Map(), sessions = new Map(), creationLimits = new Map();
-const version = 14;
+const version = 15;
 const roles=['host','guest','guest2','guest3'], teams=['player','enemy','team3','team4'];
 const seats=room=>roles.map(role=>room[role]).filter(Boolean);
 const MAP = require('./map.js');
