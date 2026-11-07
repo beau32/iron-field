@@ -12,7 +12,7 @@ function gameFunction(name){
   assert(start>=0&&end>start,name);
   return source.slice(start,end);
 }
-function battle(harassers,extraGuards=0){
+function battle(harassers,extraGuards=0,plan={focus:'hq'},blocked=()=>false){
   let id=0;
   const troops=[],buildings=[],shots=[];
   function create(kind,team,x){
@@ -33,15 +33,15 @@ function battle(harassers,extraGuards=0){
   const noop=()=>{};
   const ctx={THREE,UNIT,buildings,HALF_X:120,HALF_Z:100,net:null,raids:true,elapsed:10,nextRaid:0,wave:0,enemyCredits:0,opponentStyle:'ollama',
     unitsFor:t=>troops.filter(u=>u.team===t&&u.hp>0),living:()=>[...troops,...buildings].filter(e=>e.hp>0),
-    baseOf:t=>buildings.find(b=>b.team===t),aiPolicy:()=>styles.rush,currentModelPlan:()=>({focus:'hq'}),
+    baseOf:t=>buildings.find(b=>b.team===t),aiPolicy:()=>styles.rush,currentModelPlan:()=>plan,
     active:b=>b.hp>0,distance,stats,isBuilding:e=>e.type==='building',isAir:e=>Boolean(UNIT[e.kind]?.aircraft),
     isNaval:()=>false,canAttack:(u,e)=>!UNIT[e.kind]?.aircraft||['all','air'].includes(stats(u).targets),
     reach:u=>stats(u).range,visibleTo:()=>true,aiStrength:e=>stats(e).damage*Math.sqrt(e.hp)/stats(e).reload,
     aiSuperweapons:noop,updateAIHistory:noop,requestModelPlan:noop,aiEconomy:noop,aiLog:noop,announce:noop,aiTactic:noop,
-    serviceCompatible:()=>false,clearRoute:noop,blocked:()=>false,rotateToward:noop,closestEnemy:()=>null,
+    serviceCompatible:()=>false,clearRoute:noop,blocked,rotateToward:noop,closestEnemy:()=>null,
     fire:(u,target)=>shots.push(target.id)};
   vm.createContext(ctx);
-  vm.runInContext(['resetCommander','aiMove','aiAttack','aiFocusTarget','aiObjective','aiEngagement','guardsForHarasser','guardsForThreats','raidHasStalled','aiRegroup','aiRepairDestination','aiServiceDamagedUnits','aiThreatensAsset','aiMinerShelter','updateCommander','updateCombat'].map(gameFunction).join('\n'),ctx);
+  vm.runInContext(['resetCommander','aiMove','aiAttack','aiFocusTarget','aiObjective','aiFlankWaypoint','aiEngagement','guardsForHarasser','guardsForThreats','raidHasStalled','aiRegroup','aiRepairDestination','aiServiceDamagedUnits','aiThreatensAsset','aiMinerShelter','updateCommander','updateCombat'].map(gameFunction).join('\n'),ctx);
   ctx.commander=ctx.resetCommander();
   ctx.updateCommander();
   return {ctx,guard,objective,threats,troops,shots};
@@ -69,4 +69,8 @@ assert(navalAttack.ctx.commander.raidSize>0,'force initially attacks');
 navalAttack.troops.push({id:999,team:'player',kind:'battleship',type:'unit',hp:UNIT.battleship.hp,maxHp:UNIT.battleship.hp,mesh:{position:new THREE.Vector3(25,0,0)}});
 navalAttack.ctx.elapsed=12;navalAttack.ctx.updateCommander();
 assert.equal(navalAttack.ctx.commander.raidSize,0,'single uncovered long-range attacker recalls raid to protect base');
+const flank=battle([],0,{focus:'hq',tactic:'flank-left'});assert.equal(flank.ctx.commander.tacticPhase,'moving');const waypoint=flank.ctx.commander.tacticWaypoint;assert(waypoint.z<0,'left flank is left relative to the direction of travel');const flankers=flank.troops.filter(u=>u.raid);assert(flankers.length>=4);assert(flankers.every(u=>u.destination?.distanceTo(waypoint)<.1),'model maneuver gives the strike force a waypoint');assert(!flank.guard.raid,'home defense remains reserved');
+flankers.forEach(u=>u.mesh.position.copy(waypoint));flank.ctx.elapsed=12;flank.ctx.updateCommander();assert.equal(flank.ctx.commander.tacticPhase,'engaging');assert(flankers.every(u=>u.attackTarget===flank.objective),'force attacks after reaching the waypoint');
+const stalled=battle([],0,{focus:'hq',tactic:'flank-right'});assert(stalled.ctx.commander.tacticWaypoint.z>0);stalled.ctx.elapsed=36;stalled.ctx.updateCommander();assert.equal(stalled.ctx.commander.tacticPhase,'blocked');assert(stalled.troops.some(u=>u.raid&&u.attackTarget===stalled.objective),'stalled maneuver falls back to normal attack');
+const blockedFlank=battle([],0,{focus:'hq',tactic:'flank-left'},()=>true);assert.equal(blockedFlank.ctx.commander.tacticPhase,'blocked');assert(blockedFlank.troops.some(u=>u.raid&&u.attackTarget===blockedFlank.objective),'blocked waypoint falls back immediately');
 console.log('PASS covered scout, guard and HQ attack orders, actual firing, productive long raid, stalled raid, uncovered and multiple threats.');

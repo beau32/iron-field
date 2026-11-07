@@ -2237,7 +2237,7 @@
   }
   // Solo commander: periodic decisions, ordinary credits/construction/production rules.
   function resetCommander() {
-    return { nextThink: 0, nextBuild: 6, nextRecruit: 0, mode: 'Preparing', intent:'', events:[], decisions:0, plan:null, planAt:0, nextModel:0, pending:false, modelStatus:'', model:'', targetId: null, raidSize: 0, raidStarted: 0, regroupUntil: 0, battleEvents:[],incomeSamples:[],progressAt:0,operationAt:0,lastModelRequest:-Infinity,modelRetryUntil:0 };
+    return { nextThink: 0, nextBuild: 6, nextRecruit: 0, mode: 'Preparing', intent:'', events:[], decisions:0, plan:null, planAt:0, nextModel:0, pending:false, modelStatus:'', model:'', targetId: null, raidSize: 0, raidStarted: 0, raidTactic:'rules',tacticPhase:'idle',tacticWaypoint:null,regroupUntil: 0, battleEvents:[],incomeSamples:[],progressAt:0,operationAt:0,lastModelRequest:-Infinity,modelRetryUntil:0 };
   }
   function isModelOpponent(){return ['ollama','openai'].includes(opponentStyle);}
   function modelProvider(){return opponentStyle==='openai'?'OpenAI Decisions':window.FieldLocalAI?.provider==='jev'?'JEV':'Ollama';}
@@ -2291,6 +2291,7 @@
     return {elapsed:Math.floor(elapsed),credits:Math.floor(enemyCredits),own:side('enemy'),opponent:side('player'),contacts:visibleEnemyContacts(),...(includeMap?{strategicMap:strategicMap()}:{}),profile:window.FieldPlayerMemory?.observedProfile?.()||null,context:{water:MAP.water.length>0,lowPower:powerFor('enemy').low,pressure:aiBaseThreats().length,oreRemaining:Math.floor(fields.reduce((n,f)=>n+f.amount,0))},feedback:{
       operation:plan?.operation||'',mode:commander.mode,age:Math.floor(Math.max(0,elapsed-(commander.operationAt||0))),
       stalled:Boolean(plan&&!commander.raidSize&&elapsed-(commander.progressAt||0)>45),
+      tactic:commander.raidTactic||'rules',tacticPhase:commander.tacticPhase||'idle',
       lostValue:recent.filter(e=>e.team==='enemy').reduce((n,e)=>n+e.value,0),destroyedValue:recent.filter(e=>e.team==='player').reduce((n,e)=>n+e.value,0),
       income:Math.floor(Math.max(0,deliveredFor('enemy')-(commander.incomeSamples?.[0]?.delivered??deliveredFor('enemy')))),
       raidAge:commander.raidSize?Math.floor(elapsed-commander.raidStarted):0,raidSize:unitsFor('enemy').filter(u=>u.raid&&u.hp>0).length
@@ -2345,12 +2346,12 @@
     commander.plan=plan;commander.planAt=performance.now();commander.model=String(model||modelProvider()).slice(0,80);commander.modelStatus='AI plan active';commander.decisions++;
     if(changed) {
       commander.operationAt=elapsed;commander.progressAt=elapsed;
-      aiLog(`${modelProvider()} ordered: ${aiPlanName(plan)}`);commander.intent='Putting the new order into action';
+      aiLog(`${modelProvider()} ordered: ${aiPlanName(plan)}${plan.tactic&&plan.tactic!=='rules'?' · '+plan.tactic+' on next attack':''}`);commander.intent='Putting the new order into action';
       commander.nextBuild=Math.min(commander.nextBuild,elapsed);commander.nextRecruit=Math.min(commander.nextRecruit,elapsed);
       // A strategy refresh changes spending and objectives, not the progress of a live attack.
       if(!commander.raidSize)nextRaid=Math.min(nextRaid,elapsed+(plan.style==='rush'?8:20));
     }
-    if(changed&&commander.raidSize){const target=aiObjective(unitsFor('enemy').filter(u=>u.raid));commander.targetId=target?.id||null;}
+    if(changed&&commander.raidSize){const target=aiObjective(unitsFor('enemy').filter(u=>u.raid));if(commander.tacticPhase==='moving'&&target?.id!==commander.targetId){commander.tacticPhase='blocked';commander.tacticWaypoint=null;aiLog('Flank ended: target changed; using normal movement');}commander.targetId=target?.id||null;}
   }
   async function requestModelPlan() {
     if(net?.active||!raids||outcome||!isModelOpponent()||commander.pending||performance.now()<commander.nextModel)return;
@@ -2385,12 +2386,13 @@
     $('opponent-style').disabled=multiplayer;
     $('ai-settings').hidden=!model||multiplayer;
     window.FieldLocalAI?.setProvider(opponentStyle);
-    $('opponent-description').textContent=multiplayer?'Human opponents control this multiplayer match.':model?modelProvider()+' chooses operations; local tactics counter threats, coordinate fire and avoid losing fights.':FIELD_OPPONENT.styles[opponentStyle].description;
+    $('opponent-description').textContent=multiplayer?'Human opponents control this multiplayer match.':model?modelProvider()+' chooses operations; non-JEV models can choose flank movement. Local rules handle combat and safety.':FIELD_OPPONENT.styles[opponentStyle].description;
     $('opponent-aid').hidden=multiplayer||!raids;
     const label=$('opponent-status');label.hidden=!model||multiplayer;label.dataset.live=String(Boolean(plan)&&raids);
     label.textContent=!raids?'Computer strategy is off. Enable it in Lab.':plan?`AI order: ${aiPlanName(plan)}${opponentStyle==='ollama'&&Number.isFinite(commander.decisionMs)?' · '+commander.decisionMs+' ms':''}${commander.pending?' · refreshing…':commander.modelStatus!=='AI plan active'?' · last plan (refresh unavailable)':''}`:`${commander.modelStatus||'Waiting for '+modelProvider()} · Balanced fallback active`;
     $('opponent-order').hidden=multiplayer||!model||!raids;
-    $('opponent-order').textContent='Tactics: '+(commander.intent||'Assessing the battlefield');
+    const movement=commander.raidTactic&&commander.raidTactic!=='rules'?`${commander.raidTactic} · ${commander.tacticPhase}`:plan?.tactic&&plan.tactic!=='rules'?`${plan.tactic} planned`:'game rules';
+    $('opponent-order').textContent='Tactics: '+movement+' · '+(commander.intent||'Assessing the battlefield');
     $('opponent-log').hidden=multiplayer||!model;
     $('opponent-events').textContent=commander.events.map(e=>`${Math.floor(e.at/60)}:${String(e.at%60).padStart(2,'0')} ${e.message}`).join('\n')||'No orders executed yet.';
     const logInfo=battleLog.info();$('battle-log').hidden=multiplayer;$('battle-log-download').disabled=!logInfo.hasCurrent;$('battle-log-previous').hidden=!logInfo.hasPrevious;
@@ -2658,8 +2660,21 @@
     const viable=ranked.filter(r=>r.fight.viable);
     return (viable.length?viable:ranked.filter(r=>r.fight.own>0)).sort((a,b)=>b.score-a.score)[0]?.e||null;
   }
+  function aiFlankWaypoint(army,target,tactic) {
+    const ground=army.filter(u=>!isAir(u)&&!isNaval(u));if(ground.length<2||!target)return null;
+    const center=new THREE.Vector3();ground.forEach(u=>center.add(u.mesh.position));center.divideScalar(ground.length);
+    const heading=target.mesh.position.clone().sub(center).setY(0);if(heading.length()<10)return null;heading.normalize();
+    const left=new THREE.Vector3(heading.z,0,-heading.x).multiplyScalar(tactic==='flank-left'?1:-1);
+    const radius=Math.max(...ground.map(u=>u.radius||1));
+    for(const offset of [14,10,6]){
+      const point=center.clone().lerp(target.mesh.position,.5).addScaledVector(left,offset);point.y=0;
+      point.x=THREE.MathUtils.clamp(point.x,-HALF_X+radius+2,HALF_X-radius-2);point.z=THREE.MathUtils.clamp(point.z,-HALF_Z+radius+2,HALF_Z-radius-2);
+      if(!blocked(point.x,point.z,radius,false))return point;
+    }
+    return null;
+  }
   function aiRegroup() {
-    commander.targetId=null;commander.raidSize=0;commander.regroupUntil=elapsed+18;commander.mode='Regrouping';
+    commander.targetId=null;commander.raidSize=0;commander.regroupUntil=elapsed+18;commander.mode='Regrouping';commander.raidTactic='rules';commander.tacticPhase='idle';commander.tacticWaypoint=null;
     for(const u of unitsFor('enemy')) if(u.raid){u.raid=false;u.attackTarget=null;u.destination=null;clearRoute(u);}
   }
   function guardsForHarasser(available,threat) {
@@ -2813,7 +2828,7 @@
       if(guards&&strikeForce.length>=(opportunistic?2:policy.minForce)) {
         raiders=strikeForce.slice(0,Math.min(policy.maxRaid,available.length-Math.max(reserve,guards.size)));
         const target=aiObjective(raiders);
-        if(target&&aiEngagement(raiders,target).viable) {raiders.forEach(u=>u.raid=true);commander.targetId=target.id;commander.raidSize=raiders.length;commander.raidStarted=elapsed;commander.lastLaunch=elapsed;wave++;nextRaid=elapsed+policy.interval;aiLog(`Sent ${raiders.length} units against ${stats(target).name}`);announce(`Enemy strike force targeting your ${stats(target).name.toLowerCase()}.`);}
+        if(target&&aiEngagement(raiders,target).viable) {raiders.forEach(u=>u.raid=true);commander.targetId=target.id;commander.raidSize=raiders.length;commander.raidStarted=elapsed;commander.lastLaunch=elapsed;commander.raidTactic=currentModelPlan()?.tactic||'rules';commander.tacticWaypoint=commander.raidTactic==='rules'?null:aiFlankWaypoint(raiders,target,commander.raidTactic);commander.tacticPhase=commander.raidTactic==='rules'?'idle':commander.tacticWaypoint?'moving':'blocked';if(commander.raidTactic!=='rules')aiLog(commander.tacticWaypoint?`Executing ${commander.raidTactic} maneuver`:'Flank unavailable; using normal movement');wave++;nextRaid=elapsed+policy.interval;aiLog(`Sent ${raiders.length} units against ${stats(target).name}`);announce(`Enemy strike force targeting your ${stats(target).name.toLowerCase()}.`);}
         else {raiders=[];nextRaid=elapsed+10;aiTactic('Holding attack: build a stronger force or strike an exposed target');}
       } else {
         nextRaid=elapsed+10;
@@ -2822,6 +2837,11 @@
     }
     let objective=living().find(e=>e.id===commander.targetId);
     if(raiders.length&&!objective) {objective=aiObjective(raiders);commander.targetId=objective?.id||null;}
+    if(commander.tacticPhase==='moving'){
+      const ground=raiders.filter(u=>!isAir(u)&&!isNaval(u)),arrived=ground.filter(u=>u.mesh.position.distanceTo(commander.tacticWaypoint)<8).length;
+      if(!ground.length||elapsed-commander.raidStarted>=25){commander.tacticPhase='blocked';commander.tacticWaypoint=null;aiLog('Flank stalled; using normal movement');}
+      else if(arrived>=Math.ceil(ground.length*.5)){commander.tacticPhase='engaging';commander.tacticWaypoint=null;aiLog('Flank reached: engaging objective');}
+    }
     commander.mode=raiders.length?'Attacking':threats.length?'Defending':elapsed<commander.regroupUntil?'Regrouping':'Building forces';
     const assigned=new Map();
     for(const u of fighters) {
@@ -2834,6 +2854,7 @@
       const nearbyEnemy=nearby.filter(e=>stats(e).damage&&canAttack(e,u));
       const allies=fighters.filter(v=>distance(u,v)<14);
       if(!threats.length&&nearbyEnemy.length>=2&&nearbyEnemy.reduce((n,e)=>n+aiStrength(e),0)>allies.reduce((n,e)=>n+aiStrength(e),0)*1.6){u.attackTarget=null;u.raid=false;aiMove(u,rally);aiTactic('Outmatched locally: regrouping before another attack');continue;}
+      if(u.raid&&commander.tacticPhase==='moving'&&!isAir(u)&&!isNaval(u)&&!localThreat){u.attackTarget=null;aiMove(u,commander.tacticWaypoint);continue;}
       const compatibleObjective=objective&&canAttack(u,objective)?objective:unitsFor('player').filter(v=>canAttack(u,v)).sort((a,b)=>distance(u,a)-distance(u,b))[0];
       const target=localThreat||(u.raid?compatibleObjective:aiFocusTarget(u,threats,assigned));
       if(target) {

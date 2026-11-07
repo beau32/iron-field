@@ -24,7 +24,7 @@ const mock=http.createServer(async(req,res)=>{
   worker=spawn(process.execPath,['local-ai.cjs','--server','http://127.0.0.1:8773','--code',session.code,'--provider','jev'],{cwd:root,env:{...env,JEV_PORT:'1'},windowsHide:true,stdio:['ignore','pipe','pipe']});
   worker.stdout.on('data',data=>workerOutput+=data);worker.stderr.on('data',data=>workerOutput+=data);
   let local;for(let i=0;i<40;i++){local=await post('local/status',{},session.clientToken);if(local.ready)break;await delay(100);}
-  assert(local.connected&&local.ready);assert.equal(local.port,port);assert.equal(local.models.length,2);assert.equal(local.decisionVersion,7);
+  assert(local.connected&&local.ready);assert.equal(local.port,port);assert.equal(local.models.length,2);assert.equal(local.decisionVersion,8);
   assert.equal((await post('local/status',{model:123},session.clientToken)).status,400);
   await post('local/status',{model:'alternate:test'},session.clientToken);
   for(let i=0;i<50;i++){local=await post('local/status',{},session.clientToken);if(local.model==='alternate:test')break;await delay(100);}

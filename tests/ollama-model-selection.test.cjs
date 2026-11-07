@@ -6,7 +6,7 @@ const mock=http.createServer(async(req,res)=>{
  if(req.url==='/api/tags'){res.end(JSON.stringify({models:[{name:'qwen2.5:0.5b',size:100},{name:'other:latest',size:200}]}));return;}
  if(req.url==='/api/chat'){
   const chunks=[];for await(const chunk of req)chunks.push(chunk);const body=JSON.parse(Buffer.concat(chunks));seen.push(body);
-  res.end(JSON.stringify({message:{content:JSON.stringify(body.format.enum[0])}}));return;
+  res.end(JSON.stringify({message:{content:JSON.stringify(body.format.enum.find(name=>name.endsWith('@left'))||body.format.enum[0])}}));return;
  }
  res.writeHead(404);res.end('{}');
 });
@@ -27,6 +27,7 @@ const mock=http.createServer(async(req,res)=>{
   const battle={elapsed:300,credits:650,own:{units:{miner:2,tank:6},buildings:{base:1,power:2,refinery:1,garrison:1,warFactory:1}},opponent:{units:{tank:1},buildings:{base:1},hqHealth:25},context:{water:false,oreRemaining:10000,pressure:0},strategicMap:{terrain:['?????','?????','??=??','.....','.....'],friendly:['00000','00000','00000','00100','00000'],enemy:['00000','00000','00100','00000','00000'],sites:['C4:own-hq']},profile:{games:2,forwardGames:2,navalGames:0,airGames:2,economyGames:0,learning:{samples:2,early:2,air:2,naval:0,miner:0,outcomes:{rush:{positive:2,negative:0}}}}};
   const result=await post('plan',{...battle,model:'other:latest'},session.clientToken);
   assert.equal(result.status,200,JSON.stringify(result));assert.equal(result.model,'other:latest');assert.equal(seen.at(-1).model,'other:latest');assert.match(output,/Local strategy completed with other:latest/);
+  assert.equal(result.plan.tactic,'flank-left','the selected tactical maneuver survives the local connector and relay');
   assert.match(seen.at(-1).messages[0].content,/rush: 2 favorable/,'observed outcomes reach the actual Ollama request through the relay');
   assert.match(seen.at(-1).messages[0].content,/3 \?\?=\?\? 00000 00100/,'sector map reaches the Ollama prompt through the relay');
   await post('status',{model:''},session.clientToken);

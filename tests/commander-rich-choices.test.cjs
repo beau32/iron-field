@@ -1,6 +1,6 @@
 'use strict';
 const assert=require('node:assert/strict');
-const {summarize,offeredOperations,planFor,promptFor}=require('../commander.cjs');
+const {summarize,offeredOperations,modelOptions,modelPlanFor,planFor,promptFor}=require('../commander.cjs');
 const {decisionRequest,classificationRequest,classificationChoice}=require('../jev-commander.cjs');
 const {validPlan}=require('../opponent.js'),{units,buildings}=require('../data.js');
 const battle={elapsed:300,credits:800,own:{units:{miner:2,tank:8},buildings:{base:1,power:2,refinery:1,garrison:1,warFactory:1}},opponent:{units:{miner:2,tank:2},buildings:{base:1,refinery:1,warFactory:1},hqHealth:100},context:{water:false,oreRemaining:10000,pressure:0}};
@@ -15,6 +15,9 @@ const body=classificationRequest(s,offers);assert(body.premise.includes('2 miner
 const scored={choices:body.choices.map((text,i)=>({text,nli:{probabilities:i===names.indexOf('raid-economy')?{entailment:.9,contradiction:.05,neutral:.05}:{entailment:.2,contradiction:.2,neutral:.6}}}))};
 assert.equal(classificationChoice(scored,body,offers),'raid-economy');
 assert(Object.keys(decisionRequest(battle,'test').body.questions.strategy.criteria).includes('raid-economy'));
+const tactical=modelOptions(s),left=tactical.find(x=>x.name==='raid-economy@left');assert(left&&tactical.some(x=>x.name==='raid-economy@right'));assert.equal(modelPlanFor(left.name,s).tactic,'flank-left');assert.equal(modelPlanFor('raid-economy',s).tactic,'rules');assert.equal(modelPlanFor('raid-economy@invalid',s),null);assert.equal(validPlan({...economy,tactic:'arbitrary'},Object.keys(units),Object.keys(buildings)),null);assert(!decisionRequest(battle,'test').offered.some(x=>x.name.includes('@')),'JEV retains its normal tactical behavior');
+const feedback=summarize({...battle,feedback:{operation:'rush',mode:'Attacking',tactic:'flank-left',tacticPhase:'moving'}});assert(promptFor(feedback).includes('Current maneuver flank-left: moving'));assert.throws(()=>summarize({...battle,feedback:{tactic:'flank-left',tacticPhase:'injected'}}));
 const noTargets=summarize({...battle,opponent:{units:{tank:2},buildings:{base:1},hqHealth:100}});assert(!offeredOperations(noTargets).some(x=>x.name==='raid-economy'||x.name==='raid-production'));
 const emergency=summarize({...battle,own:{...battle.own,hqHealth:35},context:{...battle.context,pressure:4}});assert(offeredOperations(emergency).every(x=>!x.name.startsWith('raid-')));
+assert(!modelOptions(emergency).some(x=>x.name.includes('@')),'do not offer a flank during base pressure');
 console.log('PASS richer choices, model classification, executable plans, target eligibility and emergency constraints.');

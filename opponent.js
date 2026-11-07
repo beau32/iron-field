@@ -14,7 +14,8 @@
     if(!plan||typeof plan!=='object'||Array.isArray(plan)||!Object.hasOwn(styles,plan.style)||!focuses.includes(plan.focus)||!['auto',...units].includes(plan.unit)||!['auto',...buildings].includes(plan.building))return null;
     if(plan.operation!==undefined&&!operations.includes(plan.operation))return null;
     if(plan.directive!==undefined&&!directives.includes(plan.directive))return null;
-    return {style:plan.style,focus:plan.focus,unit:plan.unit,building:plan.building,...(plan.operation?{operation:plan.operation}:{}),...(plan.directive?{directive:plan.directive}:{})};
+    if(plan.tactic!==undefined&&!['rules','flank-left','flank-right'].includes(plan.tactic))return null;
+    return {style:plan.style,focus:plan.focus,unit:plan.unit,building:plan.building,...(plan.operation?{operation:plan.operation}:{}),...(plan.directive?{directive:plan.directive}:{}),...(plan.tactic?{tactic:plan.tactic}:{})};
   }
   return {styles,focuses,operations,validPlan};
 });

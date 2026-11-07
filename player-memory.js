@@ -20,7 +20,7 @@
     const outcomes={};
     if(match.dropped?.events===0){
       const decisions=(match.events||[]).filter(e=>e.type==='ai-decision'&&operations.includes(e.data?.plan?.operation)&&Number.isFinite(e.gameSeconds));
-      const signature=e=>{const p=e.data.plan;return [p.operation,p.directive,p.style,p.focus,p.unit,p.building].join('|');};
+      const signature=e=>{const p=e.data.plan;return [p.operation,p.directive,p.style,p.focus,p.unit,p.building,p.tactic].join('|');};
       const changes=decisions.filter((e,i)=>!i||signature(e)!==signature(decisions[i-1]));
       const deaths=(match.events||[]).filter(e=>e.type==='entity-destroyed'&&Number.isFinite(e.gameSeconds));
       for(let i=0;i<changes.length;i++){

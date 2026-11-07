@@ -23,7 +23,7 @@ const choices={
   'anti-armor':{style:'balanced',focus:'army',unit:'destroyer',building:'auto'},
   naval:{style:'balanced',focus:'production',unit:'frigate',building:'shipyard'}
 };
-const decisionVersion=7;
+const decisionVersion=8;
 // Each variant is still subject to its parent operation's feasibility checks.
 const variants={
   'raid-economy':{operation:'rush',focus:'economy',unit:'scout',why:'Use fast scouts to raid enemy miners and refineries.'},
@@ -74,6 +74,7 @@ function summarize(value){
   const f=value.feedback||{};
   if(typeof f!=='object'||Array.isArray(f)||!['','balanced','rush','defend','economy','air','anti-air','siege','anti-armor','naval'].includes(f.operation||'')||!['Preparing','Building forces','Attacking','Defending','Regrouping'].includes(f.mode||'Preparing')||typeof(f.stalled??false)!=='boolean')throw failure(400,'Invalid operation feedback.');
   const feedback={operation:f.operation||'',mode:f.mode||'Preparing',stalled:f.stalled||false};
+  if(f.tactic!==undefined){if(!['rules','flank-left','flank-right'].includes(f.tactic)||!['idle','moving','engaging','blocked'].includes(f.tacticPhase))throw failure(400,'Invalid tactical feedback.');feedback.tactic=f.tactic;feedback.tacticPhase=f.tacticPhase;}
   for(const key of ['age','lostValue','destroyedValue','income','raidAge','raidSize'])feedback[key]=bounded(f[key],0,key==='raidSize'?400:1000000);
   let contacts=null;
   if(value.contacts!==undefined&&value.contacts!==null){
@@ -249,6 +250,7 @@ function facts(summary){
   if(summary.own.hqHealth<45)lines.push(`Our HQ ${summary.own.hqHealth}%.`);
   if(summary.context.lowPower)lines.push('Low power.');
   if(f.operation)lines.push(`Previous ${f.operation}: ${f.stalled?'stalled':f.lostValue>Math.max(200,f.destroyedValue*1.5)?'losing':f.mode==='Attacking'?'attacking':'building'}.`);
+  if(f.tactic)lines.push(`Current maneuver ${f.tactic}: ${f.tacticPhase}.`);
   lines.push(contactFacts(summary));
   if(summary.strategicMap)lines.push(mapFacts(summary));
   lines.push(profileFacts(summary));
@@ -267,13 +269,29 @@ function planFor(strategy,summary){
 function promptFor(summary,options=offeredOperations(summary)){
   return prefix+'\n'+facts(summary)+'\nChoose only: '+options.map(c=>c.name).join(',')+'.';
 }
+function modelOptions(summary,offered=offeredOperations(summary)){
+  const options=offered.map(o=>({...o}));
+  const ground=Object.entries(summary.own.units).reduce((n,[kind,count])=>{const u=definitions.units[kind];return n+(u.damage>0&&!u.aircraft&&!u.naval&&u.targets!=='air'?count:0);},0);
+  if(ground>=3&&!summary.context.pressure)for(const o of offered){
+    const operation=variants[o.name]?.operation||o.name;
+    if(!['balanced','rush','siege'].includes(operation))continue;
+    for(const side of ['left','right'])options.push({name:o.name+'@'+side,why:o.why+`; approach via a ${side} flank waypoint before attacking`});
+  }
+  return options;
+}
+function modelPlanFor(choice,summary){
+  const [strategy,side,...extra]=choice.split('@');if(extra.length||side&&!['left','right'].includes(side))return null;
+  const plan=planFor(strategy,summary);if(!plan)return null;
+  return validPlan({...plan,tactic:side?'flank-'+side:'rules'},units,buildings);
+}
 async function infer(model,summary,signal){
-  const offered=offeredOperations(summary),options=offered.map(c=>c.name);
-  const r=await fetch(base+'/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},signal,body:JSON.stringify({model,stream:false,...((process.env.OLLAMA_THINK==='false'||installed.find(m=>m.name===model)?.thinking)?{think:false}:{}),format:schema(options),keep_alive:'30m',options:{temperature:0,num_predict:24,num_ctx:1536,num_thread:4},messages:[{role:'user',content:promptFor(summary,offered)}]})});
+  const offered=modelOptions(summary),options=offered.map(c=>c.name);
+  const prompt=promptFor(summary,offered)+'\nPlain names use game tactics; @left or @right chooses a flanking approach relative to our force facing the target.';
+  const r=await fetch(base+'/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},signal,body:JSON.stringify({model,stream:false,...((process.env.OLLAMA_THINK==='false'||installed.find(m=>m.name===model)?.thinking)?{think:false}:{}),format:schema(options),keep_alive:'30m',options:{temperature:0,num_predict:24,num_ctx:1536,num_thread:4},messages:[{role:'user',content:prompt}]})});
   if(!r.ok)throw Error('Ollama unavailable');
   const result=await r.json(),parsed=JSON.parse(result.message?.content);
   if(!options.includes(parsed))throw Error('Invalid model strategy');
-  const selected=planFor(parsed,summary);if(!selected)throw Error('Invalid model plan');
+  const selected=modelPlanFor(parsed,summary);if(!selected)throw Error('Invalid model plan');
   return selected;
 }
 async function warmup(requested){
@@ -308,4 +326,4 @@ async function plan(input,signal){
   }catch(error){if(signal.aborted)throw failure(499,'Commander request cancelled.');throw failure(503,`${model} missed its five-second deadline or returned an invalid strategy. Try a smaller model.`);}
   finally{clearTimeout(timer);signal.removeEventListener('abort',cancel);busy=false;nextAllowed=Date.now()+2000;}
 }
-module.exports={offeredOperations,operationEvidence,status,plan,summarize,warmup,relevantStrategies,choices,assess,candidates,planFor,promptFor,contactFacts,mapFacts,profileFacts,decisionVersion};
+module.exports={offeredOperations,modelOptions,modelPlanFor,operationEvidence,status,plan,summarize,warmup,relevantStrategies,choices,assess,candidates,planFor,promptFor,contactFacts,mapFacts,profileFacts,decisionVersion};
