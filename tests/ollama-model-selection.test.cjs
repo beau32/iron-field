@@ -29,6 +29,7 @@ const mock=http.createServer(async(req,res)=>{
   assert.equal(result.status,200,JSON.stringify(result));assert.equal(result.model,'other:latest');assert.equal(seen.at(-1).model,'other:latest');assert.match(output,/Local strategy completed with other:latest/);
   assert.equal(result.plan.tactic,'flank-left','the selected tactical maneuver survives the local connector and relay');
   assert.match(seen.at(-1).messages[0].content,/rush: 2 favorable/,'observed outcomes reach the actual Ollama request through the relay');
+  assert.match(seen.at(-1).messages[0].content,/Approximate two-step worst-case ranking/);assert(result.lookahead.length>=2,'Ollama relay returns lookahead for logging');
   assert.match(seen.at(-1).messages[0].content,/3 \?\?=\?\? 00000 00100/,'sector map reaches the Ollama prompt through the relay');
   await post('status',{model:''},session.clientToken);
   for(let i=0;i<100;i++){state=await post('status',{},session.clientToken);if(state.model==='qwen2.5:0.5b')break;await delay(100);}

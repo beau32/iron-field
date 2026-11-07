@@ -1,11 +1,11 @@
 'use strict';
 // Jev/System One decision API. Keep its endpoint separate from Ollama chat.
-const {summarize,offeredOperations,operationEvidence,planFor,assess,contactFacts,mapFacts,profileFacts,decisionVersion}=require('./commander.cjs');
+const {summarize,offeredOperations,strategicLookahead,operationEvidence,planFor,assess,contactFacts,mapFacts,profileFacts,decisionVersion}=require('./commander.cjs');
 const fail=(status,message,retryAfterMs=5000)=>Object.assign(new Error(message),{status,retryAfterMs});
 function validPort(value){const port=Number(value);if(!Number.isInteger(port)||port<1||port>65535)throw fail(400,'Enter a JEV port from 1 to 65535.');return port;}
 function decisionRequest(input,model){
  const summary=summarize(input),offered=offeredOperations(summary);
- return {summary,offered,body:{model,state:JSON.stringify(summary),questions:{strategy:{type:'choice',instructions:'Command our army to destroy the enemy HQ. Choose the best feasible operation. Contacts are currently visible enemies; aggregate enemy totals can include hidden enemies. strategicMap has 5x5 rows north to south and columns A to E west to east; terrain ? unknown, . explored, ~ water, ^ ridge, = bridge. friendly and enemy are counts of our and visible enemy combat units, capped at 9; zero does not prove a sector is clear. Sites are own or currently seen; terrain is approximate, not a route. Profile and playerDescription describe past tendencies and possible strengths and vulnerabilities, not guarantees. Protect a threatened base, recover broken income if ore remains, fill unmet counters including queues, and exploit an army advantage. Continue productive attacks; replace stalled or losing plans. Consider credits and completed producers.',criteria:Object.fromEntries(offered.map(c=>[c.name,c.why]))}}}};
+ return {summary,offered,body:{model,state:JSON.stringify({...summary,lookahead:strategicLookahead(summary,offered).map(o=>o.name)}),questions:{strategy:{type:'choice',instructions:'Command our army to destroy the enemy HQ. Choose the best feasible operation. lookahead ranks options using a rough two-step worst-case macro-model, not a prediction. Contacts are currently visible enemies; aggregate enemy totals can include hidden enemies. strategicMap has 5x5 rows north to south and columns A to E west to east; terrain ? unknown, . explored, ~ water, ^ ridge, = bridge. friendly and enemy are counts of our and visible enemy combat units, capped at 9; zero does not prove a sector is clear. Sites are own or currently seen; terrain is approximate, not a route. Profile and playerDescription describe past tendencies and possible strengths and vulnerabilities, not guarantees. Protect a threatened base, recover broken income if ore remains, fill unmet counters including queues, and exploit an army advantage. Continue productive attacks; replace stalled or losing plans. Consider credits and completed producers.',criteria:Object.fromEntries(offered.map(c=>[c.name,c.why]))}}}};
 }
 function classificationRequest(summary,offered){
  const m=assess(summary),f=summary.feedback;
@@ -20,6 +20,7 @@ function classificationRequest(summary,offered){
   'Enemy aggregate estimates may include hidden units. '+contactFacts(summary),
   ...(summary.strategicMap?[mapFacts(summary)]:[]),
   profileFacts(summary),
+  'Rough two-step worst-case operation ranking (not a prediction): '+strategicLookahead(summary,offered).map(o=>o.name).join(' > ')+'.',
   'Feasible operations after checking resources and technology: '+offered.map(c=>c.name+' ('+c.why+')').join('; ')+'.'
  ].join(' ');
  return {premise,choices:offered.map(c=>operationEvidence[c.name])};
@@ -103,7 +104,7 @@ function createCommander({port=process.env.JEV_PORT,model=process.env.JEV_MODEL|
    if(!response.ok)throw fail(503,response.status===404?'JEV decision endpoint or model is missing. Check the service port and model.':'JEV rejected the decision. Select a compatible decision model.');
    const result=await response.json(),answer=nli?{type:'choice',choice:classificationChoice(result,body,request.offered)}:result.answers?.strategy;
    if(answer?.type!=='choice'||typeof answer.choice!=='string'||!request.offered.some(c=>c.name===answer.choice))throw fail(503,'JEV returned an invalid or unavailable strategy.');
-   return {plan:planFor(answer.choice,request.summary),model:selected,provider:'jev',protocol:info.protocol,decisionVersion,latencyMs:Math.max(0,now()-started)};
+   return {plan:planFor(answer.choice,request.summary),lookahead:strategicLookahead(request.summary,request.offered).map(o=>o.name),model:selected,provider:'jev',protocol:info.protocol,decisionVersion,latencyMs:Math.max(0,now()-started)};
   }catch(e){if(signal.aborted)throw fail(499,'JEV decision cancelled.');if(e.status)throw e;throw fail(503,controller.signal.aborted?'JEV exceeded the five-second deadline.':'JEV connection failed. Keeping fallback tactics.');}
   finally{clearTimeout(timer);signal.removeEventListener('abort',cancel);busy=false;}
  }

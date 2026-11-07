@@ -23,7 +23,7 @@ const choices={
   'anti-armor':{style:'balanced',focus:'army',unit:'destroyer',building:'auto'},
   naval:{style:'balanced',focus:'production',unit:'frigate',building:'shipyard'}
 };
-const decisionVersion=8;
+const decisionVersion=9;
 // Each variant is still subject to its parent operation's feasibility checks.
 const variants={
   'raid-economy':{operation:'rush',focus:'economy',unit:'scout',why:'Use fast scouts to raid enemy miners and refineries.'},
@@ -210,6 +210,47 @@ function candidates(summary){
   const finish=summary.opponent.hqHealth<=50&&advantage&&m.army>=3&&!pressure&&!losing;
   return list.filter(c=>!finish||['rush','balanced'].includes(c.name)).sort((a,b)=>b.score-a.score).slice(0,4);
 }
+// Small adversarial macro-model. These transitions are hand-written estimates,
+// not simulations of the game engine or predictions of the player's actions.
+function strategicLookahead(summary,options){
+  const m=assess(summary),clamp=(v,lo=0,hi=100)=>Math.max(lo,Math.min(hi,v));
+  const start={own:clamp(m.ownValue/100,0,80),enemy:clamp(m.enemyValue/100,0,80),hq:summary.own.hqHealth,enemyHQ:summary.opponent.hqHealth,
+    income:summary.context.oreRemaining&&summary.own.ready.refinery?clamp((summary.own.units.miner||0),0,6):0,
+    cash:clamp(summary.credits/100,0,30),air:m.air,aa:m.aa,armor:m.armor,counters:m.armorCounters,defenses:m.defenses,pressure:summary.context.pressure,shield:0,water:summary.context.water};
+  const parent=name=>variants[name]?.operation||name;
+  const project=(state,action,response)=>{
+    const s={...state};s.shield=0;s.cash=clamp(s.cash+s.income*.7,0,30);
+    const spend=(cost,gain)=>{if(s.cash>=cost){s.cash-=cost;s.own=clamp(s.own+gain,0,80);return true;}return false;};
+    switch(parent(action)){
+      case 'economy':if(s.cash>=1.5){s.cash-=1.5;s.income=clamp(s.income+1.5,0,6);}break;
+      case 'defend':s.shield=4;spend(2,2);break;
+      case 'anti-air':s.shield=1;if(spend(2.5,1.5))s.aa+=2;break;
+      case 'anti-armor':if(spend(3,2))s.counters+=2;break;
+      case 'siege':if(spend(2.5,2))s.defenses=Math.max(0,s.defenses-1);break;
+      case 'air':spend(3,3);break;
+      case 'naval':if(s.water)spend(3,2.5);break;
+      case 'rush':{const attack=Math.max(0,s.own*.5-s.enemy*.22-s.defenses*.8);s.enemy=clamp(s.enemy-attack*.35,0,80);s.own=clamp(s.own-s.enemy*.08,0,80);s.enemyHQ=clamp(s.enemyHQ-attack*.45);break;}
+      default:spend(2,2);
+    }
+    if(response==='assault'){
+      const airGap=Math.max(0,s.air-s.aa)*1.3,armorGap=Math.max(0,s.armor-s.counters)*.3;
+      const impact=Math.max(0,s.enemy*.18+airGap+armorGap+s.pressure*.6-s.own*.1-s.shield);
+      s.hq=clamp(s.hq-impact*2);s.own=clamp(s.own-impact*.45,0,80);s.income=clamp(s.income-impact*.12,0,6);
+    }else if(response==='expand')s.enemy=clamp(s.enemy+3.5,0,80);
+    else {const raid=Math.max(0,2.5-s.shield*.45-s.own*.04);s.income=clamp(s.income-raid*.55,0,6);s.own=clamp(s.own-raid*.4,0,80);}
+    return s;
+  };
+  const evaluate=s=>s.hq*2-s.enemyHQ*1.2+s.own*3-s.enemy*2.5+s.income*6+s.cash*.3;
+  const actions=[...new Set(options.map(o=>o.name))].slice(0,6),responses=['assault','expand','raid'];
+  return actions.map(name=>{
+    let worst=Infinity;
+    for(const response of responses){const next=project(start,name,response);let best=-Infinity;
+      for(const follow of actions){let followWorst=Infinity;for(const reply of responses)followWorst=Math.min(followWorst,evaluate(project(next,follow,reply)));best=Math.max(best,followWorst);}
+      worst=Math.min(worst,best);
+    }
+    return {name,value:Math.round(worst*10)/10};
+  }).sort((a,b)=>b.value-a.value||a.name.localeCompare(b.name));
+}
 function offeredOperations(summary){
   const offered=candidates(summary);
   if(summary.context.pressure>=3&&summary.own.hqHealth<=45){
@@ -232,6 +273,12 @@ function offeredOperations(summary){
       if((name==='raid-production'||name==='siege-production')&&!productionTarget)continue;
       if(available.has(variant.operation))offered.push({name,why:variant.why});
     }
+  }
+  // A modest tie-breaker among already-feasible options. Emergency and finishing
+  // filters above remain authoritative; the model still makes the final choice.
+  if(offered.length>1&&summary.context.pressure<3&&summary.own.hqHealth>45){
+    const estimates=strategicLookahead(summary,offered),rank=new Map(estimates.map((e,i)=>[e.name,i]));
+    offered.sort((a,b)=>((b.score??0)-(rank.get(b.name)??estimates.length)*2)-((a.score??0)-(rank.get(a.name)??estimates.length)*2));
   }
   return offered;
 }
@@ -267,7 +314,9 @@ function planFor(strategy,summary){
   return validPlan(plan,units,buildings);
 }
 function promptFor(summary,options=offeredOperations(summary)){
-  return prefix+'\n'+facts(summary)+'\nChoose only: '+options.map(c=>c.name).join(',')+'.';
+  const base=options.filter(o=>!o.name.includes('@'));
+  const projected=strategicLookahead(summary,base).map(o=>o.name).join(' > ');
+  return prefix+'\n'+facts(summary)+'\nApproximate two-step worst-case ranking (simplified, not a prediction): '+projected+'.\nChoose only: '+options.map(c=>c.name).join(',')+'.';
 }
 function modelOptions(summary,offered=offeredOperations(summary)){
   const options=offered.map(o=>({...o}));
@@ -322,8 +371,8 @@ async function plan(input,signal){
   try{
     const started=Date.now();
     const decision=await infer(model,summary,controller.signal);state.readyUntil=Date.now()+25*60000;state.error='';
-    return {plan:decision,model,decisionVersion,provider:'ollama',latencyMs:Date.now()-started};
+    return {plan:decision,lookahead:strategicLookahead(summary,offeredOperations(summary)).map(o=>o.name),model,decisionVersion,provider:'ollama',latencyMs:Date.now()-started};
   }catch(error){if(signal.aborted)throw failure(499,'Commander request cancelled.');throw failure(503,`${model} missed its five-second deadline or returned an invalid strategy. Try a smaller model.`);}
   finally{clearTimeout(timer);signal.removeEventListener('abort',cancel);busy=false;nextAllowed=Date.now()+2000;}
 }
-module.exports={offeredOperations,modelOptions,modelPlanFor,operationEvidence,status,plan,summarize,warmup,relevantStrategies,choices,assess,candidates,planFor,promptFor,contactFacts,mapFacts,profileFacts,decisionVersion};
+module.exports={offeredOperations,strategicLookahead,modelOptions,modelPlanFor,operationEvidence,status,plan,summarize,warmup,relevantStrategies,choices,assess,candidates,planFor,promptFor,contactFacts,mapFacts,profileFacts,decisionVersion};

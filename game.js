@@ -2370,7 +2370,7 @@
       if(state!==commander||controller.signal.aborted||net?.active||!raids||!isModelOpponent())return;
       acceptAIPlan(plan,result.model);
       state.decisionMs=Math.round(performance.now()-state.lastModelRequest);
-      battleLog.event(elapsed,'ai-decision',{requestId,provider:modelProvider(),model:result.model,execution:result.execution||window.FieldLocalAI?.mode,protocol:result.protocol,plan,roundTripMs:state.decisionMs,serviceMs:result.latencyMs});
+      battleLog.event(elapsed,'ai-decision',{requestId,provider:modelProvider(),model:result.model,execution:result.execution||window.FieldLocalAI?.mode,protocol:result.protocol,plan,lookahead:Array.isArray(result.lookahead)?result.lookahead.slice(0,6):undefined,roundTripMs:state.decisionMs,serviceMs:result.latencyMs});
       loggedResult=true;
       state.modelRetryUntil=0;
       state.nextModel=performance.now()+(opponentStyle==='openai'?30000:modelProvider()==='JEV'?12000:20000);

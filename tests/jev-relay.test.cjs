@@ -24,7 +24,7 @@ const mock=http.createServer(async(req,res)=>{
   worker=spawn(process.execPath,['local-ai.cjs','--server','http://127.0.0.1:8773','--code',session.code,'--provider','jev'],{cwd:root,env:{...env,JEV_PORT:'1'},windowsHide:true,stdio:['ignore','pipe','pipe']});
   worker.stdout.on('data',data=>workerOutput+=data);worker.stderr.on('data',data=>workerOutput+=data);
   let local;for(let i=0;i<40;i++){local=await post('local/status',{},session.clientToken);if(local.ready)break;await delay(100);}
-  assert(local.connected&&local.ready);assert.equal(local.port,port);assert.equal(local.models.length,2);assert.equal(local.decisionVersion,8);
+  assert(local.connected&&local.ready);assert.equal(local.port,port);assert.equal(local.models.length,2);assert.equal(local.decisionVersion,9);
   assert.equal((await post('local/status',{model:123},session.clientToken)).status,400);
   await post('local/status',{model:'alternate:test'},session.clientToken);
   for(let i=0;i<50;i++){local=await post('local/status',{},session.clientToken);if(local.model==='alternate:test')break;await delay(100);}
@@ -35,6 +35,7 @@ const mock=http.createServer(async(req,res)=>{
   const rich={...battle,strategicMap:{terrain:['?????','?????','??=??','.....','.....'],friendly:['00000','00000','00000','00100','00000'],enemy:['00000','00000','00100','00000','00000'],sites:['C4:own-hq']},contacts:[{kind:'battleship',x:12,z:-7,health:65,distance:30}],profile:{games:2,forwardGames:1,navalGames:2,airGames:0,economyGames:2,learning:{samples:2,early:1,naval:2,air:0,miner:1,outcomes:{rush:{positive:2,negative:0}}}},opponent:{units:{miner:2,tank:1},buildings:{base:1,refinery:1,warFactory:1},hqHealth:100}};
   const directive=await post('local/plan',{...rich,model:'alternate:test'},session.clientToken);
   assert.equal(directive.status,200);assert.equal(directive.plan.directive,'raid-economy');assert.equal(directive.plan.focus,'economy');assert.equal(directive.plan.unit,'scout');
+  assert(Array.isArray(JSON.parse(seen.at(-1).state).lookahead));assert(directive.lookahead.length>=2,'lookahead reaches the paired JEV connector and is returned for logging');
   assert.deepEqual(JSON.parse(seen.at(-1).state).contacts,rich.contacts,'visible contacts survive client, server relay, and local connector');
   assert.deepEqual(JSON.parse(seen.at(-1).state).strategicMap,rich.strategicMap,'strategic map survives server relay and local JEV connector');
   assert.deepEqual(JSON.parse(seen.at(-1).state).profile,rich.profile,'historical pattern survives the complete relay');

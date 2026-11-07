@@ -1,7 +1,7 @@
 'use strict';
 // Relays bounded strategy jobs to a paired player's computer. Never contacts Ollama.
 const crypto=require('node:crypto');
-const {summarize}=require('./commander.cjs');
+const {summarize,offeredOperations,strategicLookahead}=require('./commander.cjs');
 const {validPort}=require('./jev-commander.cjs');
 const {validPlan}=require('./opponent.js');
 const definitions=require('./data.js');
@@ -26,7 +26,7 @@ async function handle(req,res,path,data,reply){
   limit(req.socket.remoteAddress);const s=codes.get(String(data.code||'').toUpperCase());
   if(!s||now>s.expires)throw fail(401,'Pairing code is invalid or expired.');
   if((data.provider||'ollama')!==s.provider)throw fail(400,'This pairing code is for '+s.provider+'. Start the matching connector.');
-  codes.delete(s.code);s.workerToken=token();s.lastSeen=now;s.model=String(data.model||'').slice(0,100);s.ready=false;s.decisionVersion=[2,3,4,5,6,7,8].includes(data.decisionVersion)?data.decisionVersion:1;s.models=modelList(data.models);workers.set(s.workerToken,s);
+  codes.delete(s.code);s.workerToken=token();s.lastSeen=now;s.model=String(data.model||'').slice(0,100);s.ready=false;s.decisionVersion=[2,3,4,5,6,7,8,9].includes(data.decisionVersion)?data.decisionVersion:1;s.models=modelList(data.models);workers.set(s.workerToken,s);
   s.configPort=s.provider==='openai'&&Number.isInteger(data.configPort)&&data.configPort>0&&data.configPort<=65535?data.configPort:null;
   reply(res,200,{workerToken:s.workerToken,port:s.port});return;
  }
@@ -37,7 +37,7 @@ async function handle(req,res,path,data,reply){
   reply(res,200,{connected:now-s.lastSeen<15000,ready:s.ready,model:s.model,defaultModel:s.defaultModel||s.model,models:s.models||[],serviceMessage:s.serviceMessage,protocol:s.protocol,decisionVersion:s.decisionVersion||1,provider:s.provider,port:s.port,configPort:s.configPort,code:s.workerToken?null:s.code,expires:s.expires});return;
  }
  if(path==='work'){
-  s.lastSeen=now;s.ready=Boolean(data.ready);s.decisionVersion=[2,3,4,5,6,7,8].includes(data.decisionVersion)?data.decisionVersion:1;s.models=modelList(data.models);s.model=String(data.model||s.model).slice(0,100);
+  s.lastSeen=now;s.ready=Boolean(data.ready);s.decisionVersion=[2,3,4,5,6,7,8,9].includes(data.decisionVersion)?data.decisionVersion:1;s.models=modelList(data.models);s.model=String(data.model||s.model).slice(0,100);
   if(typeof data.defaultModel==='string')s.defaultModel=data.defaultModel.slice(0,100);
   s.serviceMessage=typeof data.serviceMessage==='string'?data.serviceMessage.slice(0,180):'';s.protocol=['systemone','openjev-nli'].includes(data.protocol)?data.protocol:undefined;
   const job=s.job&&!s.job.dispatched?s.job:null;if(job)job.dispatched=true;
@@ -64,7 +64,7 @@ async function handle(req,res,path,data,reply){
    job.resolve=value=>finish(resolve,value);job.reject=error=>finish(reject,error);
    const timer=setTimeout(()=>job.reject(fail(503,'Your computer missed the planning deadline.')),5800);res.once('close',cancel);
   });
-  if(!res.destroyed)reply(res,200,value);return;
+  if(!res.destroyed)reply(res,200,{...value,lookahead:strategicLookahead(summary,offeredOperations(summary)).map(o=>o.name)});return;
  }
  throw fail(404,'Unknown local AI endpoint.');
 }

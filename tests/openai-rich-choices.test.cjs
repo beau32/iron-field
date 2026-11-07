@@ -9,6 +9,7 @@ const signal=()=>new AbortController().signal;
  const result=await make('raid-economy').plan(battle,signal());
  assert.equal(result.plan.directive,'raid-economy');assert.equal(result.plan.focus,'economy');assert.equal(result.plan.unit,'scout');
  assert.deepEqual(JSON.parse(body.input).contacts,battle.contacts,'OpenAI receives visible sightings');
+ assert(Array.isArray(JSON.parse(body.input).lookahead));assert(result.lookahead.length>=2,'OpenAI receives and reports the lookahead ranking');
  assert.deepEqual(JSON.parse(body.input).strategicMap,battle.strategicMap,'OpenAI receives the strategic map');
  assert.deepEqual(JSON.parse(body.input).profile,battle.profile,'OpenAI receives player history');
  assert.match(JSON.parse(body.input).playerDescription,/fielded multiple aircraft in 2\/2/,'OpenAI receives the verbal player assessment');
