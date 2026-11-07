@@ -23,14 +23,16 @@ const choices={
   'anti-armor':{style:'balanced',focus:'army',unit:'destroyer',building:'auto'},
   naval:{style:'balanced',focus:'production',unit:'frigate',building:'shipyard'}
 };
-const decisionVersion=5;
+const decisionVersion=6;
 // Each variant is still subject to its parent operation's feasibility checks.
 const variants={
   'raid-economy':{operation:'rush',focus:'economy',unit:'scout',why:'Use fast scouts to raid enemy miners and refineries.'},
   'raid-production':{operation:'rush',focus:'production',unit:'tank',why:'Use tanks to attack enemy production buildings.'},
   'siege-production':{operation:'siege',focus:'production',unit:'artillery',why:'Use artillery to pressure enemy production behind defenses.'},
   'air-economy':{operation:'air',focus:'economy',unit:'gunship',why:'Use gunships to attack exposed miners and refineries.'},
-  'defend-counterattack':{operation:'defend',style:'balanced',focus:'army',unit:'tank',why:'Defend against the enemy force and assemble tanks for a counterattack.'}
+  'defend-counterattack':{operation:'defend',style:'balanced',focus:'army',unit:'tank',why:'Defend against the enemy force and assemble tanks for a counterattack.'},
+  'defend-air':{operation:'anti-air',style:'fortress',focus:'army',unit:'rocket',why:'Fortify the base and recruit anti-air against aircraft.'},
+  'defend-armor':{operation:'anti-armor',style:'fortress',focus:'army',unit:'destroyer',why:'Fortify the base and recruit armor counters.'}
 };
 const operationEvidence={
   economy:'Ore remains available and our mining income needs recovery or expansion.',
@@ -48,7 +50,9 @@ Object.assign(operationEvidence,{
   'raid-production':'Enemy production buildings are valuable targets for a tank raid.',
   'siege-production':'Enemy defenses protect production that artillery can pressure.',
   'air-economy':'Gunships can raid enemy miners or refineries while bypassing ground defenses.',
-  'defend-counterattack':'Our base needs protection and tanks can prepare a counterattack.'
+  'defend-counterattack':'Our base needs protection and tanks can prepare a counterattack.',
+  'defend-air':'Our base is threatened and enemy aircraft call for a fortified anti-air defense.',
+  'defend-armor':'Our base is threatened and enemy armor calls for a fortified anti-armor defense.'
 });
 // Keep the evidence dictionary fixed so Ollama can reuse its prompt prefix on a small CPU.
 const prefix=[
@@ -84,6 +88,12 @@ function summarize(value){
     const p=value.profile,keys=['games','forwardGames','navalGames','airGames','economyGames'];
     if(!p||typeof p!=='object'||Array.isArray(p)||!keys.every(k=>integer(p[k],20))||!p.games||keys.slice(1).some(k=>p[k]>p.games))throw failure(400,'Invalid player history.');
     profile=Object.fromEntries(keys.map(k=>[k,p[k]]));
+    if(p.learning!==undefined&&p.learning!==null){
+      const l=p.learning,lk=['early','air','naval','miner'];
+      if(!l||!integer(l.samples,5)||!l.samples||l.samples!==p.games||!lk.every(k=>integer(l[k],l.samples))||!l.outcomes||typeof l.outcomes!=='object'||Array.isArray(l.outcomes))throw failure(400,'Invalid observed player history.');
+      const outcomes={};for(const [op,row] of Object.entries(l.outcomes)){if(!Object.hasOwn(choices,op)||!row||!integer(row.positive,100)||!integer(row.negative,100))throw failure(400,'Invalid operation history.');outcomes[op]={positive:row.positive,negative:row.negative};}
+      profile.learning={samples:l.samples,...Object.fromEntries(lk.map(k=>[k,l[k]])),outcomes};
+    }
     if(p.evidence!==undefined&&p.evidence!==null){
       const e=p.evidence,ek=['completedGames','wins','economySamples','fastEconomyGames','eventSamples','minerLossGames','productionLossGames','enemyProductionLossGames'];
       if(!e||typeof e!=='object'||Array.isArray(e)||!ek.every(k=>integer(e[k],p.games))||e.wins>e.completedGames||e.fastEconomyGames>e.economySamples||[e.minerLossGames,e.productionLossGames,e.enemyProductionLossGames].some(n=>n>e.eventSamples))throw failure(400,'Invalid player history evidence.');
@@ -95,6 +105,7 @@ function summarize(value){
 // Translate only measured history into tentative language. Never accept free-form player text.
 function describePlayer(p){
   if(!p)return 'No saved player history; strengths and weaknesses are unknown.';
+  if(p.learning){const l=p.learning,labels=[['early','armed units near our base early'],['air','aircraft'],['naval','ships'],['miner','miners']];const seen=labels.filter(([key])=>l[key]>0).map(([key,label])=>`${label} observed in ${l[key]}/${l.samples} recent matches`);return (seen.length?'Observed player style: '+seen.join('; ')+'.':'No listed player tactics were observed in recent matches.')+' Sightings are incomplete; absence is not proof. History is a tendency, not a guarantee.';}
   const repeated=n=>p.games>=2&&n>=2&&n/p.games>=.5,style=[];
   if(repeated(p.forwardGames))style.push(`moved armed units near our HQ early in ${p.forwardGames}/${p.games} matches`);
   if(repeated(p.navalGames))style.push(`fielded multiple ships in ${p.navalGames}/${p.games}`);
@@ -120,6 +131,7 @@ function contactFacts(summary){
 }
 function profileFacts(summary){
   const p=summary.profile;if(!p)return 'No saved player history.';
+  if(p.learning){const l=p.learning,rows=Object.entries(l.outcomes).filter(([,r])=>r.positive+r.negative>=2).map(([op,r])=>`${op}: ${r.positive} favorable and ${r.negative} unfavorable combat windows`);return `Recent observed history (${l.samples} matches): ${summary.playerDescription} ${rows.length?'Past operation results (60-second combat indicators, not proof of causation): '+rows.join('; ')+'.':'Insufficient operation outcome evidence.'}`;}
   return `Past ${p.games} solo matches (tendencies, not current sightings): early forward force ${p.forwardGames}/${p.games}; 2+ ships ${p.navalGames}/${p.games}; 2+ aircraft ${p.airGames}/${p.games}; 4+ miners ${p.economyGames}/${p.games}. ${summary.playerDescription||describePlayer(p)}`;
 }
 async function status(requested){
@@ -181,6 +193,8 @@ function candidates(summary){
     if(f.stalled||losing)item.score-=35;
     else if(f.mode==='Attacking'||f.age<45||f.destroyedValue>f.lostValue)item.score+=12;
   }
+  // A small, bounded preference based on repeated recent outcomes; tactical emergencies remain dominant.
+  for(const item of list){const r=summary.profile?.learning?.outcomes?.[item.name];if(r&&r.positive+r.negative>=2)item.score+=Math.max(-8,Math.min(8,(r.positive-r.negative)*4));}
   const finish=summary.opponent.hqHealth<=50&&advantage&&m.army>=3&&!pressure&&!losing;
   return list.filter(c=>!finish||['rush','balanced'].includes(c.name)).sort((a,b)=>b.score-a.score).slice(0,4);
 }
@@ -195,9 +209,11 @@ function offeredOperations(summary){
   // Keep an emergency shortlist focused and preserve a finishing attack on a weak HQ.
   if(!(summary.context.pressure>=3&&summary.own.hqHealth<=45)&&summary.opponent.hqHealth>50){
     const available=new Set(offered.map(c=>c.name));
-    for(const [name,variant] of Object.entries(variants)){
+    const orderedVariants=Object.entries(variants).sort((a,b)=>summary.context.pressure?(Number(b[0].startsWith('defend-'))-Number(a[0].startsWith('defend-'))):0);
+    for(const [name,variant] of orderedVariants){
       if(offered.length>=6)break;
       const enemy=summary.opponent;
+      if((name==='defend-air'||name==='defend-armor')&&!summary.context.pressure)continue;
       const economyTarget=Boolean(enemy.units.miner||enemy.buildings.refinery);
       const productionTarget=Boolean(enemy.buildings.warFactory||enemy.buildings.garrison||enemy.buildings.airfield||enemy.buildings.shipyard);
       if((name==='raid-economy'||name==='air-economy')&&!economyTarget)continue;

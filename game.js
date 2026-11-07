@@ -2032,7 +2032,7 @@
     }
   }
   function destroy(e) {
-    if(!net?.active)battleLog.event(elapsed,'entity-destroyed',{id:e.id,team:e.team,kind:e.kind,type:e.type,position:{x:e.mesh.position.x,z:e.mesh.position.z},value:stats(e).cost||600});
+    if(!net?.active)battleLog.event(elapsed,'entity-destroyed',{id:e.id,team:e.team,kind:e.kind,type:e.type,visibleToComputer:e.team==='enemy'||visibleTo(e,'enemy'),position:{x:e.mesh.position.x,z:e.mesh.position.z},value:stats(e).cost||600});
     releaseUnitDamage(e);
     explode(e.mesh.position, isBuilding(e) ? 3 : 1.8); e.mesh.visible = false; e.label.remove(); e.selectionFrame?.remove(); selected.delete(e);
     units = units.filter(u => u.hp > 0); navVersion++;
@@ -2254,7 +2254,7 @@
       return {units:count(army),buildings:count(structures),ready:count(structures.filter(active)),queued:team==='enemy'?count(remoteQueue):{},health:fighters.length?Math.round(100*fighters.reduce((n,u)=>n+u.hp,0)/fighters.reduce((n,u)=>n+u.maxHp,0)):100,hqHealth:hq?Math.round(100*hq.hp/hq.maxHp):0};
     };
     const recent=(commander.battleEvents||[]).filter(e=>elapsed-e.at<=45),plan=currentModelPlan();
-    return {elapsed:Math.floor(elapsed),credits:Math.floor(enemyCredits),own:side('enemy'),opponent:side('player'),contacts:visibleEnemyContacts(),profile:window.FieldPlayerMemory?.profile()||null,context:{water:MAP.water.length>0,lowPower:powerFor('enemy').low,pressure:aiBaseThreats().length,oreRemaining:Math.floor(fields.reduce((n,f)=>n+f.amount,0))},feedback:{
+    return {elapsed:Math.floor(elapsed),credits:Math.floor(enemyCredits),own:side('enemy'),opponent:side('player'),contacts:visibleEnemyContacts(),profile:window.FieldPlayerMemory?.observedProfile?.()||null,context:{water:MAP.water.length>0,lowPower:powerFor('enemy').low,pressure:aiBaseThreats().length,oreRemaining:Math.floor(fields.reduce((n,f)=>n+f.amount,0))},feedback:{
       operation:plan?.operation||'',mode:commander.mode,age:Math.floor(Math.max(0,elapsed-(commander.operationAt||0))),
       stalled:Boolean(plan&&!commander.raidSize&&elapsed-(commander.progressAt||0)>45),
       lostValue:recent.filter(e=>e.team==='enemy').reduce((n,e)=>n+e.value,0),destroyedValue:recent.filter(e=>e.team==='player').reduce((n,e)=>n+e.value,0),
@@ -2277,7 +2277,7 @@
     if(commander.urgentModel&&currentModelPlan()&&!commander.pending&&now-commander.lastModelRequest>=10000&&now>=commander.modelRetryUntil){commander.nextModel=Math.min(commander.nextModel,now);commander.urgentModel=false;}
   }
   function aiPlanName(plan) {
-    if(plan.directive)return ({'raid-economy':'Scout raid on economy','raid-production':'Tank raid on production','siege-production':'Siege enemy production','air-economy':'Gunship raid on economy','defend-counterattack':'Defend and counterattack'})[plan.directive];
+    if(plan.directive)return ({'raid-economy':'Scout raid on economy','raid-production':'Tank raid on production','siege-production':'Siege enemy production','air-economy':'Gunship raid on economy','defend-counterattack':'Defend and counterattack','defend-air':'Fortified anti-air','defend-armor':'Fortified anti-armor'})[plan.directive];
     if(plan.focus==='hq')return 'HQ assault';
     if(plan.operation)return ({balanced:'Balanced operation',rush:plan.focus==='hq'?'HQ assault':'Production raid',defend:'Base defense',economy:'Economy recovery',air:'Air operation','anti-air':'Anti-air screen',siege:'Siege operation','anti-armor':'Armor hunters',naval:'Naval operation'})[plan.operation];
     return plan.unit==='frigate'?'Naval operation':plan.unit==='rocket'?'Anti-air screen':plan.unit==='destroyer'?'Armor hunters':plan.unit==='artillery'?'Siege operation':FIELD_OPPONENT.styles[plan.style].name;
@@ -2297,7 +2297,7 @@
         entities:[...army,...structures].map(e=>({id:e.id,kind:e.kind,type:e.type,hp:Math.round(e.hp),maxHp:e.maxHp,position:point(e.mesh.position),state:e.state,destination:point(e.destination),attackTarget:e.attackTarget?.id,repairTarget:e.repairTarget?.id,raid:Boolean(e.raid),retreating:Boolean(e.aiRetreat),pathLength:e.path?.length,cargo:e.cargo,mining:e.mining,mineState:e.mineState,oreField:e.field?.id,buildLeft:e.buildLeft,repairing:Boolean(e.repairing)}))};
     }
     return {elapsed,paused,simulationSpeed:simSpeed,outcome,winner,raids,teams,ore:fields.map(f=>({id:f.id,amount:Math.round(f.amount)})),computerAid:{...computerAid},
-      ai:{style:opponentStyle,provider:isModelOpponent()?modelProvider():null,execution:window.FieldLocalAI?.mode,model:commander.model,plan:currentModelPlan(),pending:commander.pending,status:commander.modelStatus,fallback:isModelOpponent()&&!currentModelPlan(),mode:commander.mode,intent:commander.intent,targetId:commander.targetId,raidSize:commander.raidSize,decisions:commander.decisions,lastDecisionMs:commander.decisionMs,nextRaid,feedback:modelBattleSummary().feedback}};
+      ai:{style:opponentStyle,provider:isModelOpponent()?modelProvider():null,execution:window.FieldLocalAI?.mode,model:commander.model,plan:currentModelPlan(),contacts:visibleEnemyContacts(),pending:commander.pending,status:commander.modelStatus,fallback:isModelOpponent()&&!currentModelPlan(),mode:commander.mode,intent:commander.intent,targetId:commander.targetId,raidSize:commander.raidSize,decisions:commander.decisions,lastDecisionMs:commander.decisionMs,nextRaid,feedback:modelBattleSummary().feedback}};
   }
   function downloadBattleLog(previous=false) {
     if(!previous&&!net?.active)battleLog.checkpoint(elapsed,battleLogSnapshot);

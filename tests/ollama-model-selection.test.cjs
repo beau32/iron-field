@@ -24,9 +24,10 @@ const mock=http.createServer(async(req,res)=>{
   assert.equal(state.model,'qwen2.5:0.5b');await post('status',{model:'other:latest'},session.clientToken);
   for(let i=0;i<100;i++){state=await post('status',{},session.clientToken);if(state.model==='other:latest'&&state.ready)break;await delay(100);}
   assert.equal(state.model,'other:latest');assert(state.ready,output);assert.equal(state.defaultModel,'qwen2.5:0.5b');assert.match(output,/Model selected in game: other:latest/);
-  const battle={elapsed:300,credits:650,own:{units:{miner:2,tank:6},buildings:{base:1,power:2,refinery:1,garrison:1,warFactory:1}},opponent:{units:{tank:1},buildings:{base:1},hqHealth:25},context:{water:false,oreRemaining:10000,pressure:0}};
+  const battle={elapsed:300,credits:650,own:{units:{miner:2,tank:6},buildings:{base:1,power:2,refinery:1,garrison:1,warFactory:1}},opponent:{units:{tank:1},buildings:{base:1},hqHealth:25},context:{water:false,oreRemaining:10000,pressure:0},profile:{games:2,forwardGames:2,navalGames:0,airGames:2,economyGames:0,learning:{samples:2,early:2,air:2,naval:0,miner:0,outcomes:{rush:{positive:2,negative:0}}}}};
   const result=await post('plan',{...battle,model:'other:latest'},session.clientToken);
   assert.equal(result.status,200,JSON.stringify(result));assert.equal(result.model,'other:latest');assert.equal(seen.at(-1).model,'other:latest');assert.match(output,/Local strategy completed with other:latest/);
+  assert.match(seen.at(-1).messages[0].content,/rush: 2 favorable/,'observed outcomes reach the actual Ollama request through the relay');
   await post('status',{model:''},session.clientToken);
   for(let i=0;i<100;i++){state=await post('status',{},session.clientToken);if(state.model==='qwen2.5:0.5b')break;await delay(100);}
   assert.equal(state.model,'qwen2.5:0.5b');assert.match(output,/Game selected Automatic; using connector default: qwen2.5:0.5b/);
