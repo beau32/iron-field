@@ -3084,7 +3084,8 @@
       for(const team of ['player','enemy','team3','team4']) {
         const [sx,sz]=corners[team];createField((42+MAP.spawnOffsetX)*sx,(10+MAP.spawnOffsetZ)*sz,6000,`${team.toUpperCase()} ORE`);
       }
-      createField(0,0,14000,'CENTRAL ORE');createField(-62,19,6000,'WEST EXPANSION');createField(62,-19,6000,'EAST EXPANSION');
+      createField(-30,28,6500,'SOUTHWEST EXPANSION');createField(30,-28,6500,'NORTHEAST EXPANSION');
+      createField(-30,-28,6500,'NORTHWEST EXPANSION');createField(30,28,6500,'SOUTHEAST EXPANSION');
       for(const team of matchTeams){
         const [sx,sz]=corners[team];
         createBuilding('base',team,(39+MAP.spawnOffsetX)*sx,(29+MAP.spawnOffsetZ)*sz);createBuilding('refinery',team,(43+MAP.spawnOffsetX)*sx,(20+MAP.spawnOffsetZ)*sz);
@@ -3095,8 +3096,8 @@
         assignMining(createUnit('miner',team,(39+MAP.spawnOffsetX)*sx,(14+MAP.spawnOffsetZ)*sz),field);assignMining(createUnit('miner',team,(44+MAP.spawnOffsetX)*sx,(14+MAP.spawnOffsetZ)*sz),field);
       }
     } else {
-    createField(-73,28,6000,'WEST ORE');createField(0,0,10000,'CENTRAL ORE');createField(73,-26,6000,'EAST ORE');
-    createField(-62,19,6000,'WEST EXPANSION');createField(62,-19,6000,'EAST EXPANSION');
+    createField(-73,28,6000,'WEST ORE');createField(-30,28,5500,'SOUTHWEST EXPANSION');createField(73,-26,6000,'EAST ORE');
+    createField(30,-28,5500,'NORTHEAST EXPANSION');createField(-30,-28,5500,'NORTHWEST EXPANSION');createField(30,28,5500,'SOUTHEAST EXPANSION');
     spawnBuilding('base', 'player', -17, 12); spawnBuilding('refinery', 'player', -22, 3);
     spawnBuilding('power', 'player', -8, 17); spawnBuilding('turret', 'player', -6, 7);
     spawnBuilding('base', 'enemy', 17, -12); spawnBuilding('refinery', 'enemy', 22, 1);
@@ -3108,7 +3109,7 @@
     spawnUnit('tank', 'enemy', 13, -7); spawnUnit('tank', 'enemy', 18, -6); spawnUnit('scout', 'enemy', 10, -14); spawnUnit('heavy', 'enemy', 22, -10);
     const enemyMiner = spawnUnit('miner', 'enemy', 24, 6); assignMining(enemyMiner, fields[2]);
     }
-    if(!net?.active)battleLog.start({game:'Iron Field',protocolVersion:15,loggingVersion:1,map:{id:MAP.id,name:MAP.name},mode:'solo',timeBasis:'simulation seconds; snapshots at minute boundaries',opponentStyle},battleLogSnapshot);
+    if(!net?.active)battleLog.start({game:'Iron Field',protocolVersion:16,loggingVersion:1,map:{id:MAP.id,name:MAP.name},mode:'solo',timeBasis:'simulation seconds; snapshots at minute boundaries',opponentStyle},battleLogSnapshot);
     refreshFog(); shadeScene(); homeCamera(); updatePause(); updateUI(); announce('Miners are harvesting. Build your army and protect the supply line.');
   }
 
@@ -3460,7 +3461,7 @@
   }
   // Console diagnostics return copies, so inspection cannot alter the simulation.
   window.IronField = Object.freeze({
-    snapshot: () => ({ version: 15, matchTeams:[...matchTeams],eliminated:[...eliminated],winner,fog:fog.summary(localTeam), map: { id:MAP.id,name:MAP.name,water:MAP.water,bridges:MAP.bridges,width: HALF_X * 2, depth: HALF_Z * 2, buildRadius: MAP.buildRadius }, localTeam, network: { active: Boolean(net?.active), role: net?.role, code: net?.session?.code, phase: net?.room?.phase, playable: Boolean(net?.playable) }, credits: money(localTeam), delivered: deliveredFor(localTeam), rewards: battleRewards[localTeam]||0, enemyCredits, queue: queueFor(localTeam).map(q => ({ ...q })), paused, outcome, elapsed,
+    snapshot: () => ({ version: 16, matchTeams:[...matchTeams],eliminated:[...eliminated],winner,fog:fog.summary(localTeam), map: { id:MAP.id,name:MAP.name,water:MAP.water,bridges:MAP.bridges,width: HALF_X * 2, depth: HALF_Z * 2, buildRadius: MAP.buildRadius }, localTeam, network: { active: Boolean(net?.active), role: net?.role, code: net?.session?.code, phase: net?.room?.phase, playable: Boolean(net?.playable) }, credits: money(localTeam), delivered: deliveredFor(localTeam), rewards: battleRewards[localTeam]||0, enemyCredits, queue: queueFor(localTeam).map(q => ({ ...q })), paused, outcome, elapsed,
       camera: camera.type, cameraView: { ...view }, power: powerFor(localTeam), raids, nextRaid, wave, ai: net?.active ? null : {style:opponentStyle,policy:aiPolicy().name,plan:currentModelPlan()?{...currentModelPlan()}:null,intent:commander.intent,decisions:commander.decisions,events:commander.events.map(e=>({...e})),model:commander.model,pending:commander.pending,status:commander.modelStatus,mode:commander.mode,targetId:commander.targetId,queue:remoteQueue.map(q=>({...q}))}, placement, selected: [...selected].map(u => u.id),
       fields: fields.map(f => ({ id: f.id, name: f.name, amount: f.amount, x: f.mesh.position.x, z: f.mesh.position.z })),
       entities: living().map(e => ({ visible:visibleTo(e),rendered:e.mesh.visible,labelHidden:e.label.hidden,id: e.id, type: e.type, kind: e.kind, team: e.team, hp: e.hp, maxHp: e.maxHp,

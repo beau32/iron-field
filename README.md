@@ -33,7 +33,7 @@ AI opponents are currently **solo-only**; 2–4 player multiplayer uses human op
 
 **New: 2–4 player LAN multiplayer and fog of war.** Run `Start-Multiplayer.cmd`, open the server address, then use Multiplayer → Host / Join. See [MULTIPLAYER.md](MULTIPLAYER.md) for setup, reconnect behavior, and the networking source walkthrough. The rest of this guide describes the solo game and shared controls.
 
-Each battlefield is **186 × 148 world units** (about twice the previous playable area), with widely separated bases, shared ore deposits, and rocky ridges. Choose Iron Valley, River Front, or Four Shores before starting. Use WASD to pan, the mouse wheel to zoom, and Home to return to your base. `map.js` defines shared movement and server boundaries.
+Each battlefield is **186 × 148 world units** (about twice the previous playable area), with widely separated bases, shared ore deposits, and rocky ridges. Four mirrored expansion deposits are spread inland, clear of riverbanks and bridge approaches; starting deposits remain near each base. Choose Iron Valley, River Front, or Four Shores before starting. Use WASD to pan, the mouse wheel to zoom, and Home to return to your base. `map.js` defines shared movement and server boundaries.
 
 Ground units cross bridges through the ramp ends and stay within the deck edges. Routes account for unit size, check corners before turning, and recover from traffic pushing a unit past a waypoint. Ships continue to pass beneath bridges, and aircraft can fly over them.
 
