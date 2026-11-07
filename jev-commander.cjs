@@ -1,11 +1,11 @@
 'use strict';
 // Jev/System One decision API. Keep its endpoint separate from Ollama chat.
-const {summarize,offeredOperations,operationEvidence,planFor,assess,contactFacts,profileFacts,decisionVersion}=require('./commander.cjs');
+const {summarize,offeredOperations,operationEvidence,planFor,assess,contactFacts,mapFacts,profileFacts,decisionVersion}=require('./commander.cjs');
 const fail=(status,message,retryAfterMs=5000)=>Object.assign(new Error(message),{status,retryAfterMs});
 function validPort(value){const port=Number(value);if(!Number.isInteger(port)||port<1||port>65535)throw fail(400,'Enter a JEV port from 1 to 65535.');return port;}
 function decisionRequest(input,model){
  const summary=summarize(input),offered=offeredOperations(summary);
- return {summary,offered,body:{model,state:JSON.stringify(summary),questions:{strategy:{type:'choice',instructions:'Command our army to destroy the enemy HQ. Choose the best feasible operation. Contacts are currently visible enemies; aggregate enemy totals can include hidden enemies. Profile and playerDescription describe past tendencies and possible strengths and vulnerabilities, not guarantees. Protect a threatened base, recover broken income if ore remains, fill unmet counters including queues, and exploit an army advantage. Continue productive attacks; replace stalled or losing plans. Consider credits and completed producers.',criteria:Object.fromEntries(offered.map(c=>[c.name,c.why]))}}}};
+ return {summary,offered,body:{model,state:JSON.stringify(summary),questions:{strategy:{type:'choice',instructions:'Command our army to destroy the enemy HQ. Choose the best feasible operation. Contacts are currently visible enemies; aggregate enemy totals can include hidden enemies. strategicMap has 5x5 rows north to south and columns A to E west to east; terrain ? unknown, . explored, ~ water, ^ ridge, = bridge. friendly and enemy are counts of our and visible enemy combat units, capped at 9; zero does not prove a sector is clear. Sites are own or currently seen; terrain is approximate, not a route. Profile and playerDescription describe past tendencies and possible strengths and vulnerabilities, not guarantees. Protect a threatened base, recover broken income if ore remains, fill unmet counters including queues, and exploit an army advantage. Continue productive attacks; replace stalled or losing plans. Consider credits and completed producers.',criteria:Object.fromEntries(offered.map(c=>[c.name,c.why]))}}}};
 }
 function classificationRequest(summary,offered){
  const m=assess(summary),f=summary.feedback;
@@ -18,6 +18,7 @@ function classificationRequest(summary,offered){
   `Enemy economy: ${summary.opponent.units.miner||0} miners and ${summary.opponent.buildings.refinery||0} refineries. Enemy production: ${summary.opponent.buildings.warFactory||0} war factories, ${summary.opponent.buildings.garrison||0} garrisons, ${summary.opponent.buildings.airfield||0} airfields, ${summary.opponent.buildings.shipyard||0} shipyards.`,
   `Recent losses cost ${f.lostValue}; enemy losses cost ${f.destroyedValue}. Previous operation ${f.operation||'none'} is ${f.stalled?'stalled':f.mode}.`,
   'Enemy aggregate estimates may include hidden units. '+contactFacts(summary),
+  ...(summary.strategicMap?[mapFacts(summary)]:[]),
   profileFacts(summary),
   'Feasible operations after checking resources and technology: '+offered.map(c=>c.name+' ('+c.why+')').join('; ')+'.'
  ].join(' ');

@@ -1,0 +1,15 @@
+'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),maps=require('../map.js'),defs=require('../data.js'),c=require('../commander.cjs'),jev=require('../jev-commander.cjs');
+const source=fs.readFileSync(require.resolve('../game.js'),'utf8'),start=source.indexOf('  function strategicMap('),end=source.indexOf('\n  function ',start+3);assert(start>=0&&end>start);
+const unit=(kind,team,x,z)=>({kind,team,hp:100,mesh:{position:{x,z}}});
+const own=[unit('tank','enemy',-65,-50)],opposing=[unit('tank','player',-55,-40),unit('heavy','player',60,40)];
+const buildings=[unit('base','enemy',-70,-50),unit('base','player',70,50),unit('refinery','player',-55,-40)];
+const fields=[{amount:500,mesh:{position:{x:-65,z:-50}}},{amount:500,mesh:{position:{x:65,z:50}}}];
+const map=maps.get('river'),ctx={HALF_X:map.halfWidth,HALF_Z:map.halfDepth,MAP:map,UNIT:defs.units,STRUCTURE:defs.buildings,buildings,fields,unitsFor:team=>team==='enemy'?own:opposing,fog:{at:(team,x,z,explored)=>explored?x<0:x< -20},visibleTo:e=>e.mesh.position.x< -20,waterAt:(x,z)=>maps.waterAt(map,x,z),terrainBlocked:(x,z)=>map.obstacles.some(o=>Math.hypot(x-o.x,z-o.z)<o.radius+.2)};
+vm.createContext(ctx);vm.runInContext(source.slice(start,end),ctx);
+const grid=JSON.parse(JSON.stringify(ctx.strategicMap()));assert.equal(grid.terrain.length,5);assert(grid.terrain.some(row=>row.includes('=')),'explored bridge included');assert(grid.terrain.every(row=>row[4]==='?'),'unexplored eastern terrain remains unknown');assert.equal(grid.friendly.join('').split('').reduce((n,c)=>n+Number(c),0),1);assert.equal(grid.enemy.join('').split('').reduce((n,c)=>n+Number(c),0),1,'hidden enemy excluded');assert(grid.sites.some(s=>s.endsWith(':own-hq')));assert(grid.sites.some(s=>s.endsWith(':seen-refinery')));assert(!grid.sites.some(s=>s.endsWith(':seen-hq')),'hidden HQ excluded');assert.equal(grid.sites.filter(s=>s.endsWith(':ore')).length,1);
+const input={elapsed:100,credits:400,own:{units:{tank:2,miner:2},buildings:{base:1,refinery:1}},opponent:{units:{},buildings:{base:1}},strategicMap:grid,context:{water:true,oreRemaining:1000}};
+const summary=c.summarize(input);assert.deepEqual(summary.strategicMap,grid);const text=c.mapFacts(summary);assert.match(text,/north is row 1/);assert.match(text,/0 does not prove a sector is clear/);assert(c.promptFor(summary).includes(text));assert(jev.classificationRequest(summary,c.offeredOperations(summary)).premise.includes(text));assert.deepEqual(JSON.parse(jev.decisionRequest(input,'model').body.state).strategicMap,grid);
+for(const bad of [{...grid,terrain:['?????']},{...grid,terrain:['?????','?????','?????','?????','????X']},{...grid,enemy:['99999','99999','99999','99999','9999a']},{...grid,sites:['A1:seen-secret']},{...grid,sites:Array(17).fill('A1:ore')}])assert.throws(()=>c.summarize({...input,strategicMap:bad}));
+assert.equal(c.summarize({...input,strategicMap:undefined}).strategicMap,null,'older clients remain supported');
+console.log('PASS sector map visibility, terrain and bridge discovery, bounded validation, and Ollama/JEV formats.');

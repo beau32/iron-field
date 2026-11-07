@@ -1,7 +1,7 @@
 'use strict';
 const assert=require('node:assert/strict');
 const {createCommander,decisionRequest,classificationRequest,classificationChoice}=require('../jev-commander.cjs');
-const battle={elapsed:300,credits:650,own:{units:{miner:2,tank:6},buildings:{base:1,power:2,refinery:1,garrison:1,warFactory:1}},opponent:{units:{tank:1},buildings:{base:1},hqHealth:25},context:{water:false,oreRemaining:10000,pressure:0}};
+const battle={elapsed:300,credits:650,own:{units:{miner:2,tank:6},buildings:{base:1,power:2,refinery:1,garrison:1,warFactory:1}},opponent:{units:{tank:1},buildings:{base:1},hqHealth:25},strategicMap:{terrain:['?????','?????','??=??','.....','.....'],friendly:['00000','00000','00000','00100','00000'],enemy:['00000','00000','00100','00000','00000'],sites:['C4:own-hq']},context:{water:false,oreRemaining:10000,pressure:0}};
 const response=(data,status=200)=>({ok:status===200,status,json:async()=>data});
 (async()=>{
  const calls=[],agent=createCommander({port:8011,fetchImpl:async(url,opts)=>{
@@ -14,7 +14,7 @@ const response=(data,status=200)=>({ok:status===200,status,json:async()=>data});
  const status=await agent.status('nimble');assert(status.ready);assert.equal(status.model,'qwen25-05b-openjev');assert.equal(status.protocol,'openjev-nli');
  assert.equal((await agent.status('not-installed')).ready,false);
  const result=await agent.plan(battle,new AbortController().signal);assert.equal(result.plan.focus,'hq');assert.equal(result.model,'qwen25-05b-openjev');assert.equal(result.protocol,'openjev-nli');
- const sent=JSON.parse(calls.at(-1).opts.body);assert(sent.premise.includes('enemy HQ has 25%'));assert(sent.choices.length>=2);assert(!sent.model&&!sent.messages&&!sent.questions);
+ const sent=JSON.parse(calls.at(-1).opts.body);assert(sent.premise.includes('enemy HQ has 25%'));assert(sent.premise.includes('3 ??=?? 00000 00100'),'OpenJEV receives the sector map in its premise');assert(sent.choices.length>=2);assert(!sent.model&&!sent.messages&&!sent.questions);
  assert.equal(calls.filter(c=>c.url.endsWith('/health')).length,1,'discovery cached');
  const models=['small-adapter','loaded-adapter'];
  let selected;

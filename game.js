@@ -2257,14 +2257,38 @@
     return contacts.sort((a,b)=>b.priority-a.priority||a.distance-b.distance||a.kind.localeCompare(b.kind)).slice(0,8)
       .map(({priority,...contact})=>contact);
   }
-  function modelBattleSummary() {
+  function strategicMap() {
+    // Five-by-five regions, not a navigation grid: terrain denotes known features anywhere in a region.
+    const size=5,terrain=Array(25).fill('?'),friendly=Array(25).fill(0),enemy=Array(25).fill(0),sites=[];
+    const cell=(x,z)=>Math.min(4,Math.max(0,Math.floor((z+HALF_Z)/(2*HALF_Z)*size)))*size+Math.min(4,Math.max(0,Math.floor((x+HALF_X)/(2*HALF_X)*size)));
+    const known=(x,z)=>fog.at('enemy',x,z,true),visible=(x,z)=>fog.at('enemy',x,z);
+    for(let row=0;row<size;row++)for(let col=0;col<size;col++){
+      const index=row*size+col;let water=false,rock=false,explored=false;
+      for(let y=0;y<3;y++)for(let x=0;x<3;x++){
+        const px=-HALF_X+(col+(x+.5)/3)*2*HALF_X/size,pz=-HALF_Z+(row+(y+.5)/3)*2*HALF_Z/size;
+        if(!known(px,pz))continue;explored=true;water||=waterAt(px,pz);rock||=terrainBlocked(px,pz);
+      }
+      terrain[index]=!explored?'?':water?'~':rock?'^':'.';
+    }
+    for(const obstacle of MAP.obstacles)if(known(obstacle.x,obstacle.z)){const i=cell(obstacle.x,obstacle.z);if(terrain[i]!=='~')terrain[i]='^';}
+    for(const bridge of MAP.bridges)if(known(bridge.x,bridge.z))terrain[cell(bridge.x,bridge.z)]='=';
+    const mark=(e,kind)=>{const p=e.mesh.position,i=cell(p.x,p.z);sites.push(`${String.fromCharCode(65+i%5)}${Math.floor(i/5)+1}:${kind}`);};
+    for(const u of unitsFor('enemy'))if(u.hp>0&&UNIT[u.kind].damage>0){const i=cell(u.mesh.position.x,u.mesh.position.z);friendly[i]=Math.min(9,friendly[i]+1);}
+    for(const u of unitsFor('player'))if(u.hp>0&&UNIT[u.kind].damage>0&&visibleTo(u,'enemy')){const i=cell(u.mesh.position.x,u.mesh.position.z);enemy[i]=Math.min(9,enemy[i]+1);}
+    const label=e=>e.kind==='base'?'hq':e.kind==='refinery'?'refinery':['garrison','warFactory','airfield','shipyard'].includes(e.kind)?'producer':STRUCTURE[e.kind]?.defense?'defense':null;
+    for(const b of buildings){if(b.hp<=0||!['enemy','player'].includes(b.team)||b.team==='player'&&!visibleTo(b,'enemy'))continue;const kind=label(b);if(kind)mark(b,(b.team==='enemy'?'own-':'seen-')+kind);}
+    for(const f of fields)if(f.amount>0&&visible(f.mesh.position.x,f.mesh.position.z))mark(f,'ore');
+    const rows=array=>Array.from({length:5},(_,i)=>array.slice(i*5,i*5+5).join(''));
+    return {terrain:rows(terrain),friendly:rows(friendly),enemy:rows(enemy),sites:[...new Set(sites)].sort((a,b)=>Number(b.endsWith('-hq'))-Number(a.endsWith('-hq'))||a.localeCompare(b)).slice(0,16)};
+  }
+  function modelBattleSummary(includeMap=false) {
     const side=team=>{
       const count=list=>list.reduce((result,e)=>{result[e.kind]=(result[e.kind]||0)+1;return result;},{});
       const army=unitsFor(team).filter(u=>u.hp>0),structures=buildings.filter(b=>b.team===team&&b.hp>0),fighters=army.filter(u=>UNIT[u.kind].damage>0),hq=baseOf(team);
       return {units:count(army),buildings:count(structures),ready:count(structures.filter(active)),queued:team==='enemy'?count(remoteQueue):{},health:fighters.length?Math.round(100*fighters.reduce((n,u)=>n+u.hp,0)/fighters.reduce((n,u)=>n+u.maxHp,0)):100,hqHealth:hq?Math.round(100*hq.hp/hq.maxHp):0};
     };
     const recent=(commander.battleEvents||[]).filter(e=>elapsed-e.at<=45),plan=currentModelPlan();
-    return {elapsed:Math.floor(elapsed),credits:Math.floor(enemyCredits),own:side('enemy'),opponent:side('player'),contacts:visibleEnemyContacts(),profile:window.FieldPlayerMemory?.observedProfile?.()||null,context:{water:MAP.water.length>0,lowPower:powerFor('enemy').low,pressure:aiBaseThreats().length,oreRemaining:Math.floor(fields.reduce((n,f)=>n+f.amount,0))},feedback:{
+    return {elapsed:Math.floor(elapsed),credits:Math.floor(enemyCredits),own:side('enemy'),opponent:side('player'),contacts:visibleEnemyContacts(),...(includeMap?{strategicMap:strategicMap()}:{}),profile:window.FieldPlayerMemory?.observedProfile?.()||null,context:{water:MAP.water.length>0,lowPower:powerFor('enemy').low,pressure:aiBaseThreats().length,oreRemaining:Math.floor(fields.reduce((n,f)=>n+f.amount,0))},feedback:{
       operation:plan?.operation||'',mode:commander.mode,age:Math.floor(Math.max(0,elapsed-(commander.operationAt||0))),
       stalled:Boolean(plan&&!commander.raidSize&&elapsed-(commander.progressAt||0)>45),
       lostValue:recent.filter(e=>e.team==='enemy').reduce((n,e)=>n+e.value,0),destroyedValue:recent.filter(e=>e.team==='player').reduce((n,e)=>n+e.value,0),
@@ -2333,7 +2357,7 @@
     const state=commander,controller=new AbortController();modelRequest=controller;
     state.lastModelRequest=performance.now();state.urgentModel=false;
     state.pending=true;state.modelStatus=modelProvider()+' is planning';
-    const summary=modelBattleSummary(),requestId=battleLog.event(elapsed,'ai-request',{provider:modelProvider(),execution:window.FieldLocalAI?.mode,summary});
+    const summary=modelBattleSummary(true),requestId=battleLog.event(elapsed,'ai-request',{provider:modelProvider(),execution:window.FieldLocalAI?.mode,summary});
     const logGeneration=battleLog.info().generation;let loggedResult=false;
     const timer=setTimeout(()=>controller.abort(),6500);
     let retryAfterMs=10000;

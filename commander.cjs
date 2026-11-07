@@ -23,7 +23,7 @@ const choices={
   'anti-armor':{style:'balanced',focus:'army',unit:'destroyer',building:'auto'},
   naval:{style:'balanced',focus:'production',unit:'frigate',building:'shipyard'}
 };
-const decisionVersion=6;
+const decisionVersion=7;
 // Each variant is still subject to its parent operation's feasibility checks.
 const variants={
   'raid-economy':{operation:'rush',focus:'economy',unit:'scout',why:'Use fast scouts to raid enemy miners and refineries.'},
@@ -83,6 +83,12 @@ function summarize(value){
       return {kind:c.kind,x:c.x,z:c.z,health:c.health,distance:c.distance};
     });
   }
+  let strategicMap=null;
+  if(value.strategicMap!==undefined&&value.strategicMap!==null){
+    const m=value.strategicMap,validRows=(rows,re)=>Array.isArray(rows)&&rows.length===5&&rows.every(row=>typeof row==='string'&&re.test(row));
+    if(!m||typeof m!=='object'||Array.isArray(m)||!validRows(m.terrain,/^[?.~^=]{5}$/)||!validRows(m.friendly,/^[0-9]{5}$/)||!validRows(m.enemy,/^[0-9]{5}$/)||!Array.isArray(m.sites)||m.sites.length>16||!m.sites.every(s=>typeof s==='string'&&/^[A-E][1-5]:(?:(?:own|seen)-(?:hq|refinery|producer|defense)|ore)$/.test(s)))throw failure(400,'Invalid strategic map.');
+    strategicMap={terrain:[...m.terrain],friendly:[...m.friendly],enemy:[...m.enemy],sites:[...m.sites]};
+  }
   let profile=null;
   if(value.profile!==undefined&&value.profile!==null){
     const p=value.profile,keys=['games','forwardGames','navalGames','airGames','economyGames'];
@@ -100,7 +106,7 @@ function summarize(value){
       profile.evidence=Object.fromEntries(ek.map(k=>[k,e[k]]));
     }
   }
-  return {elapsed:value.elapsed,credits:value.credits,own:side(value.own),opponent:side(value.opponent),contacts,profile,playerDescription:describePlayer(profile),context:{pressure:context.pressure||0,water:Boolean(context.water),lowPower:Boolean(context.lowPower),oreRemaining:bounded(context.oreRemaining,1,1000000)},feedback};
+  return {elapsed:value.elapsed,credits:value.credits,own:side(value.own),opponent:side(value.opponent),contacts,strategicMap,profile,playerDescription:describePlayer(profile),context:{pressure:context.pressure||0,water:Boolean(context.water),lowPower:Boolean(context.lowPower),oreRemaining:bounded(context.oreRemaining,1,1000000)},feedback};
 }
 // Translate only measured history into tentative language. Never accept free-form player text.
 function describePlayer(p){
@@ -128,6 +134,11 @@ function contactFacts(summary){
   if(summary.contacts===null)return 'Visible contacts unavailable.';
   if(!summary.contacts.length)return 'Visible contacts: none.';
   return 'Visible contacts (kind x,z health% distance from our HQ): '+summary.contacts.map(c=>`${c.kind} ${c.x},${c.z} ${c.health}% ${c.distance}`).join('; ')+'.';
+}
+function mapFacts(summary){
+  const m=summary.strategicMap;if(!m)return 'Strategic map unavailable.';
+  const rows=m.terrain.map((row,i)=>`${i+1} ${row} ${m.friendly[i]} ${m.enemy[i]}`).join('\n');
+  return `Strategic map: north is row 1, west is column A; each sector is approximate, not a route. Terrain ? unknown, . explored, ~ water, ^ ridge, = bridge (features can share sectors). F is our combat units, E visible enemy combat units; counts cap at 9; 0 does not prove a sector is clear.\n  ABCDE F E\n${rows}\nSites: ${m.sites.length?m.sites.join(', '):'none seen'}.`;
 }
 function profileFacts(summary){
   const p=summary.profile;if(!p)return 'No saved player history.';
@@ -239,6 +250,7 @@ function facts(summary){
   if(summary.context.lowPower)lines.push('Low power.');
   if(f.operation)lines.push(`Previous ${f.operation}: ${f.stalled?'stalled':f.lostValue>Math.max(200,f.destroyedValue*1.5)?'losing':f.mode==='Attacking'?'attacking':'building'}.`);
   lines.push(contactFacts(summary));
+  if(summary.strategicMap)lines.push(mapFacts(summary));
   lines.push(profileFacts(summary));
   return lines.join(' ');
 }
@@ -296,4 +308,4 @@ async function plan(input,signal){
   }catch(error){if(signal.aborted)throw failure(499,'Commander request cancelled.');throw failure(503,`${model} missed its five-second deadline or returned an invalid strategy. Try a smaller model.`);}
   finally{clearTimeout(timer);signal.removeEventListener('abort',cancel);busy=false;nextAllowed=Date.now()+2000;}
 }
-module.exports={offeredOperations,operationEvidence,status,plan,summarize,warmup,relevantStrategies,choices,assess,candidates,planFor,promptFor,contactFacts,profileFacts,decisionVersion};
+module.exports={offeredOperations,operationEvidence,status,plan,summarize,warmup,relevantStrategies,choices,assess,candidates,planFor,promptFor,contactFacts,mapFacts,profileFacts,decisionVersion};
