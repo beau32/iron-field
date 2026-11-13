@@ -1,0 +1,7 @@
+'use strict';
+const assert=require('node:assert/strict'),shared=require('../benchmarks/shared-model-comparison.cjs'),commander=require('../commander.cjs');
+const summary={elapsed:300,credits:650,own:{units:{miner:2,tank:6},buildings:{base:1,power:2,refinery:1,garrison:1,warFactory:1}},opponent:{units:{tank:1,miner:2},buildings:{base:1,refinery:1,warFactory:1}},context:{oreRemaining:10000}};
+const x=shared.input(summary),expected=commander.offeredOperations(commander.summarize(summary),{lookahead:false}).map(o=>o.name);
+assert.deepEqual(x.names,expected);assert(!x.names.some(n=>n.includes('@')));assert(x.prompt.includes('\n'+x.facts+'\n'));assert(x.prompt.endsWith('Choose only: '+x.names.join(',')+'.'));assert.equal(x.jevBody.premise,x.facts);assert.deepEqual(x.jevBody.choices,x.names.map(n=>`The synthetic game heuristic recommends this operation: ${n}.`));assert(!x.prompt.includes('two-step worst-case ranking'));assert(x.facts.length>0);
+const on=shared.input(summary,{lookahead:true}),enabled=commander.offeredOperations(commander.summarize(summary),{lookahead:true}).map(o=>o.name);assert.deepEqual(on.names,enabled);assert(on.facts.includes('Approximate two-step worst-case ranking'));assert(on.prompt.includes(on.facts));assert.equal(on.jevBody.premise,on.facts);assert.deepEqual(on.jevBody.choices,on.names.map(n=>`The synthetic game heuristic recommends this operation: ${n}.`));
+console.log('PASS both models receive identical evidence and ordered candidates without lookahead or flank variants.');

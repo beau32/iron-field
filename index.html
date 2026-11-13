@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Iron Field — Combined Arms</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%236ce6b1'/%3E%3Ctext x='7' y='23' font-size='20'%3EIF%3C/text%3E%3C/svg%3E">
-  <link rel="stylesheet" href="style.css?v=31">
+  <link rel="stylesheet" href="style.css?v=32">
   <script defer src="vendor/three.min.js"></script>
   <script defer src="map.js?v=8"></script>
   <script defer src="data.js?v=16"></script>
@@ -16,14 +16,17 @@
   <script defer src="fog.js?v=2"></script>
   <script defer src="opponent.js?v=5"></script>
   <script defer src="voice.js?v=4"></script>
-  <script defer src="ai-link.js?v=16"></script>
-  <script defer src="game.js?v=65"></script>
+  <script defer src="ai-link.js?v=17"></script>
+  <script defer src="game.js?v=70"></script>
   <script defer src="music.js?v=2"></script>
 </head>
 <body>
   <header class="topbar">
     <a class="brand" href="index.html"><span class="brand-mark">IF</span><span>IRON FIELD <small>3D STRATEGY LAB</small></span></a>
-    <div class="resources"><span class="resource-label">CREDITS <strong id="credits">600</strong></span><span id="income" class="income">Ore deliveries</span><span class="resource-label">UNITS <strong id="army">6 / 24</strong></span><span class="resource-label">POWER <strong id="power">60 / 55</strong></span></div>
+    <div class="resources" aria-label="Match statistics">
+      <div class="resource-side"><span class="resource-team">YOU</span><span class="resource-label">CREDITS <strong id="credits">600</strong></span><span class="resource-label">UNITS <strong id="army">6 / 24</strong></span><span class="resource-label">POWER <strong id="power">60 / 55</strong></span><span id="income" class="income">Ore deliveries</span></div>
+      <div id="ai-resources" class="resource-side ai-resources" aria-label="Computer opponent statistics" hidden><span class="resource-team">AI</span><span class="resource-label">CREDITS <strong id="ai-credits">600</strong></span><span class="resource-label">UNITS <strong id="ai-army">6 / 24</strong></span><span class="resource-label">POWER <strong id="ai-power">60 / 55</strong></span><span id="ai-income" class="income">Ore deliveries</span></div>
+    </div>
     <div class="top-actions"><div class="music-controls" role="group" aria-label="Background music"><button id="music-toggle" aria-pressed="false" aria-label="Play background music">♫ Music</button><select id="music-track" aria-label="Background music track"><option value="auto">Auto · Calm</option></select><input id="music-volume" type="range" min="0" max="100" step="1" value="25" aria-label="Music volume" title="Music volume"></div><button id="network-open">Multiplayer</button><button id="pause" aria-pressed="false">Pause</button><button id="reset">New battle</button></div>
   </header>
   <main class="layout">

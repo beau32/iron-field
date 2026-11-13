@@ -1,0 +1,50 @@
+{
+  "task": "RTS lookahead recommendation-NLI; synthetic heuristic teacher, not optimal labels",
+  "initialized_from": "C:\\Users\\Public\\openjev\\outputs\\qwen35-4b-rts-recommendation-nli\\adapter-final",
+  "train_count": 8900,
+  "validation_count": 1780,
+  "train_lookahead": {
+    "examples": 1600,
+    "risk_examples": 800,
+    "emergency_guard": 700,
+    "changed_from_prior_teacher": 450,
+    "targets:economy": 261,
+    "targets:defend": 372,
+    "targets:anti-air": 100,
+    "targets:anti-armor": 90,
+    "targets:air": 170,
+    "targets:siege": 80,
+    "targets:balanced": 166,
+    "targets:rush": 128,
+    "targets:naval": 133,
+    "targets:raid-economy": 50,
+    "targets:raid-production": 50,
+    "distinct_states": 800
+  },
+  "validation_lookahead": {
+    "examples": 320,
+    "risk_examples": 160,
+    "emergency_guard": 140,
+    "changed_from_prior_teacher": 90,
+    "targets:economy": 53,
+    "targets:defend": 74,
+    "targets:anti-air": 20,
+    "targets:anti-armor": 16,
+    "targets:air": 34,
+    "targets:siege": 16,
+    "targets:rush": 27,
+    "targets:balanced": 36,
+    "targets:naval": 24,
+    "targets:raid-economy": 10,
+    "targets:raid-production": 10,
+    "distinct_states": 160
+  },
+  "max_tokens": 263,
+  "max_length": 384,
+  "notes": [
+    "Validation is a held-out seed but shares generated scenario families.",
+    "Paired counterfactual risk notes and guarded labels are synthetic, not observed outcomes.",
+    "No recorded benchmark match states are included.",
+    "Old synthetic examples are retained to limit forgetting."
+  ]
+}

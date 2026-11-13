@@ -122,6 +122,17 @@ dialog{color:var(--text);background:var(--panel);border:1px solid #51635e;border
  .computer-sidebar :is(#opponent-panel,#lab-panel):not([open])>summary{writing-mode:vertical-rl;min-height:245px;justify-content:flex-start;gap:12px;padding:16px 12px}
  .computer-sidebar :is(#opponent-panel,#lab-panel):not([open]) .computer-panel-mode{display:none}
 }
+
+/* Compact, directly comparable solo match statistics. */
+.resources{display:flex;flex-direction:column;align-items:stretch;gap:4px;letter-spacing:0}
+.resource-side{display:flex;align-items:center;gap:10px;min-width:0;white-space:nowrap}
+.resource-team{width:25px;flex:none;color:var(--mint);font-size:9px;font-weight:700;letter-spacing:.8px}
+.ai-resources .resource-team{color:#ffab92}
+.resource-side .resource-label{gap:4px;font-size:9px}
+.resource-side strong{font-size:13px;font-weight:600}
+.resource-side .income{display:inline;margin:0;font-size:10px}
+@media(max-width:1150px){.resource-side{gap:6px}.resource-side .income{display:none}}
+@media(max-width:720px){.resources{width:100%;align-items:flex-start}.resource-side{flex-wrap:wrap;white-space:normal}}
 @media(max-width:720px){
  .computer-sidebar{border-right:0;border-bottom:1px solid #4c5942;max-height:55dvh;flex-shrink:0}
  .computer-sidebar :is(#opponent-panel,#lab-panel)>summary{min-height:28px}

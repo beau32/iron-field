@@ -33,7 +33,7 @@ function battle(harassers,extraGuards=0,plan={focus:'hq'},blocked=()=>false){
   const noop=()=>{};
   const ctx={THREE,UNIT,buildings,HALF_X:120,HALF_Z:100,net:null,raids:true,elapsed:10,nextRaid:0,wave:0,enemyCredits:0,opponentStyle:'ollama',
     unitsFor:t=>troops.filter(u=>u.team===t&&u.hp>0),living:()=>[...troops,...buildings].filter(e=>e.hp>0),
-    baseOf:t=>buildings.find(b=>b.team===t),aiPolicy:()=>styles.rush,currentModelPlan:()=>plan,
+    baseOf:t=>buildings.find(b=>b.team===t),aiPolicy:()=>styles.rush,currentModelPlan:()=>plan,isModelOpponent:()=>true,
     active:b=>b.hp>0,distance,stats,isBuilding:e=>e.type==='building',isAir:e=>Boolean(UNIT[e.kind]?.aircraft),
     isNaval:()=>false,canAttack:(u,e)=>!UNIT[e.kind]?.aircraft||['all','air'].includes(stats(u).targets),
     reach:u=>stats(u).range,visibleTo:()=>true,aiStrength:e=>stats(e).damage*Math.sqrt(e.hp)/stats(e).reload,
@@ -41,7 +41,7 @@ function battle(harassers,extraGuards=0,plan={focus:'hq'},blocked=()=>false){
     serviceCompatible:()=>false,clearRoute:noop,blocked,rotateToward:noop,closestEnemy:()=>null,
     fire:(u,target)=>shots.push(target.id)};
   vm.createContext(ctx);
-  vm.runInContext(['resetCommander','aiMove','aiAttack','aiFocusTarget','aiObjective','aiFlankWaypoint','aiEngagement','guardsForHarasser','guardsForThreats','raidHasStalled','aiRegroup','aiRepairDestination','aiServiceDamagedUnits','aiThreatensAsset','aiMinerShelter','updateCommander','updateCombat'].map(gameFunction).join('\n'),ctx);
+  vm.runInContext(['resetCommander','aiMove','aiAttack','aiBaseThreats','aiFocusTarget','aiObjective','aiFlankWaypoint','aiEngagement','guardsForHarasser','guardsForThreats','raidHasStalled','aiReinforceRaid','aiSplitRaid','aiRegroup','aiRepairDestination','aiServiceDamagedUnits','aiThreatensAsset','aiMinerShelter','aiDefensePost','updateCommander','updateCombat'].map(gameFunction).join('\n'),ctx);
   ctx.commander=ctx.resetCommander();
   ctx.updateCommander();
   return {ctx,guard,objective,threats,troops,shots};
@@ -49,8 +49,20 @@ function battle(harassers,extraGuards=0,plan={focus:'hq'},blocked=()=>false){
 const fight=battle(['scout']);
 assert(fight.ctx.commander.raidSize>=4,'launch with a covered harasser');
 assert(!fight.guard.raid&&fight.guard.attackTarget===fight.threats[0],'guard actually engages scout');
+const early=battle(['tank']);
+early.threats[0].mesh.position.x=24;
+assert(early.ctx.aiBaseThreats().includes(early.threats[0]),'visible attackers near the base are detected before entering firing range');
+early.ctx.elapsed=12;early.ctx.updateCommander();
+assert(early.troops.some(u=>u.team==='enemy'&&!u.raid&&u.attackTarget===early.threats[0]),'home defenders intercept approaching threats');
+early.ctx.visibleTo=e=>e!==early.threats[0];
+assert(!early.ctx.aiBaseThreats().includes(early.threats[0]),'approaching units hidden in fog do not trigger a defense');
+const positions=battle([]),hq=positions.ctx.baseOf('enemy'),direction=new THREE.Vector3(1,0,0);
+const posts=positions.troops.filter(u=>u.team==='enemy').map((u,i)=>positions.ctx.aiDefensePost(u,i,[hq],direction));
+assert(new Set(posts.map(p=>`${p.x.toFixed(1)},${p.z.toFixed(1)}`)).size>=8,'guards spread around the base instead of sharing six rally slots');
 const raiders=fight.troops.filter(u=>u.raid);
 assert(raiders.every(u=>u.attackTarget===fight.objective),'strike force receives HQ attack order');
+const reinforcement=battle([]);const extra={id:1000,team:'enemy',kind:'tank',type:'unit',hp:160,maxHp:160,mesh:{position:new THREE.Vector3(0,0,0)}};reinforcement.troops.push(extra);reinforcement.ctx.aiPolicy=()=>({...styles.rush,maxRaid:12});reinforcement.ctx.elapsed=12;reinforcement.ctx.updateCommander();assert(!extra.raid,'an isolated new unit waits for support');const extra2={...extra,id:1002,mesh:{position:new THREE.Vector3(1,0,0)}};reinforcement.troops.push(extra2);reinforcement.ctx.elapsed=14;reinforcement.ctx.updateCommander();assert(extra.raid&&extra2.raid&&extra.attackTarget===reinforcement.objective,'nearby new units reinforce together');assert(reinforcement.troops.some(u=>u.team==='enemy'&&!u.raid),'a guard stays home');
+const split=battle([]);const refinery={id:1001,team:'player',kind:'refinery',type:'building',hp:650,maxHp:650,mesh:{position:new THREE.Vector3(60,0,20)}};split.ctx.buildings.push(refinery);split.ctx.elapsed=12;split.ctx.updateCommander();assert(split.troops.some(u=>u.raid&&u.attackTarget===refinery),'second group attacks a different visible target');assert(split.troops.some(u=>u.raid&&u.attackTarget===split.objective),'primary attack continues');
 fight.ctx.elapsed=12;fight.ctx.updateCommander();
 for(const u of raiders)u.mesh.position.x=68;
 fight.ctx.elapsed=78;fight.ctx.updateCommander();

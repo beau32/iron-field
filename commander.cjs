@@ -216,31 +216,46 @@ function strategicLookahead(summary,options){
   const m=assess(summary),clamp=(v,lo=0,hi=100)=>Math.max(lo,Math.min(hi,v));
   const start={own:clamp(m.ownValue/100,0,80),enemy:clamp(m.enemyValue/100,0,80),hq:summary.own.hqHealth,enemyHQ:summary.opponent.hqHealth,
     income:summary.context.oreRemaining&&summary.own.ready.refinery?clamp((summary.own.units.miner||0),0,6):0,
-    cash:clamp(summary.credits/100,0,30),air:m.air,aa:m.aa,armor:m.armor,counters:m.armorCounters,defenses:m.defenses,pressure:summary.context.pressure,shield:0,water:summary.context.water};
+    miners:clamp(summary.own.units.miner||0,0,6),refinery:!!summary.own.ready.refinery,refineryPending:!!summary.own.buildings.refinery&&!summary.own.ready.refinery,
+    cash:clamp(summary.credits/100,0,30),air:m.air,aa:m.aa,enemyAA:m.enemyAA,armor:m.armor,counters:m.armorCounters,defenses:m.defenses,pressure:summary.context.pressure,shield:0,water:summary.context.water,
+    enemyIncome:summary.opponent.ready.refinery?clamp(summary.opponent.units.miner||0,0,6):0,
+    enemyProduction:clamp(['warFactory','garrison','airfield','shipyard'].reduce((n,k)=>n+(summary.opponent.ready[k]||0),0),0,8)};
   const parent=name=>variants[name]?.operation||name;
   const project=(state,action,response)=>{
-    const s={...state};s.shield=0;s.cash=clamp(s.cash+s.income*.7,0,30);
+    const s={...state};s.shield=0;
+    // A refinery already under construction can finish even if the next
+    // operation changes; it only produces income while ore is available.
+    if(s.refineryPending){s.refinery=true;s.refineryPending=false;s.income=summary.context.oreRemaining?clamp(s.miners,0,6):0;}
+    s.cash=clamp(s.cash+s.income*.7,0,30);
     const spend=(cost,gain)=>{if(s.cash>=cost){s.cash-=cost;s.own=clamp(s.own+gain,0,80);return true;}return false;};
     switch(parent(action)){
-      case 'economy':if(s.cash>=1.5){s.cash-=1.5;s.income=clamp(s.income+1.5,0,6);}break;
+      case 'economy':
+        if(!summary.context.oreRemaining)break;
+        if(!s.refinery){if(s.cash>=2.4){s.cash-=2.4;s.refineryPending=true;}}
+        else if(s.cash>=1.5){s.cash-=1.5;s.income=clamp(s.income+1.5,0,6);}break;
       case 'defend':s.shield=4;spend(2,2);break;
       case 'anti-air':s.shield=1;if(spend(2.5,1.5))s.aa+=2;break;
       case 'anti-armor':if(spend(3,2))s.counters+=2;break;
       case 'siege':if(spend(2.5,2))s.defenses=Math.max(0,s.defenses-1);break;
-      case 'air':spend(3,3);break;
+      case 'air':if(spend(3,3)&&action==='air-economy'&&s.enemyAA<2)s.enemyIncome=clamp(s.enemyIncome-1,0,6);break;
       case 'naval':if(s.water)spend(3,2.5);break;
-      case 'rush':{const attack=Math.max(0,s.own*.5-s.enemy*.22-s.defenses*.8);s.enemy=clamp(s.enemy-attack*.35,0,80);s.own=clamp(s.own-s.enemy*.08,0,80);s.enemyHQ=clamp(s.enemyHQ-attack*.45);break;}
+      case 'rush':{const attack=Math.max(0,s.own*.5-s.enemy*.22-s.defenses*.8);s.enemy=clamp(s.enemy-attack*.35,0,80);s.own=clamp(s.own-s.enemy*.08,0,80);
+        if(action==='raid-economy')s.enemyIncome=clamp(s.enemyIncome-Math.min(1.5,attack*.2),0,6);
+        else if(action==='raid-production')s.enemyProduction=clamp(s.enemyProduction-Math.min(1,attack*.15),0,8);
+        else s.enemyHQ=clamp(s.enemyHQ-attack*.45);break;}
       default:spend(2,2);
     }
+    if(action==='siege-production'&&s.defenses<state.defenses)s.enemyProduction=clamp(s.enemyProduction-.5,0,8);
+    if(action==='defend-air'||action==='defend-armor')s.shield+=2;
     if(response==='assault'){
       const airGap=Math.max(0,s.air-s.aa)*1.3,armorGap=Math.max(0,s.armor-s.counters)*.3;
       const impact=Math.max(0,s.enemy*.18+airGap+armorGap+s.pressure*.6-s.own*.1-s.shield);
       s.hq=clamp(s.hq-impact*2);s.own=clamp(s.own-impact*.45,0,80);s.income=clamp(s.income-impact*.12,0,6);
-    }else if(response==='expand')s.enemy=clamp(s.enemy+3.5,0,80);
+    }else if(response==='expand')s.enemy=clamp(s.enemy+2+s.enemyIncome*.2+s.enemyProduction*.3,0,80);
     else {const raid=Math.max(0,2.5-s.shield*.45-s.own*.04);s.income=clamp(s.income-raid*.55,0,6);s.own=clamp(s.own-raid*.4,0,80);}
     return s;
   };
-  const evaluate=s=>s.hq*2-s.enemyHQ*1.2+s.own*3-s.enemy*2.5+s.income*6+s.cash*.3;
+  const evaluate=s=>s.hq*2-s.enemyHQ*1.2+s.own*3-s.enemy*2.5+s.income*6+s.cash*.3-s.enemyIncome*2-s.enemyProduction*1.5;
   const actions=[...new Set(options.map(o=>o.name))].slice(0,6),responses=['assault','expand','raid'];
   return actions.map(name=>{
     let worst=Infinity;
@@ -248,10 +263,17 @@ function strategicLookahead(summary,options){
       for(const follow of actions){let followWorst=Infinity;for(const reply of responses)followWorst=Math.min(followWorst,evaluate(project(next,follow,reply)));best=Math.max(best,followWorst);}
       worst=Math.min(worst,best);
     }
-    return {name,value:Math.round(worst*10)/10};
+    const assault=project(start,name,'assault'),raid=project(start,name,'raid'),operation=parent(name),risks=[];
+    if(start.hq-assault.hq>=4)risks.push('HQ exposed to assault');
+    if(start.income-raid.income>=.5)risks.push('miners exposed to raids');
+    if(['rush','air'].includes(operation)&&start.defenses>=2)risks.push('enemy defenses may delay attack');
+    if(operation==='air'&&start.enemyAA>=2)risks.push('enemy anti-air threatens aircraft');
+    const plan=planFor(name,summary),unit=plan?.unit;
+    if(unit&&unit!=='auto'&&investmentCost(summary,unit)>summary.credits)risks.push('production or funds may delay');
+    return {name,value:Math.round(worst*10)/10,risks:risks.slice(0,2)};
   }).sort((a,b)=>b.value-a.value||a.name.localeCompare(b.name));
 }
-function offeredOperations(summary){
+function offeredOperations(summary,{lookahead=true}={}){
   const offered=candidates(summary);
   if(summary.context.pressure>=3&&summary.own.hqHealth<=45){
     const defensive=offered.filter(option=>['defend','anti-air','anti-armor'].includes(option.name));
@@ -276,7 +298,7 @@ function offeredOperations(summary){
   }
   // A modest tie-breaker among already-feasible options. Emergency and finishing
   // filters above remain authoritative; the model still makes the final choice.
-  if(offered.length>1&&summary.context.pressure<3&&summary.own.hqHealth>45){
+  if(lookahead&&offered.length>1&&summary.context.pressure<3&&summary.own.hqHealth>45){
     const estimates=strategicLookahead(summary,offered),rank=new Map(estimates.map((e,i)=>[e.name,i]));
     offered.sort((a,b)=>((b.score??0)-(rank.get(b.name)??estimates.length)*2)-((a.score??0)-(rank.get(a.name)??estimates.length)*2));
   }
@@ -297,6 +319,7 @@ function facts(summary){
   if(summary.own.hqHealth<45)lines.push(`Our HQ ${summary.own.hqHealth}%.`);
   if(summary.context.lowPower)lines.push('Low power.');
   if(f.operation)lines.push(`Previous ${f.operation}: ${f.stalled?'stalled':f.lostValue>Math.max(200,f.destroyedValue*1.5)?'losing':f.mode==='Attacking'?'attacking':'building'}.`);
+  if(f.operation||f.lostValue||f.destroyedValue||f.income)lines.push(`Last 45s: own assets lost ${f.lostValue}; enemy assets destroyed ${f.destroyedValue}; ore delivered ${f.income}. These totals do not prove the operation caused them.`);
   if(f.tactic)lines.push(`Current maneuver ${f.tactic}: ${f.tacticPhase}.`);
   lines.push(contactFacts(summary));
   if(summary.strategicMap)lines.push(mapFacts(summary));
@@ -313,10 +336,12 @@ function planFor(strategy,summary){
   if(['balanced','rush'].includes(strategy)&&summary.opponent.hqHealth<=50&&m.attackValue>m.enemyValue*1.2)plan.focus='hq';
   return validPlan(plan,units,buildings);
 }
-function promptFor(summary,options=offeredOperations(summary)){
+function strategicTradeoffs(forecast){return forecast.slice(0,3).filter(o=>o.risks.length).map(o=>o.name+': '+o.risks.join('; ')).join(' | ');}
+function promptFor(summary,options=offeredOperations(summary),{lookahead=true}={}){
   const base=options.filter(o=>!o.name.includes('@'));
-  const projected=strategicLookahead(summary,base).map(o=>o.name).join(' > ');
-  return prefix+'\n'+facts(summary)+'\nApproximate two-step worst-case ranking (simplified, not a prediction): '+projected+'.\nChoose only: '+options.map(c=>c.name).join(',')+'.';
+  const forecast=lookahead?strategicLookahead(summary,base):[],projected=forecast.map(o=>o.name).join(' > ');
+  const risks=strategicTradeoffs(forecast);
+  return prefix+'\n'+facts(summary)+(lookahead?'\nApproximate two-step worst-case ranking (simplified, not a prediction): '+projected+'.'+(risks?'\nPossible tradeoffs, not predictions: '+risks+'.':''):'')+'\nChoose only: '+options.map(c=>c.name).join(',')+'.';
 }
 function modelOptions(summary,offered=offeredOperations(summary)){
   const options=offered.map(o=>({...o}));
@@ -333,15 +358,21 @@ function modelPlanFor(choice,summary){
   const plan=planFor(strategy,summary);if(!plan)return null;
   return validPlan({...plan,tactic:side?'flank-'+side:'rules'},units,buildings);
 }
-async function infer(model,summary,signal){
+function prepareOllama(model,summary,{think=false}={}){
   const offered=modelOptions(summary),options=offered.map(c=>c.name);
   const prompt=promptFor(summary,offered)+'\nPlain names use game tactics; @left or @right chooses a flanking approach relative to our force facing the target.';
-  const r=await fetch(base+'/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},signal,body:JSON.stringify({model,stream:false,...((process.env.OLLAMA_THINK==='false'||installed.find(m=>m.name===model)?.thinking)?{think:false}:{}),format:schema(options),keep_alive:'30m',options:{temperature:0,num_predict:24,num_ctx:1536,num_thread:4},messages:[{role:'user',content:prompt}]})});
-  if(!r.ok)throw Error('Ollama unavailable');
-  const result=await r.json(),parsed=JSON.parse(result.message?.content);
+  return {options,body:{model,stream:false,...(think?{think:false}:{}),format:schema(options),keep_alive:'30m',options:{temperature:0,num_predict:24,num_ctx:1536,num_thread:4},messages:[{role:'user',content:prompt}]}};
+}
+function decodeOllama(result,options,summary){
+  const parsed=JSON.parse(result.message?.content);
   if(!options.includes(parsed))throw Error('Invalid model strategy');
-  const selected=modelPlanFor(parsed,summary);if(!selected)throw Error('Invalid model plan');
-  return selected;
+  const selected=modelPlanFor(parsed,summary);if(!selected)throw Error('Invalid model plan');return selected;
+}
+async function infer(model,summary,signal){
+  const request=prepareOllama(model,summary,{think:process.env.OLLAMA_THINK==='false'||Boolean(installed.find(m=>m.name===model)?.thinking)});
+  const r=await fetch(base+'/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},signal,body:JSON.stringify(request.body)});
+  if(!r.ok)throw Error('Ollama unavailable');
+  return decodeOllama(await r.json(),request.options,summary);
 }
 async function warmup(requested){
   const info=await status(requested);if(!info.available)return;
@@ -375,4 +406,4 @@ async function plan(input,signal){
   }catch(error){if(signal.aborted)throw failure(499,'Commander request cancelled.');throw failure(503,`${model} missed its five-second deadline or returned an invalid strategy. Try a smaller model.`);}
   finally{clearTimeout(timer);signal.removeEventListener('abort',cancel);busy=false;nextAllowed=Date.now()+2000;}
 }
-module.exports={offeredOperations,strategicLookahead,modelOptions,modelPlanFor,operationEvidence,status,plan,summarize,warmup,relevantStrategies,choices,assess,candidates,planFor,promptFor,contactFacts,mapFacts,profileFacts,decisionVersion};
+module.exports={offeredOperations,strategicLookahead,strategicTradeoffs,modelOptions,modelPlanFor,operationEvidence,prepareOllama,decodeOllama,status,plan,summarize,warmup,relevantStrategies,choices,assess,candidates,planFor,promptFor,contactFacts,mapFacts,profileFacts,decisionVersion};

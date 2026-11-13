@@ -1,0 +1,21 @@
+{
+  "train_examples": 11700,
+  "validation_examples": 2340,
+  "untouched_test_cases": 280,
+  "train_labels": {
+    "entailment": 4900,
+    "neutral": 4900,
+    "contradiction": 1900
+  },
+  "base_adapter": "C:\\Users\\Public\\openjev\\outputs\\qwen35-4b-rts-lookahead-nli\\adapter-final",
+  "files_sha256": {
+    "combined_train_nli.jsonl": "59fd2f39643c64bb9851fddf20a3315062df60a5c9e2ae47ffc21b6decc4f245",
+    "combined_validation_nli.jsonl": "f65715a4af75954edd3a090caa73932a7e3bfc031c21906a43f4e03591e2e9d2",
+    "test_cases.jsonl": "d49629b98fe1ec97caba09b87e29bbab9d7eaa16ef85e52eb96c7ca5a179e608"
+  },
+  "caveats": [
+    "Synthetic heuristic labels are not evidence of optimal play.",
+    "The held-out test shares scenario families with training.",
+    "Live JEV input does not currently provide these tactical map observations."
+  ]
+}

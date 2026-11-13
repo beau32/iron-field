@@ -26,3 +26,10 @@ weapon-effects.png
 *.zip
 !local-ai.zip
 *.tar.gz
+
+# Python caches from research and benchmark scripts
+__pycache__/
+*.pyc
+
+# Derived/extracted benchmark traces; paper evidence is archived in research/results
+benchmarks/*.json

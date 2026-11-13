@@ -1,0 +1,4077 @@
+{
+  "version": 1,
+  "method": "Identical full game prompts and structured choice schema, warm models, one deterministic response per case. Synthetic validation is held out by exact prompt and seed but uses the same templates and rules. Benchmark rubric is separately authored but synthetic.",
+  "testCount": 109,
+  "generatedCount": 95,
+  "benchmarkCount": 14,
+  "cases": [
+    {
+      "id": "heldout-0",
+      "family": "lost-miners",
+      "allowed": [
+        "economy",
+        "rush",
+        "balanced",
+        "rush@left",
+        "rush@right",
+        "balanced@left",
+        "balanced@right"
+      ],
+      "expected": "economy",
+      "kind": "generated",
+      "promptSha256": "15b0625cd06c831951fd49588209608d23a7b9dd408911650be094f008035e45"
+    },
+    {
+      "id": "heldout-1",
+      "family": "lost-miners",
+      "allowed": [
+        "economy",
+        "rush",
+        "naval",
+        "balanced",
+        "rush@left",
+        "rush@right",
+        "balanced@left",
+        "balanced@right"
+      ],
+      "expected": "economy",
+      "kind": "generated",
+      "promptSha256": "ec15be342e4aed73675d8c7048e8715c61bbd9eca5e456e60762390d505fb2b1"
+    },
+    {
+      "id": "heldout-2",
+      "family": "lost-miners",
+      "allowed": [
+        "economy",
+        "rush",
+        "balanced",
+        "rush@left",
+        "rush@right",
+        "balanced@left",
+        "balanced@right"
+      ],
+      "expected": "economy",
+      "kind": "generated",
+      "promptSha256": "c21c30c54a2d849ed10cab7a97ca08d738facaa7f99e4931698f2e82e5210d26"
+    },
+    {
+      "id": "heldout-3",
+      "family": "lost-miners",
+      "allowed": [
+        "economy",
+        "rush",
+        "balanced",
+        "rush@left",
+        "rush@right",
+        "balanced@left",
+        "balanced@right"
+      ],
+      "expected": "economy",
+      "kind": "generated",
+      "promptSha256": "a9d609188b0f9f42a9443a2261cdd8ff74cb96442698dd00404b4ee7a1f814ab"
+    },
+    {
+      "id": "heldout-4",
+      "family": "lost-miners",
+      "allowed": [
+        "economy",
+        "rush",
+        "balanced",
+        "rush@left",
+        "rush@right",
+        "balanced@left",
+        "balanced@right"
+      ],
+      "expected": "economy",
+      "kind": "generated",
+      "promptSha256": "af3a8b4fe80c2dfea054ae8e9584def81a1232552512c1043bd95cc10fb28ae0"
+    },
+    {
+      "id": "heldout-5",
+      "family": "lost-refinery",
+      "allowed": [
+        "economy",
+        "rush",
+        "balanced",
+        "rush@left",
+        "rush@right",
+        "balanced@left",
+        "balanced@right"
+      ],
+      "expected": "economy",
+      "kind": "generated",
+      "promptSha256": "d63430e21aaf7e3ac15a2a0126b16ff47f2b487bd8a8567658ad801f396acda5"
+    },
+    {
+      "id": "heldout-6",
+      "family": "lost-refinery",
+      "allowed": [
+        "economy",
+        "rush",
+        "naval",
+        "balanced",
+        "rush@left",
+        "rush@right",
+        "balanced@left",
+        "balanced@right"
+      ],
+      "expected": "economy",
+      "kind": "generated",
+      "promptSha256": "da408cf56ba73db389d92c3054f0d2127a36c34f27e927c08ebba95c6051784b"
+    },
+    {
+      "id": "heldout-7",
+      "family": "lost-refinery",
+      "allowed": [
+        "economy",
+        "rush",
+        "balanced",
+        "rush@left",
+        "rush@right",
+        "balanced@left",
+        "balanced@right"
+      ],
+      "expected": "economy",
+      "kind": "generated",
+      "promptSha256": "e992031e25c8b1b7252852b77186b677fe25e775b6c66c449e09c03b65e23e29"
+    },
+    {
+      "id": "heldout-8",
+      "family": "lost-refinery",
+      "allowed": [
+        "economy",
+        "rush",
+        "anti-armor",
+        "balanced",
+        "rush@left",
+        "rush@right",
+        "balanced@left",
+        "balanced@right"
+      ],
+      "expected": "economy",
+      "kind": "generated",
+      "promptSha256": "f12f69ee261d72af5c653a83f8b07862692192f1164ae43e2a5da18f706e7206"
+    },
+    {
+      "id": "heldout-9",
+      "family": "lost-refinery",
+      "allowed": [
+        "economy",
+        "rush",
+        "anti-armor",
+        "balanced",
+        "rush@left",
+        "rush@right",
+        "balanced@left",
+        "balanced@right"
+      ],
+      "expected": "economy",
+      "kind": "generated",
+      "promptSha256": "98cd89c127cb89f9571b134ecd6773687f7922918be9d843145dabcf9a3f36e3"
+    },
+    {
+      "id": "heldout-10",
+      "family": "base-under-attack",
+      "allowed": [
+        "defend",
+        "anti-armor"
+      ],
+      "expected": "defend",
+      "kind": "generated",
+      "promptSha256": "4ebe23348d6ca8d91a02b35c96b5d5d7cde1c6979d5bc4d56ae8d00bad42b9a7"
+    },
+    {
+      "id": "heldout-11",
+      "family": "base-under-attack",
+      "allowed": [
+        "defend",
+        "anti-armor"
+      ],
+      "expected": "defend",
+      "kind": "generated",
+      "promptSha256": "9b69d18efcc6c588a2e347d3d0deaa5c63600e1635c5f08e55226973ba227b36"
+    },
+    {
+      "id": "heldout-12",
+      "family": "base-under-attack",
+      "allowed": [
+        "defend",
+        "anti-armor"
+      ],
+      "expected": "defend",
+      "kind": "generated",
+      "promptSha256": "89166e65e81dcc90e0b4e2ca7aac23c8ecd55e4c2d580b8e12c9a8e9594c4c2f"
+    },
+    {
+      "id": "heldout-13",
+      "family": "base-under-attack",
+      "allowed": [
+        "defend",
+        "anti-armor"
+      ],
+      "expected": "defend",
+      "kind": "generated",
+      "promptSha256": "0c7f86433a5105c5c25d90cb8d73f0061b2ec097ef9a0c9299d7db1599f6b354"
+    },
+    {
+      "id": "heldout-14",
+      "family": "base-under-attack",
+      "allowed": [
+        "defend",
+        "anti-armor"
+      ],
+      "expected": "defend",
+      "kind": "generated",
+      "promptSha256": "f5c73db6657bc4a0bd016a5cc880ca683087948146ffab16cf48b87d66d1aa8f"
+    },
+    {
+      "id": "heldout-15",
+      "family": "uncovered-air",
+      "allowed": [
+        "anti-air",
+        "defend",
+        "air",
+        "naval",
+        "defend-counterattack"
+      ],
+      "expected": "anti-air",
+      "kind": "generated",
+      "promptSha256": "9000339c2be54846ca5c2aad8dde24318f60e58a41bebe6c00d1400f6a58c27f"
+    },
+    {
+      "id": "heldout-16",
+      "family": "uncovered-air",
+      "allowed": [
+        "anti-air",
+        "defend",
+        "air",
+        "naval",
+        "defend-counterattack"
+      ],
+      "expected": "anti-air",
+      "kind": "generated",
+      "promptSha256": "857d4e751c71586e83425b3a3e4d6723eb8208db8126266d070596905cf7bd63"
+    },
+    {
+      "id": "heldout-17",
+      "family": "uncovered-air",
+      "allowed": [
+        "anti-air",
+        "defend",
+        "air",
+        "balanced",
+        "defend-counterattack",
+        "balanced@left",
+        "balanced@right"
+      ],
+      "expected": "anti-air",
+      "kind": "generated",
+      "promptSha256": "55028dc329ae5bf04f303dbc62e60e504e22f6ae60a72b211f3705ccfb4c7636"
+    },
+    {
+      "id": "heldout-18",
+      "family": "uncovered-air",
+      "allowed": [
+        "anti-air",
+        "anti-armor",
+        "air",
+        "naval"
+      ],
+      "expected": "anti-air",
+      "kind": "generated",
+      "promptSha256": "0fe60e3daf2f957d80441da57fd9d7b3318a08d0bf652bda66accd8175662fdb"
+    },
+    {
+      "id": "heldout-19",
+      "family": "uncovered-air",
+      "allowed": [
+        "anti-air",
+        "defend",
+        "air",
+        "balanced",
+        "defend-counterattack",
+        "balanced@left",
+        "balanced@right"
+      ],
+      "expected": "anti-air",
+      "kind": "generated",
+      "promptSha256": "471c69a18a85755c1e72bc09a436b60605481b19c4f53ec7854996b2c2b3c721"
+    },
+    {
+      "id": "heldout-20",
+      "family": "expected-air",
+      "allowed": [
+        "rush",
+        "anti-air",
+        "balanced",
+        "rush@left",
+        "rush@right",
+        "balanced@left",
+        "balanced@right"
+      ],
+      "expected": "anti-air",
+      "kind": "generated",
+      "promptSha256": "6f08f7b0559992157e9fbbe8a9862302f7536a59dfdaa35d7104313ce8727749"
+    },
+    {
+      "id": "heldout-21",
+      "family": "expected-air",
+      "allowed": [
+        "rush",
+        "anti-air",
+        "balanced",
+        "rush@left",
+        "rush@right",
+        "balanced@left",
+        "balanced@right"
+      ],
+      "expected": "anti-air",
+      "kind": "generated",
+      "promptSha256": "31e72682a4f66e059dccc2bd71e952e0fefbff05585549b03757745c1513dbb6"
+    },
+    {
+      "id": "heldout-22",
+      "family": "expected-air",
+      "allowed": [
+        "rush",
+        "anti-armor",
+        "anti-air",
+        "balanced",
+        "rush@left",
+        "rush@right",
+        "balanced@left",
+        "balanced@right"
+      ],
+      "expected": "anti-air",
+      "kind": "generated",
+      "promptSha256": "7150f965bb2e14bca0dca4489e1b5f4fe85a41b737ac6a59843530f906c3bace"
+    },
+    {
+      "id": "heldout-23",
+      "family": "expected-air",
+      "allowed": [
+        "rush",
+        "anti-air",
+        "balanced",
+        "rush@left",
+        "rush@right",
+        "balanced@left",
+        "balanced@right"
+      ],
+      "expected": "anti-air",
+      "kind": "generated",
+      "promptSha256": "33d898a8ed808012c6f85a9a27358ad78c221fe3fcb08390f7689e87dd6f0b5a"
+    },
+    {
+      "id": "heldout-24",
+      "family": "expected-air",
+      "allowed": [
+        "rush",
+        "anti-air",
+        "economy",
+        "balanced",
+        "rush@left",
+        "rush@right",
+        "balanced@left",
+        "balanced@right"
+      ],
+      "expected": "anti-air",
+      "kind": "generated",
+      "promptSha256": "9d9b77912025df1bb7df652498cd2f07fd40121401b3805577f5ad359c17a894"
+    },
+    {
+      "id": "heldout-25",
+      "family": "armor-gap",
+      "allowed": [
+        "anti-armor",
+        "defend",
+        "air",
+        "balanced",
+        "defend-counterattack",
+        "balanced@left",
+        "balanced@right"
+      ],
+      "expected": "anti-armor",
+      "kind": "generated",
+      "promptSha256": "afc1d4cb8aad5015eaee9ae7d7f31ceabc11776a091ffdc6ed13bced447274e9"
+    },
+    {
+      "id": "heldout-26",
+      "family": "armor-gap",
+      "allowed": [
+        "anti-armor",
+        "defend",
+        "air",
+        "naval",
+        "defend-counterattack"
+      ],
+      "expected": "anti-armor",
+      "kind": "generated",
+      "promptSha256": "f53ead00e52953d82b99d0ebffbb7fbcfde53ac0eb6e15c48ed1e038874763e0"
+    },
+    {
+      "id": "heldout-27",
+      "family": "armor-gap",
+      "allowed": [
+        "anti-armor",
+        "defend",
+        "air",
+        "balanced",
+        "defend-counterattack",
+        "balanced@left",
+        "balanced@right"
+      ],
+      "expected": "anti-armor",
+      "kind": "generated",
+      "promptSha256": "ad4298489f915c807adc4e33259b185ab422fc34921a927d41717260bf3bd7b6"
+    },
+    {
+      "id": "heldout-28",
+      "family": "armor-gap",
+      "allowed": [
+        "anti-armor",
+        "air",
+        "balanced",
+        "balanced@left",
+        "balanced@right"
+      ],
+      "expected": "anti-armor",
+      "kind": "generated",
+      "promptSha256": "57ebc4eb11751788e5a22b0b0b5340cfeb18cd4e0c25ccc6120472d388567935"
+    },
+    {
+      "id": "heldout-29",
+      "family": "armor-gap",
+      "allowed": [
+        "anti-armor",
+        "defend",
+        "air",
+        "balanced",
+        "defend-counterattack",
+        "balanced@left",
+        "balanced@right"
+      ],
+      "expected": "anti-armor",
+      "kind": "generated",
+      "promptSha256": "2ea1cca860c29254ef90801bbf5568e1ef0fbd61a209ac9e2c31f6a42ccf84fd"
+    },
+    {
+      "id": "heldout-30",
+      "family": "fortifications",
+      "allowed": [
+        "siege",
+        "anti-armor",
+        "air",
+        "rush",
+        "siege-production",
+        "raid-production",
+        "siege@left",
+        "siege@right",
+        "rush@left",
+        "rush@right",
+        "siege-production@left",
+        "siege-production@right",
+        "raid-production@left",
+        "raid-production@right"
+      ],
+      "expected": "siege",
+      "kind": "generated",
+      "promptSha256": "4da7ec482abd58d7978cd51cf3af63867102b79e0d8f7e59011e2d74ab13d7c2"
+    },
+    {
+      "id": "heldout-31",
+      "family": "fortifications",
+      "allowed": [
+        "rush",
+        "siege",
+        "air",
+        "balanced",
+        "siege-production",
+        "raid-production",
+        "rush@left",
+        "rush@right",
+        "siege@left",
+        "siege@right",
+        "balanced@left",
+        "balanced@right",
+        "siege-production@left",
+        "siege-production@right",
+        "raid-production@left",
+        "raid-production@right"
+      ],
+      "expected": "siege",
+      "kind": "generated",
+      "promptSha256": "446021092d8ef15313be9f758b05e6667ccdf60aa2bce8101e18f02a19bdd59f"
+    },
+    {
+      "id": "heldout-32",
+      "family": "fortifications",
+      "allowed": [
+        "rush",
+        "siege",
+        "anti-armor",
+        "air",
+        "siege-production",
+        "raid-production",
+        "rush@left",
+        "rush@right",
+        "siege@left",
+        "siege@right",
+        "siege-production@left",
+        "siege-production@right",
+        "raid-production@left",
+        "raid-production@right"
+      ],
+      "expected": "siege",
+      "kind": "generated",
+      "promptSha256": "5209e9bacd8e52ea70ed7a1b47fa5ab60132e9a910a64708f350af13c898ee7c"
+    },
+    {
+      "id": "heldout-33",
+      "family": "fortifications",
+      "allowed": [
+        "rush",
+        "siege",
+        "air",
+        "naval",
+        "siege-production",
+        "raid-production",
+        "rush@left",
+        "rush@right",
+        "siege@left",
+        "siege@right",
+        "siege-production@left",
+        "siege-production@right",
+        "raid-production@left",
+        "raid-production@right"
+      ],
+      "expected": "siege",
+      "kind": "generated",
+      "promptSha256": "13f3add1f2525e4d511912705f90fa95e26221af3ef9252ba014c09bc7c69ffa"
+    },
+    {
+      "id": "heldout-34",
+      "family": "fortifications",
+      "allowed": [
+        "siege",
+        "anti-armor",
+        "air",
+        "rush",
+        "siege-production",
+        "raid-production",
+        "siege@left",
+        "siege@right",
+        "rush@left",
+        "rush@right",
+        "siege-production@left",
+        "siege-production@right",
+        "raid-production@left",
+        "raid-production@right"
+      ],
+      "expected": "siege",
+      "kind": "generated",
+      "promptSha256": "63dea03eef0f4f987a6b8d8d3b31b209b043e31d375262903671bfb70ad4f32a"
+    },
+    {
+      "id": "heldout-35",
+      "family": "air-attack",
+      "allowed": [
+        "rush",
+        "siege",
+        "anti-armor",
+        "air",
+        "rush@left",
+        "rush@right",
+        "siege@left",
+        "siege@right"
+      ],
+      "expected": "air",
+      "kind": "generated",
+      "promptSha256": "12a34e03c407f1376f5089c9a04b0652a4500d98a099a162bef105c22b0b9613"
+    },
+    {
+      "id": "heldout-36",
+      "family": "air-attack",
+      "allowed": [
+        "siege",
+        "anti-armor",
+        "air",
+        "rush",
+        "siege@left",
+        "siege@right",
+        "rush@left",
+        "rush@right"
+      ],
+      "expected": "air",
+      "kind": "generated",
+      "promptSha256": "0faa8bd8a8be2dbedc128bef5e0986c97253c7096ff02c11bfc8f67488d82744"
+    },
+    {
+      "id": "heldout-37",
+      "family": "air-attack",
+      "allowed": [
+        "siege",
+        "anti-armor",
+        "air",
+        "economy",
+        "siege@left",
+        "siege@right"
+      ],
+      "expected": "air",
+      "kind": "generated",
+      "promptSha256": "3c2f1509e640da4d59c37eac9421fe5b23147a679ff09a81ddd3b43804818ac6"
+    },
+    {
+      "id": "heldout-38",
+      "family": "air-attack",
+      "allowed": [
+        "rush",
+        "siege",
+        "anti-armor",
+        "air",
+        "rush@left",
+        "rush@right",
+        "siege@left",
+        "siege@right"
+      ],
+      "expected": "air",
+      "kind": "generated",
+      "promptSha256": "88dab3a9896e7e5a7dae819817a9e219554c3ad627f320799676c09c5b49e420"
+    },
+    {
+      "id": "heldout-39",
+      "family": "air-attack",
+      "allowed": [
+        "rush",
+        "siege",
+        "anti-armor",
+        "air",
+        "rush@left",
+        "rush@right",
+        "siege@left",
+        "siege@right"
+      ],
+      "expected": "air",
+      "kind": "generated",
+      "promptSha256": "18ae7838970a9b32bbf139f4167ed8844ea9e17e30da304e8ffb0a7a7f63b129"
+    },
+    {
+      "id": "heldout-40",
+      "family": "weak-hq",
+      "allowed": [
+        "rush",
+        "balanced",
+        "rush@left",
+        "rush@right",
+        "balanced@left",
+        "balanced@right"
+      ],
+      "expected": "rush",
+      "kind": "generated",
+      "promptSha256": "79b8f12beed8acfc8d2e60e0b7c4408eaba05633d5f923f8b4c3c8f17c54de9a"
+    },
+    {
+      "id": "heldout-41",
+      "family": "weak-hq",
+      "allowed": [
+        "rush",
+        "balanced",
+        "rush@left",
+        "rush@right",
+        "balanced@left",
+        "balanced@right"
+      ],
+      "expected": "rush",
+      "kind": "generated",
+      "promptSha256": "7a68fc601a8c06bc530629b84f500b08add1d8efaf7af4d983bd6df845010386"
+    },
+    {
+      "id": "heldout-42",
+      "family": "weak-hq",
+      "allowed": [
+        "rush",
+        "balanced",
+        "rush@left",
+        "rush@right",
+        "balanced@left",
+        "balanced@right"
+      ],
+      "expected": "rush",
+      "kind": "generated",
+      "promptSha256": "13c47a5108bc7dbe8c321abd5f5e4c2cd7aa3820730dd0219a5ba7e2b4d25c85"
+    },
+    {
+      "id": "heldout-43",
+      "family": "weak-hq",
+      "allowed": [
+        "rush",
+        "balanced",
+        "rush@left",
+        "rush@right",
+        "balanced@left",
+        "balanced@right"
+      ],
+      "expected": "rush",
+      "kind": "generated",
+      "promptSha256": "7fbc9ea20210ade31b57a3013411e50655501b713bc15457fb9d725e6b47e7d4"
+    },
+    {
+      "id": "heldout-44",
+      "family": "weak-hq",
+      "allowed": [
+        "rush",
+        "balanced",
+        "rush@left",
+        "rush@right",
+        "balanced@left",
+        "balanced@right"
+      ],
+      "expected": "rush",
+      "kind": "generated",
+      "promptSha256": "a3c450982014fb1cd6caaa7fb010a9be35fdeb9e18870d636111f909eff46820"
+    },
+    {
+      "id": "heldout-45",
+      "family": "economy-growth",
+      "allowed": [
+        "anti-armor",
+        "rush",
+        "economy",
+        "air",
+        "rush@left",
+        "rush@right"
+      ],
+      "expected": "economy",
+      "kind": "generated",
+      "promptSha256": "06c84859676528f6115c0a94b87af18e00b73d3164f53c478223d62f51f12886"
+    },
+    {
+      "id": "heldout-46",
+      "family": "economy-growth",
+      "allowed": [
+        "anti-armor",
+        "rush",
+        "economy",
+        "air",
+        "rush@left",
+        "rush@right"
+      ],
+      "expected": "economy",
+      "kind": "generated",
+      "promptSha256": "ba43cc3e06dbb187e805baa1e915bc8089aa62247371f13b039c7e2c3e05a875"
+    },
+    {
+      "id": "heldout-47",
+      "family": "economy-growth",
+      "allowed": [
+        "rush",
+        "anti-armor",
+        "economy",
+        "balanced",
+        "rush@left",
+        "rush@right",
+        "balanced@left",
+        "balanced@right"
+      ],
+      "expected": "economy",
+      "kind": "generated",
+      "promptSha256": "340a06880433ec974e7150b776c9fc043182f1f6308fa2fc89b82e6b2df17f80"
+    },
+    {
+      "id": "heldout-48",
+      "family": "economy-growth",
+      "allowed": [
+        "anti-armor",
+        "air",
+        "economy",
+        "naval"
+      ],
+      "expected": "economy",
+      "kind": "generated",
+      "promptSha256": "f49573eaaee5414c965606506d13357d3a7a9945ad9f9c2d9429c12344442b18"
+    },
+    {
+      "id": "heldout-49",
+      "family": "economy-growth",
+      "allowed": [
+        "rush",
+        "anti-armor",
+        "economy",
+        "balanced",
+        "rush@left",
+        "rush@right",
+        "balanced@left",
+        "balanced@right"
+      ],
+      "expected": "economy",
+      "kind": "generated",
+      "promptSha256": "a1f55635609f3f40ca65308aa2de61e12c8eca6ec837344f1689a1edb9392a5e"
+    },
+    {
+      "id": "heldout-50",
+      "family": "naval-gap",
+      "allowed": [
+        "naval",
+        "balanced",
+        "balanced@left",
+        "balanced@right"
+      ],
+      "expected": "naval",
+      "kind": "generated",
+      "promptSha256": "95d05be72363bd8dde1a187e8854c696464a72818baccc237ba60271c7c2bfbc"
+    },
+    {
+      "id": "heldout-51",
+      "family": "naval-gap",
+      "allowed": [
+        "naval",
+        "balanced",
+        "balanced@left",
+        "balanced@right"
+      ],
+      "expected": "naval",
+      "kind": "generated",
+      "promptSha256": "8e30faf43e2fb25ae8ce9608ed033dcab56bac8eaab64e21cc93347ab24fefaa"
+    },
+    {
+      "id": "heldout-52",
+      "family": "naval-gap",
+      "allowed": [
+        "naval",
+        "balanced",
+        "balanced@left",
+        "balanced@right"
+      ],
+      "expected": "naval",
+      "kind": "generated",
+      "promptSha256": "bba3139d7a2c7780694b7e19cfabd4907f1cee3941ff5c12c78b8c6168a5d60f"
+    },
+    {
+      "id": "heldout-53",
+      "family": "naval-gap",
+      "allowed": [
+        "naval",
+        "defend",
+        "balanced",
+        "defend-counterattack",
+        "balanced@left",
+        "balanced@right"
+      ],
+      "expected": "naval",
+      "kind": "generated",
+      "promptSha256": "d9e739b06df83ab0a2a8d604543254af279f9a18d4f4e0435330ecdaa8c2e5c2"
+    },
+    {
+      "id": "heldout-54",
+      "family": "naval-gap",
+      "allowed": [
+        "naval",
+        "anti-armor",
+        "defend",
+        "balanced",
+        "defend-counterattack",
+        "balanced@left",
+        "balanced@right"
+      ],
+      "expected": "naval",
+      "kind": "generated",
+      "promptSha256": "b5508504b0ad49ed7ea42cba8ff3b7d035c58be07d2825a4d50d746bbc54cb4c"
+    },
+    {
+      "id": "heldout-55",
+      "family": "losing-raid",
+      "allowed": [
+        "anti-armor",
+        "defend",
+        "balanced",
+        "defend-counterattack",
+        "balanced@left",
+        "balanced@right"
+      ],
+      "expected": "defend",
+      "kind": "generated",
+      "promptSha256": "de33cf002815dc1a4bda83b469edc6120cad4dd075d61378947d52f8e0c154ca"
+    },
+    {
+      "id": "heldout-56",
+      "family": "losing-raid",
+      "allowed": [
+        "anti-armor",
+        "defend",
+        "economy",
+        "air",
+        "defend-counterattack"
+      ],
+      "expected": "defend",
+      "kind": "generated",
+      "promptSha256": "5a69d4708fdd028ca87af90a18e119219064dba40b70a942d0833f8ba77e00d5"
+    },
+    {
+      "id": "heldout-57",
+      "family": "losing-raid",
+      "allowed": [
+        "defend",
+        "anti-armor",
+        "balanced",
+        "defend-counterattack",
+        "balanced@left",
+        "balanced@right"
+      ],
+      "expected": "defend",
+      "kind": "generated",
+      "promptSha256": "a8e7a1417f05e7917b50897946f7bcaaedc67bd4e0a9955fef4e44d09a551dbe"
+    },
+    {
+      "id": "heldout-58",
+      "family": "losing-raid",
+      "allowed": [
+        "anti-armor",
+        "defend",
+        "air",
+        "economy",
+        "defend-counterattack"
+      ],
+      "expected": "defend",
+      "kind": "generated",
+      "promptSha256": "1e89169b0af3003813324b49b09e6a53a933812d29645349e91871247f890ac0"
+    },
+    {
+      "id": "heldout-59",
+      "family": "losing-raid",
+      "allowed": [
+        "anti-armor",
+        "defend",
+        "air",
+        "economy",
+        "defend-counterattack"
+      ],
+      "expected": "defend",
+      "kind": "generated",
+      "promptSha256": "7df56ef782f449c2e14fd776fa179985929ae278d665610488e884b03975dc1c"
+    },
+    {
+      "id": "heldout-60",
+      "family": "no-ore-defense",
+      "allowed": [
+        "anti-armor",
+        "defend",
+        "naval",
+        "balanced",
+        "defend-counterattack",
+        "balanced@left",
+        "balanced@right"
+      ],
+      "expected": "defend",
+      "kind": "generated",
+      "promptSha256": "8ed9aa5e72b28a84b050ead1662967400b85471fbfb06bbccb00dee1bccad888"
+    },
+    {
+      "id": "heldout-61",
+      "family": "no-ore-defense",
+      "allowed": [
+        "anti-armor",
+        "defend",
+        "balanced",
+        "defend-counterattack"
+      ],
+      "expected": "defend",
+      "kind": "generated",
+      "promptSha256": "7db467dcf566da2e119cdbef414663daf569ea88be320cf282b6d902462b5671"
+    },
+    {
+      "id": "heldout-62",
+      "family": "no-ore-defense",
+      "allowed": [
+        "anti-armor",
+        "defend",
+        "balanced",
+        "defend-counterattack"
+      ],
+      "expected": "defend",
+      "kind": "generated",
+      "promptSha256": "15646c1720ef4e439467a4ff598212f2865fbe9e6fd4e361875a73a8f1bca6ff"
+    },
+    {
+      "id": "heldout-63",
+      "family": "no-ore-defense",
+      "allowed": [
+        "anti-armor",
+        "defend",
+        "naval",
+        "balanced",
+        "defend-counterattack"
+      ],
+      "expected": "defend",
+      "kind": "generated",
+      "promptSha256": "9c8490d64243eba78ec81908e8336eaedb71ed65de1ddb3f205f26dbbf064147"
+    },
+    {
+      "id": "heldout-64",
+      "family": "no-ore-defense",
+      "allowed": [
+        "anti-armor",
+        "defend",
+        "balanced",
+        "defend-counterattack",
+        "balanced@left",
+        "balanced@right"
+      ],
+      "expected": "defend",
+      "kind": "generated",
+      "promptSha256": "593ab4438537dffa0d6a3c1fdea899afc586f5dce6afb6a6bf416c0ace706dd3"
+    },
+    {
+      "id": "heldout-65",
+      "family": "mixed-force",
+      "allowed": [
+        "rush",
+        "balanced",
+        "rush@left",
+        "rush@right",
+        "balanced@left",
+        "balanced@right"
+      ],
+      "expected": "balanced",
+      "kind": "generated",
+      "promptSha256": "5c3164b6407bde99bf41911b0ae8dd451cbaec63fdbd9b4d41124999e1aabc90"
+    },
+    {
+      "id": "heldout-66",
+      "family": "mixed-force",
+      "allowed": [
+        "rush",
+        "anti-armor",
+        "naval",
+        "balanced",
+        "rush@left",
+        "rush@right",
+        "balanced@left",
+        "balanced@right"
+      ],
+      "expected": "balanced",
+      "kind": "generated",
+      "promptSha256": "721532858a35f4b56639ef68a0033633dc6c6967118b8e4e3c61385b93ac58ae"
+    },
+    {
+      "id": "heldout-67",
+      "family": "mixed-force",
+      "allowed": [
+        "rush",
+        "economy",
+        "balanced",
+        "rush@left",
+        "rush@right",
+        "balanced@left",
+        "balanced@right"
+      ],
+      "expected": "balanced",
+      "kind": "generated",
+      "promptSha256": "1b81412e0725dfc015ed3f88c924bb0c07b0189bf0f99410825c6d7ecb88f90d"
+    },
+    {
+      "id": "heldout-68",
+      "family": "mixed-force",
+      "allowed": [
+        "rush",
+        "naval",
+        "balanced",
+        "rush@left",
+        "rush@right",
+        "balanced@left",
+        "balanced@right"
+      ],
+      "expected": "balanced",
+      "kind": "generated",
+      "promptSha256": "2a5d61d48c85f6c5904d2aaf06fa21923976de9b403b889d259f5726521f0690"
+    },
+    {
+      "id": "heldout-69",
+      "family": "mixed-force",
+      "allowed": [
+        "rush",
+        "balanced",
+        "rush@left",
+        "rush@right",
+        "balanced@left",
+        "balanced@right"
+      ],
+      "expected": "balanced",
+      "kind": "generated",
+      "promptSha256": "f17589775f0e6cdde8920ebcbd446b63d67d7546250fb890abacdac5970d7185"
+    },
+    {
+      "id": "heldout-70",
+      "family": "queued-air-defense",
+      "allowed": [
+        "rush",
+        "balanced",
+        "rush@left",
+        "rush@right",
+        "balanced@left",
+        "balanced@right"
+      ],
+      "expected": "balanced",
+      "kind": "generated",
+      "promptSha256": "7b5e1e8202f741f030659baf5884c17a607fb76dba554b809bd41b75c216c9ed"
+    },
+    {
+      "id": "heldout-71",
+      "family": "queued-air-defense",
+      "allowed": [
+        "air",
+        "naval",
+        "balanced",
+        "balanced@left",
+        "balanced@right"
+      ],
+      "expected": "balanced",
+      "kind": "generated",
+      "promptSha256": "94ef4b931d500004434738da92d109e940722c0271020a18cd21bd3ca23f9b25"
+    },
+    {
+      "id": "heldout-72",
+      "family": "queued-air-defense",
+      "allowed": [
+        "rush",
+        "naval",
+        "balanced",
+        "rush@left",
+        "rush@right",
+        "balanced@left",
+        "balanced@right"
+      ],
+      "expected": "balanced",
+      "kind": "generated",
+      "promptSha256": "4f504396e13cad24fe8afaded8f3c90bea337ddd37d3df69731faf9980a1d2da"
+    },
+    {
+      "id": "heldout-73",
+      "family": "queued-air-defense",
+      "allowed": [
+        "rush",
+        "naval",
+        "balanced",
+        "rush@left",
+        "rush@right",
+        "balanced@left",
+        "balanced@right"
+      ],
+      "expected": "balanced",
+      "kind": "generated",
+      "promptSha256": "d1550a3da14c7fd30722aa1869ca191cf17644287fbeaed66f8ff6f018d54e39"
+    },
+    {
+      "id": "heldout-74",
+      "family": "queued-air-defense",
+      "allowed": [
+        "economy",
+        "air",
+        "balanced",
+        "balanced@left",
+        "balanced@right"
+      ],
+      "expected": "balanced",
+      "kind": "generated",
+      "promptSha256": "a441414e6bc715aa67c20f3b37e95225928dfe70546d3487724b7d4c55fcfc70"
+    },
+    {
+      "id": "heldout-75",
+      "family": "raid-economy",
+      "allowed": [
+        "rush",
+        "balanced",
+        "raid-economy",
+        "rush@left",
+        "rush@right",
+        "balanced@left",
+        "balanced@right",
+        "raid-economy@left",
+        "raid-economy@right"
+      ],
+      "expected": "raid-economy",
+      "kind": "generated",
+      "promptSha256": "833fb12309ee78a4a02c23c503f312a806721350a6460fdf3f07569b39853c65"
+    },
+    {
+      "id": "heldout-76",
+      "family": "raid-economy",
+      "allowed": [
+        "rush",
+        "naval",
+        "balanced",
+        "raid-economy",
+        "rush@left",
+        "rush@right",
+        "balanced@left",
+        "balanced@right",
+        "raid-economy@left",
+        "raid-economy@right"
+      ],
+      "expected": "raid-economy",
+      "kind": "generated",
+      "promptSha256": "34222d167a45b6503f14813e1537b1c1a779865a1f6d6e7728b7dcab3e21978c"
+    },
+    {
+      "id": "heldout-77",
+      "family": "raid-economy",
+      "allowed": [
+        "rush",
+        "naval",
+        "balanced",
+        "raid-economy",
+        "rush@left",
+        "rush@right",
+        "balanced@left",
+        "balanced@right",
+        "raid-economy@left",
+        "raid-economy@right"
+      ],
+      "expected": "raid-economy",
+      "kind": "generated",
+      "promptSha256": "50328f0ba41aa3da90aa72a262ef1122ca45b206fdec985a59bb9f7384fe5ef4"
+    },
+    {
+      "id": "heldout-78",
+      "family": "raid-economy",
+      "allowed": [
+        "rush",
+        "naval",
+        "balanced",
+        "raid-economy",
+        "rush@left",
+        "rush@right",
+        "balanced@left",
+        "balanced@right",
+        "raid-economy@left",
+        "raid-economy@right"
+      ],
+      "expected": "raid-economy",
+      "kind": "generated",
+      "promptSha256": "5ab7d82b5204e8533831109343059d944abffb3d4bb4a1f2a062afeca1b47262"
+    },
+    {
+      "id": "heldout-79",
+      "family": "raid-economy",
+      "allowed": [
+        "rush",
+        "balanced",
+        "raid-economy",
+        "rush@left",
+        "rush@right",
+        "balanced@left",
+        "balanced@right",
+        "raid-economy@left",
+        "raid-economy@right"
+      ],
+      "expected": "raid-economy",
+      "kind": "generated",
+      "promptSha256": "644dedf24f4ca0ad1803b5fadcdfe965b440e48fdae77c0d9e9d4ec6f9f07912"
+    },
+    {
+      "id": "heldout-80",
+      "family": "raid-production",
+      "allowed": [
+        "rush",
+        "naval",
+        "balanced",
+        "raid-production",
+        "rush@left",
+        "rush@right",
+        "balanced@left",
+        "balanced@right",
+        "raid-production@left",
+        "raid-production@right"
+      ],
+      "expected": "raid-production",
+      "kind": "generated",
+      "promptSha256": "1a8811dbdf96412e253604944a587daff92e1a68a6aaa74acc40253110358257"
+    },
+    {
+      "id": "heldout-81",
+      "family": "raid-production",
+      "allowed": [
+        "rush",
+        "naval",
+        "balanced",
+        "raid-production",
+        "rush@left",
+        "rush@right",
+        "balanced@left",
+        "balanced@right",
+        "raid-production@left",
+        "raid-production@right"
+      ],
+      "expected": "raid-production",
+      "kind": "generated",
+      "promptSha256": "57713ccba55b61c29f8da326b96edebd34ef7babf4f3c382993df112683b6bd8"
+    },
+    {
+      "id": "heldout-82",
+      "family": "raid-production",
+      "allowed": [
+        "rush",
+        "naval",
+        "balanced",
+        "raid-production",
+        "rush@left",
+        "rush@right",
+        "balanced@left",
+        "balanced@right",
+        "raid-production@left",
+        "raid-production@right"
+      ],
+      "expected": "raid-production",
+      "kind": "generated",
+      "promptSha256": "34d00e3e5cf9897092d53d25c94a2dc0f9c58279b3a0265c505ac8e2eee8722a"
+    },
+    {
+      "id": "heldout-83",
+      "family": "raid-production",
+      "allowed": [
+        "rush",
+        "balanced",
+        "raid-production",
+        "rush@left",
+        "rush@right",
+        "balanced@left",
+        "balanced@right",
+        "raid-production@left",
+        "raid-production@right"
+      ],
+      "expected": "raid-production",
+      "kind": "generated",
+      "promptSha256": "34ebd176700dfb8d7a7a19d6bd99f5de55737fe9d0ac42903ec0402574153ded"
+    },
+    {
+      "id": "heldout-84",
+      "family": "raid-production",
+      "allowed": [
+        "rush",
+        "naval",
+        "balanced",
+        "raid-production",
+        "rush@left",
+        "rush@right",
+        "balanced@left",
+        "balanced@right",
+        "raid-production@left",
+        "raid-production@right"
+      ],
+      "expected": "raid-production",
+      "kind": "generated",
+      "promptSha256": "470a31644fe25e313abeda10ad72b3fe43dc967476473fbd327dff4e7af2a1ab"
+    },
+    {
+      "id": "heldout-85",
+      "family": "flank-left",
+      "allowed": [
+        "rush",
+        "balanced",
+        "raid-economy",
+        "raid-production",
+        "rush@left",
+        "rush@right",
+        "balanced@left",
+        "balanced@right",
+        "raid-economy@left",
+        "raid-economy@right",
+        "raid-production@left",
+        "raid-production@right"
+      ],
+      "expected": "raid-economy@left",
+      "kind": "generated",
+      "promptSha256": "4af4177da15001f6a0f19157865abd2f72e08b9dc9195dab4f7be928a5717f9d"
+    },
+    {
+      "id": "heldout-86",
+      "family": "flank-left",
+      "allowed": [
+        "rush",
+        "balanced",
+        "raid-economy",
+        "raid-production",
+        "rush@left",
+        "rush@right",
+        "balanced@left",
+        "balanced@right",
+        "raid-economy@left",
+        "raid-economy@right",
+        "raid-production@left",
+        "raid-production@right"
+      ],
+      "expected": "raid-economy@left",
+      "kind": "generated",
+      "promptSha256": "98b2b428b04c91602d027fb2d677db886aaaa2f485531224ee33e739bc21ad63"
+    },
+    {
+      "id": "heldout-87",
+      "family": "flank-left",
+      "allowed": [
+        "rush",
+        "balanced",
+        "raid-economy",
+        "raid-production",
+        "rush@left",
+        "rush@right",
+        "balanced@left",
+        "balanced@right",
+        "raid-economy@left",
+        "raid-economy@right",
+        "raid-production@left",
+        "raid-production@right"
+      ],
+      "expected": "raid-economy@left",
+      "kind": "generated",
+      "promptSha256": "30712f2cb5cd1b184342655c58690ca8b3b7f9666ae3e563b896c9ccaea358fb"
+    },
+    {
+      "id": "heldout-88",
+      "family": "flank-left",
+      "allowed": [
+        "rush",
+        "balanced",
+        "raid-economy",
+        "raid-production",
+        "rush@left",
+        "rush@right",
+        "balanced@left",
+        "balanced@right",
+        "raid-economy@left",
+        "raid-economy@right",
+        "raid-production@left",
+        "raid-production@right"
+      ],
+      "expected": "raid-economy@left",
+      "kind": "generated",
+      "promptSha256": "4b9874cd8502ca91f08b5dc91be0187f549af56e38f477f7b27b36b32233b7f4"
+    },
+    {
+      "id": "heldout-89",
+      "family": "flank-left",
+      "allowed": [
+        "rush",
+        "balanced",
+        "raid-economy",
+        "raid-production",
+        "rush@left",
+        "rush@right",
+        "balanced@left",
+        "balanced@right",
+        "raid-economy@left",
+        "raid-economy@right",
+        "raid-production@left",
+        "raid-production@right"
+      ],
+      "expected": "raid-economy@left",
+      "kind": "generated",
+      "promptSha256": "763f2d2ce386fa6cd1891b826cdfd782149c194baaaadce16ef25cb56893c70f"
+    },
+    {
+      "id": "heldout-90",
+      "family": "flank-right",
+      "allowed": [
+        "rush",
+        "balanced",
+        "raid-economy",
+        "raid-production",
+        "rush@left",
+        "rush@right",
+        "balanced@left",
+        "balanced@right",
+        "raid-economy@left",
+        "raid-economy@right",
+        "raid-production@left",
+        "raid-production@right"
+      ],
+      "expected": "raid-economy@right",
+      "kind": "generated",
+      "promptSha256": "17a0e77950d6515b2811975ef38e3c680ce919319e480478a8ca558ab2adbb58"
+    },
+    {
+      "id": "heldout-91",
+      "family": "flank-right",
+      "allowed": [
+        "rush",
+        "balanced",
+        "raid-economy",
+        "raid-production",
+        "rush@left",
+        "rush@right",
+        "balanced@left",
+        "balanced@right",
+        "raid-economy@left",
+        "raid-economy@right",
+        "raid-production@left",
+        "raid-production@right"
+      ],
+      "expected": "raid-economy@right",
+      "kind": "generated",
+      "promptSha256": "a21a32afe9e3247357a169509a45d31f1984a9e25df3839586ec2bf25e065a42"
+    },
+    {
+      "id": "heldout-92",
+      "family": "flank-right",
+      "allowed": [
+        "rush",
+        "balanced",
+        "raid-economy",
+        "raid-production",
+        "rush@left",
+        "rush@right",
+        "balanced@left",
+        "balanced@right",
+        "raid-economy@left",
+        "raid-economy@right",
+        "raid-production@left",
+        "raid-production@right"
+      ],
+      "expected": "raid-economy@right",
+      "kind": "generated",
+      "promptSha256": "9678266536afdf97e832040269c477e542a443251a4a28e028033757a6fbc146"
+    },
+    {
+      "id": "heldout-93",
+      "family": "flank-right",
+      "allowed": [
+        "rush",
+        "balanced",
+        "raid-economy",
+        "raid-production",
+        "rush@left",
+        "rush@right",
+        "balanced@left",
+        "balanced@right",
+        "raid-economy@left",
+        "raid-economy@right",
+        "raid-production@left",
+        "raid-production@right"
+      ],
+      "expected": "raid-economy@right",
+      "kind": "generated",
+      "promptSha256": "c18b2b7aac21d0bc609082a1a0a7df2e3b46839bbaf368a7586bd49ace327106"
+    },
+    {
+      "id": "heldout-94",
+      "family": "flank-right",
+      "allowed": [
+        "rush",
+        "balanced",
+        "raid-economy",
+        "raid-production",
+        "rush@left",
+        "rush@right",
+        "balanced@left",
+        "balanced@right",
+        "raid-economy@left",
+        "raid-economy@right",
+        "raid-production@left",
+        "raid-production@right"
+      ],
+      "expected": "raid-economy@right",
+      "kind": "generated",
+      "promptSha256": "0183274c3915871ab02ad5a6682e3e4331b924e3fcb6c1f6445dd6bf24e20e27"
+    },
+    {
+      "id": "income-no-miners",
+      "family": "Replace the last miners",
+      "allowed": [
+        "economy",
+        "rush",
+        "balanced",
+        "rush@left",
+        "rush@right",
+        "balanced@left",
+        "balanced@right"
+      ],
+      "kind": "benchmark",
+      "expected": [
+        "economy"
+      ],
+      "requiredFocus": null,
+      "discriminating": true,
+      "promptSha256": "9a9dc18d9cab02d189f121993e5dd8c49ce13350d2747fb8884ad0f076622dbd"
+    },
+    {
+      "id": "income-no-refinery",
+      "family": "Rebuild the refinery",
+      "allowed": [
+        "economy",
+        "rush",
+        "balanced",
+        "rush@left",
+        "rush@right",
+        "balanced@left",
+        "balanced@right"
+      ],
+      "kind": "benchmark",
+      "expected": [
+        "economy"
+      ],
+      "requiredFocus": null,
+      "discriminating": true,
+      "promptSha256": "6e3a3c842d0a68f05bab72355028457069bb5125d10bb9f4ab6d19a4f7a911e0"
+    },
+    {
+      "id": "critical-base",
+      "family": "Protect a critical HQ",
+      "allowed": [
+        "defend",
+        "anti-armor"
+      ],
+      "kind": "benchmark",
+      "expected": [
+        "defend",
+        "anti-armor"
+      ],
+      "requiredFocus": null,
+      "discriminating": false,
+      "promptSha256": "d7b2a48f8a03b1605271aa04538890bf35fbb476f4ff3e9dc4fa29577625a3ab"
+    },
+    {
+      "id": "air-counter",
+      "family": "Counter an aircraft-heavy force",
+      "allowed": [
+        "anti-air",
+        "defend",
+        "air",
+        "balanced",
+        "defend-counterattack",
+        "balanced@left",
+        "balanced@right"
+      ],
+      "kind": "benchmark",
+      "expected": [
+        "anti-air"
+      ],
+      "requiredFocus": null,
+      "discriminating": true,
+      "promptSha256": "84ae508a82d883d559af276afe237ce3df0896c5313267a960f8b75bcdb2eb83"
+    },
+    {
+      "id": "armor-counter",
+      "family": "Counter heavy armor",
+      "allowed": [
+        "anti-armor",
+        "defend",
+        "air",
+        "balanced",
+        "defend-counterattack",
+        "balanced@left",
+        "balanced@right"
+      ],
+      "kind": "benchmark",
+      "expected": [
+        "anti-armor",
+        "defend"
+      ],
+      "requiredFocus": null,
+      "discriminating": true,
+      "promptSha256": "493525db18fcfc2ded5ac7f8dd16daa34be94695513f8196f69bf52c0a10ba23"
+    },
+    {
+      "id": "fortified-production",
+      "family": "Break static defenses",
+      "allowed": [
+        "rush",
+        "siege",
+        "air",
+        "balanced",
+        "siege-production",
+        "raid-production",
+        "rush@left",
+        "rush@right",
+        "siege@left",
+        "siege@right",
+        "balanced@left",
+        "balanced@right",
+        "siege-production@left",
+        "siege-production@right",
+        "raid-production@left",
+        "raid-production@right"
+      ],
+      "kind": "benchmark",
+      "expected": [
+        "siege",
+        "air"
+      ],
+      "requiredFocus": null,
+      "discriminating": true,
+      "promptSha256": "042890e212306580ce045a17eab74fbd7f640855bf42891838610b826bc8ed11"
+    },
+    {
+      "id": "finish-exposed-hq",
+      "family": "Finish a damaged HQ",
+      "allowed": [
+        "rush",
+        "balanced",
+        "rush@left",
+        "rush@right",
+        "balanced@left",
+        "balanced@right"
+      ],
+      "kind": "benchmark",
+      "expected": [
+        "rush",
+        "balanced"
+      ],
+      "requiredFocus": "hq",
+      "discriminating": false,
+      "promptSha256": "fbf25d6c88d87deb40934423d92b9611a5c31dc8638742d96061e11176bc5fb4"
+    },
+    {
+      "id": "no-ore-defense",
+      "family": "Fight with no ore left",
+      "allowed": [
+        "anti-armor",
+        "defend",
+        "balanced",
+        "defend-counterattack"
+      ],
+      "kind": "benchmark",
+      "expected": [
+        "defend"
+      ],
+      "requiredFocus": null,
+      "discriminating": true,
+      "promptSha256": "102cbb61e4560db49437d6540d8c6801390d00b3e85644bb9ed4ed67cb12245e"
+    },
+    {
+      "id": "history-early-air",
+      "family": "Prepare for recurring air attacks",
+      "allowed": [
+        "rush",
+        "anti-air",
+        "balanced",
+        "rush@left",
+        "rush@right",
+        "balanced@left",
+        "balanced@right"
+      ],
+      "kind": "benchmark",
+      "expected": [
+        "anti-air"
+      ],
+      "requiredFocus": null,
+      "discriminating": true,
+      "promptSha256": "3e961bc25ec2310a433870874d076484f439cc49da32bf2887bc710ed93fba04"
+    },
+    {
+      "id": "losing-push",
+      "family": "React to an unsuccessful push",
+      "allowed": [
+        "anti-armor",
+        "defend",
+        "air",
+        "economy",
+        "defend-counterattack"
+      ],
+      "kind": "benchmark",
+      "expected": [
+        "defend",
+        "anti-armor"
+      ],
+      "requiredFocus": null,
+      "discriminating": true,
+      "promptSha256": "ddb2b8582074f2143a6a8a209ef4f4ffa921bb49e6da12edf822bb1366e4d95c"
+    },
+    {
+      "id": "naval-rival",
+      "family": "Contest the water",
+      "allowed": [
+        "naval",
+        "balanced",
+        "balanced@left",
+        "balanced@right"
+      ],
+      "kind": "benchmark",
+      "expected": [
+        "naval",
+        "defend"
+      ],
+      "requiredFocus": null,
+      "discriminating": true,
+      "promptSha256": "4b1d85d872e7d2be47ef306f9f79cd57d47b3d0c12aa8b3025ca757d0ff98a0f"
+    },
+    {
+      "id": "hq-pressure-air",
+      "family": "Defend a damaged HQ from air",
+      "allowed": [
+        "defend",
+        "anti-air"
+      ],
+      "kind": "benchmark",
+      "expected": [
+        "anti-air",
+        "defend"
+      ],
+      "requiredFocus": null,
+      "discriminating": false,
+      "promptSha256": "d2ca8410be691b14ecbbb79d585bee41a532302cc66ef125b3e1fc125ce9571f"
+    },
+    {
+      "id": "anti-air-already-queued",
+      "family": "Avoid duplicating queued anti-air",
+      "allowed": [
+        "economy",
+        "air",
+        "balanced",
+        "balanced@left",
+        "balanced@right"
+      ],
+      "kind": "benchmark",
+      "expected": [
+        "defend",
+        "anti-armor",
+        "balanced",
+        "rush",
+        "economy",
+        "air",
+        "siege",
+        "naval"
+      ],
+      "requiredFocus": null,
+      "discriminating": false,
+      "promptSha256": "27ae65ae9c83cbf33c1e09cd1821d5831c6cd1020d61d9a59b4faa4df1341987"
+    },
+    {
+      "id": "economic-lead",
+      "family": "Exploit an exposed economy",
+      "allowed": [
+        "rush",
+        "balanced",
+        "raid-economy",
+        "rush@left",
+        "rush@right",
+        "balanced@left",
+        "balanced@right",
+        "raid-economy@left",
+        "raid-economy@right"
+      ],
+      "kind": "benchmark",
+      "expected": [
+        "balanced",
+        "rush"
+      ],
+      "requiredFocus": null,
+      "discriminating": false,
+      "promptSha256": "a46a82ba39f395d0f6a2a8a55c4f5ffc909835f3fc8eb0085a31e3357c1e0c4e"
+    }
+  ],
+  "models": {
+    "iron-field-qwen35:9b-base-q8-control": {
+      "digest": "b2e10ec0e57876aaa14eb79ab97d88923c4ce848e24cde18f186e1cee8211395",
+      "responses": [
+        {
+          "id": "heldout-0",
+          "kind": "generated",
+          "family": "lost-miners",
+          "valid": true,
+          "choice": "economy",
+          "correct": true,
+          "wallMs": 177,
+          "modelMs": 172
+        },
+        {
+          "id": "heldout-1",
+          "kind": "generated",
+          "family": "lost-miners",
+          "valid": true,
+          "choice": "economy",
+          "correct": true,
+          "wallMs": 334,
+          "modelMs": 331
+        },
+        {
+          "id": "heldout-2",
+          "kind": "generated",
+          "family": "lost-miners",
+          "valid": true,
+          "choice": "economy",
+          "correct": true,
+          "wallMs": 319,
+          "modelMs": 317
+        },
+        {
+          "id": "heldout-3",
+          "kind": "generated",
+          "family": "lost-miners",
+          "valid": true,
+          "choice": "economy",
+          "correct": true,
+          "wallMs": 322,
+          "modelMs": 319
+        },
+        {
+          "id": "heldout-4",
+          "kind": "generated",
+          "family": "lost-miners",
+          "valid": true,
+          "choice": "economy",
+          "correct": true,
+          "wallMs": 320,
+          "modelMs": 318
+        },
+        {
+          "id": "heldout-5",
+          "kind": "generated",
+          "family": "lost-refinery",
+          "valid": true,
+          "choice": "economy",
+          "correct": true,
+          "wallMs": 319,
+          "modelMs": 317
+        },
+        {
+          "id": "heldout-6",
+          "kind": "generated",
+          "family": "lost-refinery",
+          "valid": true,
+          "choice": "economy",
+          "correct": true,
+          "wallMs": 335,
+          "modelMs": 333
+        },
+        {
+          "id": "heldout-7",
+          "kind": "generated",
+          "family": "lost-refinery",
+          "valid": true,
+          "choice": "economy",
+          "correct": true,
+          "wallMs": 323,
+          "modelMs": 320
+        },
+        {
+          "id": "heldout-8",
+          "kind": "generated",
+          "family": "lost-refinery",
+          "valid": true,
+          "choice": "economy",
+          "correct": true,
+          "wallMs": 338,
+          "modelMs": 337
+        },
+        {
+          "id": "heldout-9",
+          "kind": "generated",
+          "family": "lost-refinery",
+          "valid": true,
+          "choice": "economy",
+          "correct": true,
+          "wallMs": 340,
+          "modelMs": 338
+        },
+        {
+          "id": "heldout-10",
+          "kind": "generated",
+          "family": "base-under-attack",
+          "valid": true,
+          "choice": "defend",
+          "correct": true,
+          "wallMs": 324,
+          "modelMs": 322
+        },
+        {
+          "id": "heldout-11",
+          "kind": "generated",
+          "family": "base-under-attack",
+          "valid": true,
+          "choice": "defend",
+          "correct": true,
+          "wallMs": 321,
+          "modelMs": 318
+        },
+        {
+          "id": "heldout-12",
+          "kind": "generated",
+          "family": "base-under-attack",
+          "valid": true,
+          "choice": "defend",
+          "correct": true,
+          "wallMs": 318,
+          "modelMs": 316
+        },
+        {
+          "id": "heldout-13",
+          "kind": "generated",
+          "family": "base-under-attack",
+          "valid": true,
+          "choice": "defend",
+          "correct": true,
+          "wallMs": 323,
+          "modelMs": 320
+        },
+        {
+          "id": "heldout-14",
+          "kind": "generated",
+          "family": "base-under-attack",
+          "valid": true,
+          "choice": "defend",
+          "correct": true,
+          "wallMs": 321,
+          "modelMs": 319
+        },
+        {
+          "id": "heldout-15",
+          "kind": "generated",
+          "family": "uncovered-air",
+          "valid": true,
+          "choice": "defend",
+          "correct": false,
+          "wallMs": 320,
+          "modelMs": 319
+        },
+        {
+          "id": "heldout-16",
+          "kind": "generated",
+          "family": "uncovered-air",
+          "valid": true,
+          "choice": "defend",
+          "correct": false,
+          "wallMs": 321,
+          "modelMs": 319
+        },
+        {
+          "id": "heldout-17",
+          "kind": "generated",
+          "family": "uncovered-air",
+          "valid": true,
+          "choice": "anti-air",
+          "correct": true,
+          "wallMs": 319,
+          "modelMs": 318
+        },
+        {
+          "id": "heldout-18",
+          "kind": "generated",
+          "family": "uncovered-air",
+          "valid": true,
+          "choice": "anti-air",
+          "correct": true,
+          "wallMs": 318,
+          "modelMs": 318
+        },
+        {
+          "id": "heldout-19",
+          "kind": "generated",
+          "family": "uncovered-air",
+          "valid": true,
+          "choice": "defend",
+          "correct": false,
+          "wallMs": 321,
+          "modelMs": 319
+        },
+        {
+          "id": "heldout-20",
+          "kind": "generated",
+          "family": "expected-air",
+          "valid": true,
+          "choice": "balanced",
+          "correct": false,
+          "wallMs": 323,
+          "modelMs": 321
+        },
+        {
+          "id": "heldout-21",
+          "kind": "generated",
+          "family": "expected-air",
+          "valid": true,
+          "choice": "rush",
+          "correct": false,
+          "wallMs": 300,
+          "modelMs": 298
+        },
+        {
+          "id": "heldout-22",
+          "kind": "generated",
+          "family": "expected-air",
+          "valid": true,
+          "choice": "balanced",
+          "correct": false,
+          "wallMs": 315,
+          "modelMs": 313
+        },
+        {
+          "id": "heldout-23",
+          "kind": "generated",
+          "family": "expected-air",
+          "valid": true,
+          "choice": "balanced",
+          "correct": false,
+          "wallMs": 294,
+          "modelMs": 293
+        },
+        {
+          "id": "heldout-24",
+          "kind": "generated",
+          "family": "expected-air",
+          "valid": true,
+          "choice": "rush",
+          "correct": false,
+          "wallMs": 354,
+          "modelMs": 353
+        },
+        {
+          "id": "heldout-25",
+          "kind": "generated",
+          "family": "armor-gap",
+          "valid": true,
+          "choice": "defend",
+          "correct": false,
+          "wallMs": 309,
+          "modelMs": 307
+        },
+        {
+          "id": "heldout-26",
+          "kind": "generated",
+          "family": "armor-gap",
+          "valid": true,
+          "choice": "defend",
+          "correct": false,
+          "wallMs": 301,
+          "modelMs": 300
+        },
+        {
+          "id": "heldout-27",
+          "kind": "generated",
+          "family": "armor-gap",
+          "valid": true,
+          "choice": "defend",
+          "correct": false,
+          "wallMs": 300,
+          "modelMs": 298
+        },
+        {
+          "id": "heldout-28",
+          "kind": "generated",
+          "family": "armor-gap",
+          "valid": true,
+          "choice": "anti-armor",
+          "correct": true,
+          "wallMs": 321,
+          "modelMs": 319
+        },
+        {
+          "id": "heldout-29",
+          "kind": "generated",
+          "family": "armor-gap",
+          "valid": true,
+          "choice": "defend",
+          "correct": false,
+          "wallMs": 304,
+          "modelMs": 302
+        },
+        {
+          "id": "heldout-30",
+          "kind": "generated",
+          "family": "fortifications",
+          "valid": true,
+          "choice": "air",
+          "correct": false,
+          "wallMs": 287,
+          "modelMs": 285
+        },
+        {
+          "id": "heldout-31",
+          "kind": "generated",
+          "family": "fortifications",
+          "valid": true,
+          "choice": "rush",
+          "correct": false,
+          "wallMs": 288,
+          "modelMs": 287
+        },
+        {
+          "id": "heldout-32",
+          "kind": "generated",
+          "family": "fortifications",
+          "valid": true,
+          "choice": "rush",
+          "correct": false,
+          "wallMs": 287,
+          "modelMs": 285
+        },
+        {
+          "id": "heldout-33",
+          "kind": "generated",
+          "family": "fortifications",
+          "valid": true,
+          "choice": "rush",
+          "correct": false,
+          "wallMs": 356,
+          "modelMs": 354
+        },
+        {
+          "id": "heldout-34",
+          "kind": "generated",
+          "family": "fortifications",
+          "valid": true,
+          "choice": "air",
+          "correct": false,
+          "wallMs": 287,
+          "modelMs": 286
+        },
+        {
+          "id": "heldout-35",
+          "kind": "generated",
+          "family": "air-attack",
+          "valid": true,
+          "choice": "rush",
+          "correct": false,
+          "wallMs": 280,
+          "modelMs": 278
+        },
+        {
+          "id": "heldout-36",
+          "kind": "generated",
+          "family": "air-attack",
+          "valid": true,
+          "choice": "rush",
+          "correct": false,
+          "wallMs": 277,
+          "modelMs": 275
+        },
+        {
+          "id": "heldout-37",
+          "kind": "generated",
+          "family": "air-attack",
+          "valid": true,
+          "choice": "air",
+          "correct": true,
+          "wallMs": 278,
+          "modelMs": 277
+        },
+        {
+          "id": "heldout-38",
+          "kind": "generated",
+          "family": "air-attack",
+          "valid": true,
+          "choice": "rush",
+          "correct": false,
+          "wallMs": 280,
+          "modelMs": 278
+        },
+        {
+          "id": "heldout-39",
+          "kind": "generated",
+          "family": "air-attack",
+          "valid": true,
+          "choice": "rush",
+          "correct": false,
+          "wallMs": 280,
+          "modelMs": 279
+        },
+        {
+          "id": "heldout-40",
+          "kind": "generated",
+          "family": "weak-hq",
+          "valid": true,
+          "choice": "rush",
+          "correct": true,
+          "wallMs": 276,
+          "modelMs": 273
+        },
+        {
+          "id": "heldout-41",
+          "kind": "generated",
+          "family": "weak-hq",
+          "valid": true,
+          "choice": "rush",
+          "correct": true,
+          "wallMs": 278,
+          "modelMs": 277
+        },
+        {
+          "id": "heldout-42",
+          "kind": "generated",
+          "family": "weak-hq",
+          "valid": true,
+          "choice": "rush",
+          "correct": true,
+          "wallMs": 276,
+          "modelMs": 274
+        },
+        {
+          "id": "heldout-43",
+          "kind": "generated",
+          "family": "weak-hq",
+          "valid": true,
+          "choice": "rush",
+          "correct": true,
+          "wallMs": 278,
+          "modelMs": 277
+        },
+        {
+          "id": "heldout-44",
+          "kind": "generated",
+          "family": "weak-hq",
+          "valid": true,
+          "choice": "rush",
+          "correct": true,
+          "wallMs": 275,
+          "modelMs": 274
+        },
+        {
+          "id": "heldout-45",
+          "kind": "generated",
+          "family": "economy-growth",
+          "valid": true,
+          "choice": "rush",
+          "correct": false,
+          "wallMs": 280,
+          "modelMs": 278
+        },
+        {
+          "id": "heldout-46",
+          "kind": "generated",
+          "family": "economy-growth",
+          "valid": true,
+          "choice": "rush",
+          "correct": false,
+          "wallMs": 276,
+          "modelMs": 275
+        },
+        {
+          "id": "heldout-47",
+          "kind": "generated",
+          "family": "economy-growth",
+          "valid": true,
+          "choice": "rush",
+          "correct": false,
+          "wallMs": 286,
+          "modelMs": 284
+        },
+        {
+          "id": "heldout-48",
+          "kind": "generated",
+          "family": "economy-growth",
+          "valid": true,
+          "choice": "anti-armor",
+          "correct": false,
+          "wallMs": 325,
+          "modelMs": 324
+        },
+        {
+          "id": "heldout-49",
+          "kind": "generated",
+          "family": "economy-growth",
+          "valid": true,
+          "choice": "rush",
+          "correct": false,
+          "wallMs": 279,
+          "modelMs": 277
+        },
+        {
+          "id": "heldout-50",
+          "kind": "generated",
+          "family": "naval-gap",
+          "valid": true,
+          "choice": "naval",
+          "correct": true,
+          "wallMs": 281,
+          "modelMs": 280
+        },
+        {
+          "id": "heldout-51",
+          "kind": "generated",
+          "family": "naval-gap",
+          "valid": true,
+          "choice": "naval",
+          "correct": true,
+          "wallMs": 278,
+          "modelMs": 277
+        },
+        {
+          "id": "heldout-52",
+          "kind": "generated",
+          "family": "naval-gap",
+          "valid": true,
+          "choice": "naval",
+          "correct": true,
+          "wallMs": 277,
+          "modelMs": 275
+        },
+        {
+          "id": "heldout-53",
+          "kind": "generated",
+          "family": "naval-gap",
+          "valid": true,
+          "choice": "naval",
+          "correct": true,
+          "wallMs": 279,
+          "modelMs": 277
+        },
+        {
+          "id": "heldout-54",
+          "kind": "generated",
+          "family": "naval-gap",
+          "valid": true,
+          "choice": "naval",
+          "correct": true,
+          "wallMs": 280,
+          "modelMs": 278
+        },
+        {
+          "id": "heldout-55",
+          "kind": "generated",
+          "family": "losing-raid",
+          "valid": true,
+          "choice": "defend",
+          "correct": true,
+          "wallMs": 300,
+          "modelMs": 299
+        },
+        {
+          "id": "heldout-56",
+          "kind": "generated",
+          "family": "losing-raid",
+          "valid": true,
+          "choice": "economy",
+          "correct": false,
+          "wallMs": 302,
+          "modelMs": 301
+        },
+        {
+          "id": "heldout-57",
+          "kind": "generated",
+          "family": "losing-raid",
+          "valid": true,
+          "choice": "defend",
+          "correct": true,
+          "wallMs": 301,
+          "modelMs": 300
+        },
+        {
+          "id": "heldout-58",
+          "kind": "generated",
+          "family": "losing-raid",
+          "valid": true,
+          "choice": "anti-armor",
+          "correct": false,
+          "wallMs": 324,
+          "modelMs": 323
+        },
+        {
+          "id": "heldout-59",
+          "kind": "generated",
+          "family": "losing-raid",
+          "valid": true,
+          "choice": "anti-armor",
+          "correct": false,
+          "wallMs": 325,
+          "modelMs": 324
+        },
+        {
+          "id": "heldout-60",
+          "kind": "generated",
+          "family": "no-ore-defense",
+          "valid": true,
+          "choice": "defend",
+          "correct": true,
+          "wallMs": 302,
+          "modelMs": 301
+        },
+        {
+          "id": "heldout-61",
+          "kind": "generated",
+          "family": "no-ore-defense",
+          "valid": true,
+          "choice": "defend",
+          "correct": true,
+          "wallMs": 304,
+          "modelMs": 303
+        },
+        {
+          "id": "heldout-62",
+          "kind": "generated",
+          "family": "no-ore-defense",
+          "valid": true,
+          "choice": "defend",
+          "correct": true,
+          "wallMs": 300,
+          "modelMs": 298
+        },
+        {
+          "id": "heldout-63",
+          "kind": "generated",
+          "family": "no-ore-defense",
+          "valid": true,
+          "choice": "defend",
+          "correct": true,
+          "wallMs": 305,
+          "modelMs": 304
+        },
+        {
+          "id": "heldout-64",
+          "kind": "generated",
+          "family": "no-ore-defense",
+          "valid": true,
+          "choice": "defend",
+          "correct": true,
+          "wallMs": 300,
+          "modelMs": 299
+        },
+        {
+          "id": "heldout-65",
+          "kind": "generated",
+          "family": "mixed-force",
+          "valid": true,
+          "choice": "rush",
+          "correct": false,
+          "wallMs": 274,
+          "modelMs": 273
+        },
+        {
+          "id": "heldout-66",
+          "kind": "generated",
+          "family": "mixed-force",
+          "valid": true,
+          "choice": "rush",
+          "correct": false,
+          "wallMs": 277,
+          "modelMs": 275
+        },
+        {
+          "id": "heldout-67",
+          "kind": "generated",
+          "family": "mixed-force",
+          "valid": true,
+          "choice": "rush",
+          "correct": false,
+          "wallMs": 277,
+          "modelMs": 275
+        },
+        {
+          "id": "heldout-68",
+          "kind": "generated",
+          "family": "mixed-force",
+          "valid": true,
+          "choice": "rush",
+          "correct": false,
+          "wallMs": 277,
+          "modelMs": 275
+        },
+        {
+          "id": "heldout-69",
+          "kind": "generated",
+          "family": "mixed-force",
+          "valid": true,
+          "choice": "rush",
+          "correct": false,
+          "wallMs": 278,
+          "modelMs": 277
+        },
+        {
+          "id": "heldout-70",
+          "kind": "generated",
+          "family": "queued-air-defense",
+          "valid": true,
+          "choice": "rush",
+          "correct": false,
+          "wallMs": 275,
+          "modelMs": 274
+        },
+        {
+          "id": "heldout-71",
+          "kind": "generated",
+          "family": "queued-air-defense",
+          "valid": true,
+          "choice": "air",
+          "correct": false,
+          "wallMs": 276,
+          "modelMs": 275
+        },
+        {
+          "id": "heldout-72",
+          "kind": "generated",
+          "family": "queued-air-defense",
+          "valid": true,
+          "choice": "rush",
+          "correct": false,
+          "wallMs": 275,
+          "modelMs": 274
+        },
+        {
+          "id": "heldout-73",
+          "kind": "generated",
+          "family": "queued-air-defense",
+          "valid": true,
+          "choice": "rush",
+          "correct": false,
+          "wallMs": 281,
+          "modelMs": 279
+        },
+        {
+          "id": "heldout-74",
+          "kind": "generated",
+          "family": "queued-air-defense",
+          "valid": true,
+          "choice": "economy",
+          "correct": false,
+          "wallMs": 301,
+          "modelMs": 300
+        },
+        {
+          "id": "heldout-75",
+          "kind": "generated",
+          "family": "raid-economy",
+          "valid": true,
+          "choice": "rush",
+          "correct": false,
+          "wallMs": 278,
+          "modelMs": 277
+        },
+        {
+          "id": "heldout-76",
+          "kind": "generated",
+          "family": "raid-economy",
+          "valid": true,
+          "choice": "rush",
+          "correct": false,
+          "wallMs": 283,
+          "modelMs": 282
+        },
+        {
+          "id": "heldout-77",
+          "kind": "generated",
+          "family": "raid-economy",
+          "valid": true,
+          "choice": "rush",
+          "correct": false,
+          "wallMs": 279,
+          "modelMs": 278
+        },
+        {
+          "id": "heldout-78",
+          "kind": "generated",
+          "family": "raid-economy",
+          "valid": true,
+          "choice": "rush",
+          "correct": false,
+          "wallMs": 281,
+          "modelMs": 279
+        },
+        {
+          "id": "heldout-79",
+          "kind": "generated",
+          "family": "raid-economy",
+          "valid": true,
+          "choice": "rush",
+          "correct": false,
+          "wallMs": 280,
+          "modelMs": 278
+        },
+        {
+          "id": "heldout-80",
+          "kind": "generated",
+          "family": "raid-production",
+          "valid": true,
+          "choice": "rush",
+          "correct": false,
+          "wallMs": 338,
+          "modelMs": 337
+        },
+        {
+          "id": "heldout-81",
+          "kind": "generated",
+          "family": "raid-production",
+          "valid": true,
+          "choice": "rush",
+          "correct": false,
+          "wallMs": 277,
+          "modelMs": 276
+        },
+        {
+          "id": "heldout-82",
+          "kind": "generated",
+          "family": "raid-production",
+          "valid": true,
+          "choice": "rush",
+          "correct": false,
+          "wallMs": 334,
+          "modelMs": 333
+        },
+        {
+          "id": "heldout-83",
+          "kind": "generated",
+          "family": "raid-production",
+          "valid": true,
+          "choice": "rush",
+          "correct": false,
+          "wallMs": 279,
+          "modelMs": 278
+        },
+        {
+          "id": "heldout-84",
+          "kind": "generated",
+          "family": "raid-production",
+          "valid": true,
+          "choice": "rush",
+          "correct": false,
+          "wallMs": 283,
+          "modelMs": 282
+        },
+        {
+          "id": "heldout-85",
+          "kind": "generated",
+          "family": "flank-left",
+          "valid": true,
+          "choice": "raid-economy@right",
+          "correct": false,
+          "wallMs": 421,
+          "modelMs": 419
+        },
+        {
+          "id": "heldout-86",
+          "kind": "generated",
+          "family": "flank-left",
+          "valid": true,
+          "choice": "raid-economy@right",
+          "correct": false,
+          "wallMs": 505,
+          "modelMs": 503
+        },
+        {
+          "id": "heldout-87",
+          "kind": "generated",
+          "family": "flank-left",
+          "valid": true,
+          "choice": "raid-economy@right",
+          "correct": false,
+          "wallMs": 388,
+          "modelMs": 387
+        },
+        {
+          "id": "heldout-88",
+          "kind": "generated",
+          "family": "flank-left",
+          "valid": true,
+          "choice": "raid-economy@right",
+          "correct": false,
+          "wallMs": 493,
+          "modelMs": 492
+        },
+        {
+          "id": "heldout-89",
+          "kind": "generated",
+          "family": "flank-left",
+          "valid": true,
+          "choice": "raid-economy@right",
+          "correct": false,
+          "wallMs": 390,
+          "modelMs": 389
+        },
+        {
+          "id": "heldout-90",
+          "kind": "generated",
+          "family": "flank-right",
+          "valid": true,
+          "choice": "raid-economy@right",
+          "correct": true,
+          "wallMs": 544,
+          "modelMs": 543
+        },
+        {
+          "id": "heldout-91",
+          "kind": "generated",
+          "family": "flank-right",
+          "valid": true,
+          "choice": "raid-economy@right",
+          "correct": true,
+          "wallMs": 489,
+          "modelMs": 488
+        },
+        {
+          "id": "heldout-92",
+          "kind": "generated",
+          "family": "flank-right",
+          "valid": true,
+          "choice": "raid-economy@right",
+          "correct": true,
+          "wallMs": 383,
+          "modelMs": 381
+        },
+        {
+          "id": "heldout-93",
+          "kind": "generated",
+          "family": "flank-right",
+          "valid": true,
+          "choice": "raid-economy@right",
+          "correct": true,
+          "wallMs": 560,
+          "modelMs": 558
+        },
+        {
+          "id": "heldout-94",
+          "kind": "generated",
+          "family": "flank-right",
+          "valid": true,
+          "choice": "raid-economy@right",
+          "correct": true,
+          "wallMs": 380,
+          "modelMs": 380
+        },
+        {
+          "id": "income-no-miners",
+          "kind": "benchmark",
+          "family": "Replace the last miners",
+          "valid": true,
+          "choice": "economy",
+          "correct": true,
+          "wallMs": 358,
+          "modelMs": 356
+        },
+        {
+          "id": "income-no-refinery",
+          "kind": "benchmark",
+          "family": "Rebuild the refinery",
+          "valid": true,
+          "choice": "economy",
+          "correct": true,
+          "wallMs": 266,
+          "modelMs": 265
+        },
+        {
+          "id": "critical-base",
+          "kind": "benchmark",
+          "family": "Protect a critical HQ",
+          "valid": true,
+          "choice": "defend",
+          "correct": true,
+          "wallMs": 270,
+          "modelMs": 268
+        },
+        {
+          "id": "air-counter",
+          "kind": "benchmark",
+          "family": "Counter an aircraft-heavy force",
+          "valid": true,
+          "choice": "defend",
+          "correct": false,
+          "wallMs": 270,
+          "modelMs": 269
+        },
+        {
+          "id": "armor-counter",
+          "kind": "benchmark",
+          "family": "Counter heavy armor",
+          "valid": true,
+          "choice": "defend",
+          "correct": true,
+          "wallMs": 270,
+          "modelMs": 267
+        },
+        {
+          "id": "fortified-production",
+          "kind": "benchmark",
+          "family": "Break static defenses",
+          "valid": true,
+          "choice": "air",
+          "correct": true,
+          "wallMs": 252,
+          "modelMs": 250
+        },
+        {
+          "id": "finish-exposed-hq",
+          "kind": "benchmark",
+          "family": "Finish a damaged HQ",
+          "valid": true,
+          "choice": "rush",
+          "correct": true,
+          "wallMs": 243,
+          "modelMs": 242
+        },
+        {
+          "id": "no-ore-defense",
+          "kind": "benchmark",
+          "family": "Fight with no ore left",
+          "valid": true,
+          "choice": "defend",
+          "correct": true,
+          "wallMs": 267,
+          "modelMs": 265
+        },
+        {
+          "id": "history-early-air",
+          "kind": "benchmark",
+          "family": "Prepare for recurring air attacks",
+          "valid": true,
+          "choice": "balanced",
+          "correct": false,
+          "wallMs": 276,
+          "modelMs": 275
+        },
+        {
+          "id": "losing-push",
+          "kind": "benchmark",
+          "family": "React to an unsuccessful push",
+          "valid": true,
+          "choice": "anti-armor",
+          "correct": true,
+          "wallMs": 292,
+          "modelMs": 290
+        },
+        {
+          "id": "naval-rival",
+          "kind": "benchmark",
+          "family": "Contest the water",
+          "valid": true,
+          "choice": "naval",
+          "correct": true,
+          "wallMs": 244,
+          "modelMs": 244
+        },
+        {
+          "id": "hq-pressure-air",
+          "kind": "benchmark",
+          "family": "Defend a damaged HQ from air",
+          "valid": true,
+          "choice": "defend",
+          "correct": true,
+          "wallMs": 265,
+          "modelMs": 264
+        },
+        {
+          "id": "anti-air-already-queued",
+          "kind": "benchmark",
+          "family": "Avoid duplicating queued anti-air",
+          "valid": true,
+          "choice": "economy",
+          "correct": true,
+          "wallMs": 269,
+          "modelMs": 267
+        },
+        {
+          "id": "economic-lead",
+          "kind": "benchmark",
+          "family": "Exploit an exposed economy",
+          "valid": true,
+          "choice": "rush",
+          "correct": true,
+          "wallMs": 246,
+          "modelMs": 245
+        }
+      ]
+    },
+    "iron-field-qwen35:9b-rts-synthetic-full": {
+      "digest": "c8aee045a9b6ce3802918324863b82c871f6a8f846566970e48c0fcde4d88884",
+      "responses": [
+        {
+          "id": "heldout-0",
+          "kind": "generated",
+          "family": "lost-miners",
+          "valid": true,
+          "choice": "economy",
+          "correct": true,
+          "wallMs": 172,
+          "modelMs": 169
+        },
+        {
+          "id": "heldout-1",
+          "kind": "generated",
+          "family": "lost-miners",
+          "valid": true,
+          "choice": "economy",
+          "correct": true,
+          "wallMs": 335,
+          "modelMs": 334
+        },
+        {
+          "id": "heldout-2",
+          "kind": "generated",
+          "family": "lost-miners",
+          "valid": true,
+          "choice": "economy",
+          "correct": true,
+          "wallMs": 315,
+          "modelMs": 314
+        },
+        {
+          "id": "heldout-3",
+          "kind": "generated",
+          "family": "lost-miners",
+          "valid": true,
+          "choice": "economy",
+          "correct": true,
+          "wallMs": 315,
+          "modelMs": 314
+        },
+        {
+          "id": "heldout-4",
+          "kind": "generated",
+          "family": "lost-miners",
+          "valid": true,
+          "choice": "economy",
+          "correct": true,
+          "wallMs": 323,
+          "modelMs": 321
+        },
+        {
+          "id": "heldout-5",
+          "kind": "generated",
+          "family": "lost-refinery",
+          "valid": true,
+          "choice": "economy",
+          "correct": true,
+          "wallMs": 313,
+          "modelMs": 312
+        },
+        {
+          "id": "heldout-6",
+          "kind": "generated",
+          "family": "lost-refinery",
+          "valid": true,
+          "choice": "economy",
+          "correct": true,
+          "wallMs": 335,
+          "modelMs": 334
+        },
+        {
+          "id": "heldout-7",
+          "kind": "generated",
+          "family": "lost-refinery",
+          "valid": true,
+          "choice": "economy",
+          "correct": true,
+          "wallMs": 321,
+          "modelMs": 319
+        },
+        {
+          "id": "heldout-8",
+          "kind": "generated",
+          "family": "lost-refinery",
+          "valid": true,
+          "choice": "economy",
+          "correct": true,
+          "wallMs": 335,
+          "modelMs": 334
+        },
+        {
+          "id": "heldout-9",
+          "kind": "generated",
+          "family": "lost-refinery",
+          "valid": true,
+          "choice": "economy",
+          "correct": true,
+          "wallMs": 338,
+          "modelMs": 337
+        },
+        {
+          "id": "heldout-10",
+          "kind": "generated",
+          "family": "base-under-attack",
+          "valid": true,
+          "choice": "defend",
+          "correct": true,
+          "wallMs": 316,
+          "modelMs": 314
+        },
+        {
+          "id": "heldout-11",
+          "kind": "generated",
+          "family": "base-under-attack",
+          "valid": true,
+          "choice": "defend",
+          "correct": true,
+          "wallMs": 314,
+          "modelMs": 312
+        },
+        {
+          "id": "heldout-12",
+          "kind": "generated",
+          "family": "base-under-attack",
+          "valid": true,
+          "choice": "defend",
+          "correct": true,
+          "wallMs": 314,
+          "modelMs": 313
+        },
+        {
+          "id": "heldout-13",
+          "kind": "generated",
+          "family": "base-under-attack",
+          "valid": true,
+          "choice": "defend",
+          "correct": true,
+          "wallMs": 313,
+          "modelMs": 312
+        },
+        {
+          "id": "heldout-14",
+          "kind": "generated",
+          "family": "base-under-attack",
+          "valid": true,
+          "choice": "defend",
+          "correct": true,
+          "wallMs": 314,
+          "modelMs": 313
+        },
+        {
+          "id": "heldout-15",
+          "kind": "generated",
+          "family": "uncovered-air",
+          "valid": true,
+          "choice": "anti-air",
+          "correct": true,
+          "wallMs": 315,
+          "modelMs": 313
+        },
+        {
+          "id": "heldout-16",
+          "kind": "generated",
+          "family": "uncovered-air",
+          "valid": true,
+          "choice": "anti-air",
+          "correct": true,
+          "wallMs": 316,
+          "modelMs": 314
+        },
+        {
+          "id": "heldout-17",
+          "kind": "generated",
+          "family": "uncovered-air",
+          "valid": true,
+          "choice": "anti-air",
+          "correct": true,
+          "wallMs": 313,
+          "modelMs": 311
+        },
+        {
+          "id": "heldout-18",
+          "kind": "generated",
+          "family": "uncovered-air",
+          "valid": true,
+          "choice": "anti-air",
+          "correct": true,
+          "wallMs": 314,
+          "modelMs": 313
+        },
+        {
+          "id": "heldout-19",
+          "kind": "generated",
+          "family": "uncovered-air",
+          "valid": true,
+          "choice": "anti-air",
+          "correct": true,
+          "wallMs": 316,
+          "modelMs": 315
+        },
+        {
+          "id": "heldout-20",
+          "kind": "generated",
+          "family": "expected-air",
+          "valid": true,
+          "choice": "anti-air",
+          "correct": true,
+          "wallMs": 344,
+          "modelMs": 343
+        },
+        {
+          "id": "heldout-21",
+          "kind": "generated",
+          "family": "expected-air",
+          "valid": true,
+          "choice": "anti-air",
+          "correct": true,
+          "wallMs": 318,
+          "modelMs": 317
+        },
+        {
+          "id": "heldout-22",
+          "kind": "generated",
+          "family": "expected-air",
+          "valid": true,
+          "choice": "anti-air",
+          "correct": true,
+          "wallMs": 338,
+          "modelMs": 337
+        },
+        {
+          "id": "heldout-23",
+          "kind": "generated",
+          "family": "expected-air",
+          "valid": true,
+          "choice": "anti-air",
+          "correct": true,
+          "wallMs": 317,
+          "modelMs": 315
+        },
+        {
+          "id": "heldout-24",
+          "kind": "generated",
+          "family": "expected-air",
+          "valid": true,
+          "choice": "anti-air",
+          "correct": true,
+          "wallMs": 317,
+          "modelMs": 315
+        },
+        {
+          "id": "heldout-25",
+          "kind": "generated",
+          "family": "armor-gap",
+          "valid": true,
+          "choice": "anti-armor",
+          "correct": true,
+          "wallMs": 330,
+          "modelMs": 329
+        },
+        {
+          "id": "heldout-26",
+          "kind": "generated",
+          "family": "armor-gap",
+          "valid": true,
+          "choice": "defend",
+          "correct": false,
+          "wallMs": 305,
+          "modelMs": 304
+        },
+        {
+          "id": "heldout-27",
+          "kind": "generated",
+          "family": "armor-gap",
+          "valid": true,
+          "choice": "anti-armor",
+          "correct": true,
+          "wallMs": 327,
+          "modelMs": 325
+        },
+        {
+          "id": "heldout-28",
+          "kind": "generated",
+          "family": "armor-gap",
+          "valid": true,
+          "choice": "anti-armor",
+          "correct": true,
+          "wallMs": 325,
+          "modelMs": 324
+        },
+        {
+          "id": "heldout-29",
+          "kind": "generated",
+          "family": "armor-gap",
+          "valid": true,
+          "choice": "anti-armor",
+          "correct": true,
+          "wallMs": 327,
+          "modelMs": 325
+        },
+        {
+          "id": "heldout-30",
+          "kind": "generated",
+          "family": "fortifications",
+          "valid": true,
+          "choice": "siege",
+          "correct": true,
+          "wallMs": 316,
+          "modelMs": 315
+        },
+        {
+          "id": "heldout-31",
+          "kind": "generated",
+          "family": "fortifications",
+          "valid": true,
+          "choice": "siege",
+          "correct": true,
+          "wallMs": 313,
+          "modelMs": 311
+        },
+        {
+          "id": "heldout-32",
+          "kind": "generated",
+          "family": "fortifications",
+          "valid": true,
+          "choice": "siege",
+          "correct": true,
+          "wallMs": 316,
+          "modelMs": 314
+        },
+        {
+          "id": "heldout-33",
+          "kind": "generated",
+          "family": "fortifications",
+          "valid": true,
+          "choice": "siege",
+          "correct": true,
+          "wallMs": 313,
+          "modelMs": 312
+        },
+        {
+          "id": "heldout-34",
+          "kind": "generated",
+          "family": "fortifications",
+          "valid": true,
+          "choice": "siege",
+          "correct": true,
+          "wallMs": 316,
+          "modelMs": 314
+        },
+        {
+          "id": "heldout-35",
+          "kind": "generated",
+          "family": "air-attack",
+          "valid": true,
+          "choice": "siege",
+          "correct": false,
+          "wallMs": 308,
+          "modelMs": 308
+        },
+        {
+          "id": "heldout-36",
+          "kind": "generated",
+          "family": "air-attack",
+          "valid": true,
+          "choice": "siege",
+          "correct": false,
+          "wallMs": 307,
+          "modelMs": 305
+        },
+        {
+          "id": "heldout-37",
+          "kind": "generated",
+          "family": "air-attack",
+          "valid": true,
+          "choice": "air",
+          "correct": true,
+          "wallMs": 282,
+          "modelMs": 281
+        },
+        {
+          "id": "heldout-38",
+          "kind": "generated",
+          "family": "air-attack",
+          "valid": true,
+          "choice": "siege",
+          "correct": false,
+          "wallMs": 308,
+          "modelMs": 306
+        },
+        {
+          "id": "heldout-39",
+          "kind": "generated",
+          "family": "air-attack",
+          "valid": true,
+          "choice": "siege",
+          "correct": false,
+          "wallMs": 306,
+          "modelMs": 305
+        },
+        {
+          "id": "heldout-40",
+          "kind": "generated",
+          "family": "weak-hq",
+          "valid": true,
+          "choice": "balanced",
+          "correct": false,
+          "wallMs": 278,
+          "modelMs": 277
+        },
+        {
+          "id": "heldout-41",
+          "kind": "generated",
+          "family": "weak-hq",
+          "valid": true,
+          "choice": "rush",
+          "correct": true,
+          "wallMs": 284,
+          "modelMs": 283
+        },
+        {
+          "id": "heldout-42",
+          "kind": "generated",
+          "family": "weak-hq",
+          "valid": true,
+          "choice": "rush",
+          "correct": true,
+          "wallMs": 281,
+          "modelMs": 280
+        },
+        {
+          "id": "heldout-43",
+          "kind": "generated",
+          "family": "weak-hq",
+          "valid": true,
+          "choice": "balanced",
+          "correct": false,
+          "wallMs": 281,
+          "modelMs": 280
+        },
+        {
+          "id": "heldout-44",
+          "kind": "generated",
+          "family": "weak-hq",
+          "valid": true,
+          "choice": "rush",
+          "correct": true,
+          "wallMs": 281,
+          "modelMs": 280
+        },
+        {
+          "id": "heldout-45",
+          "kind": "generated",
+          "family": "economy-growth",
+          "valid": true,
+          "choice": "economy",
+          "correct": true,
+          "wallMs": 305,
+          "modelMs": 304
+        },
+        {
+          "id": "heldout-46",
+          "kind": "generated",
+          "family": "economy-growth",
+          "valid": true,
+          "choice": "economy",
+          "correct": true,
+          "wallMs": 300,
+          "modelMs": 298
+        },
+        {
+          "id": "heldout-47",
+          "kind": "generated",
+          "family": "economy-growth",
+          "valid": true,
+          "choice": "economy",
+          "correct": true,
+          "wallMs": 307,
+          "modelMs": 305
+        },
+        {
+          "id": "heldout-48",
+          "kind": "generated",
+          "family": "economy-growth",
+          "valid": true,
+          "choice": "anti-armor",
+          "correct": false,
+          "wallMs": 327,
+          "modelMs": 326
+        },
+        {
+          "id": "heldout-49",
+          "kind": "generated",
+          "family": "economy-growth",
+          "valid": true,
+          "choice": "economy",
+          "correct": true,
+          "wallMs": 306,
+          "modelMs": 305
+        },
+        {
+          "id": "heldout-50",
+          "kind": "generated",
+          "family": "naval-gap",
+          "valid": true,
+          "choice": "naval",
+          "correct": true,
+          "wallMs": 284,
+          "modelMs": 283
+        },
+        {
+          "id": "heldout-51",
+          "kind": "generated",
+          "family": "naval-gap",
+          "valid": true,
+          "choice": "naval",
+          "correct": true,
+          "wallMs": 282,
+          "modelMs": 280
+        },
+        {
+          "id": "heldout-52",
+          "kind": "generated",
+          "family": "naval-gap",
+          "valid": true,
+          "choice": "naval",
+          "correct": true,
+          "wallMs": 279,
+          "modelMs": 278
+        },
+        {
+          "id": "heldout-53",
+          "kind": "generated",
+          "family": "naval-gap",
+          "valid": true,
+          "choice": "naval",
+          "correct": true,
+          "wallMs": 280,
+          "modelMs": 279
+        },
+        {
+          "id": "heldout-54",
+          "kind": "generated",
+          "family": "naval-gap",
+          "valid": true,
+          "choice": "naval",
+          "correct": true,
+          "wallMs": 283,
+          "modelMs": 281
+        },
+        {
+          "id": "heldout-55",
+          "kind": "generated",
+          "family": "losing-raid",
+          "valid": true,
+          "choice": "defend",
+          "correct": true,
+          "wallMs": 306,
+          "modelMs": 305
+        },
+        {
+          "id": "heldout-56",
+          "kind": "generated",
+          "family": "losing-raid",
+          "valid": true,
+          "choice": "economy",
+          "correct": false,
+          "wallMs": 304,
+          "modelMs": 303
+        },
+        {
+          "id": "heldout-57",
+          "kind": "generated",
+          "family": "losing-raid",
+          "valid": true,
+          "choice": "defend",
+          "correct": true,
+          "wallMs": 305,
+          "modelMs": 304
+        },
+        {
+          "id": "heldout-58",
+          "kind": "generated",
+          "family": "losing-raid",
+          "valid": true,
+          "choice": "anti-armor",
+          "correct": false,
+          "wallMs": 326,
+          "modelMs": 324
+        },
+        {
+          "id": "heldout-59",
+          "kind": "generated",
+          "family": "losing-raid",
+          "valid": true,
+          "choice": "anti-armor",
+          "correct": false,
+          "wallMs": 329,
+          "modelMs": 328
+        },
+        {
+          "id": "heldout-60",
+          "kind": "generated",
+          "family": "no-ore-defense",
+          "valid": true,
+          "choice": "anti-armor",
+          "correct": false,
+          "wallMs": 328,
+          "modelMs": 327
+        },
+        {
+          "id": "heldout-61",
+          "kind": "generated",
+          "family": "no-ore-defense",
+          "valid": true,
+          "choice": "defend",
+          "correct": true,
+          "wallMs": 304,
+          "modelMs": 302
+        },
+        {
+          "id": "heldout-62",
+          "kind": "generated",
+          "family": "no-ore-defense",
+          "valid": true,
+          "choice": "defend",
+          "correct": true,
+          "wallMs": 305,
+          "modelMs": 304
+        },
+        {
+          "id": "heldout-63",
+          "kind": "generated",
+          "family": "no-ore-defense",
+          "valid": true,
+          "choice": "defend",
+          "correct": true,
+          "wallMs": 304,
+          "modelMs": 303
+        },
+        {
+          "id": "heldout-64",
+          "kind": "generated",
+          "family": "no-ore-defense",
+          "valid": true,
+          "choice": "defend",
+          "correct": true,
+          "wallMs": 303,
+          "modelMs": 302
+        },
+        {
+          "id": "heldout-65",
+          "kind": "generated",
+          "family": "mixed-force",
+          "valid": true,
+          "choice": "balanced",
+          "correct": true,
+          "wallMs": 280,
+          "modelMs": 278
+        },
+        {
+          "id": "heldout-66",
+          "kind": "generated",
+          "family": "mixed-force",
+          "valid": true,
+          "choice": "balanced",
+          "correct": true,
+          "wallMs": 281,
+          "modelMs": 279
+        },
+        {
+          "id": "heldout-67",
+          "kind": "generated",
+          "family": "mixed-force",
+          "valid": true,
+          "choice": "economy",
+          "correct": false,
+          "wallMs": 303,
+          "modelMs": 301
+        },
+        {
+          "id": "heldout-68",
+          "kind": "generated",
+          "family": "mixed-force",
+          "valid": true,
+          "choice": "balanced",
+          "correct": true,
+          "wallMs": 283,
+          "modelMs": 282
+        },
+        {
+          "id": "heldout-69",
+          "kind": "generated",
+          "family": "mixed-force",
+          "valid": true,
+          "choice": "rush",
+          "correct": false,
+          "wallMs": 282,
+          "modelMs": 281
+        },
+        {
+          "id": "heldout-70",
+          "kind": "generated",
+          "family": "queued-air-defense",
+          "valid": true,
+          "choice": "balanced",
+          "correct": true,
+          "wallMs": 283,
+          "modelMs": 282
+        },
+        {
+          "id": "heldout-71",
+          "kind": "generated",
+          "family": "queued-air-defense",
+          "valid": true,
+          "choice": "air",
+          "correct": false,
+          "wallMs": 283,
+          "modelMs": 281
+        },
+        {
+          "id": "heldout-72",
+          "kind": "generated",
+          "family": "queued-air-defense",
+          "valid": true,
+          "choice": "balanced",
+          "correct": true,
+          "wallMs": 281,
+          "modelMs": 280
+        },
+        {
+          "id": "heldout-73",
+          "kind": "generated",
+          "family": "queued-air-defense",
+          "valid": true,
+          "choice": "balanced",
+          "correct": true,
+          "wallMs": 281,
+          "modelMs": 280
+        },
+        {
+          "id": "heldout-74",
+          "kind": "generated",
+          "family": "queued-air-defense",
+          "valid": true,
+          "choice": "economy",
+          "correct": false,
+          "wallMs": 305,
+          "modelMs": 304
+        },
+        {
+          "id": "heldout-75",
+          "kind": "generated",
+          "family": "raid-economy",
+          "valid": true,
+          "choice": "raid-economy",
+          "correct": true,
+          "wallMs": 330,
+          "modelMs": 328
+        },
+        {
+          "id": "heldout-76",
+          "kind": "generated",
+          "family": "raid-economy",
+          "valid": true,
+          "choice": "raid-economy",
+          "correct": true,
+          "wallMs": 327,
+          "modelMs": 326
+        },
+        {
+          "id": "heldout-77",
+          "kind": "generated",
+          "family": "raid-economy",
+          "valid": true,
+          "choice": "raid-economy",
+          "correct": true,
+          "wallMs": 332,
+          "modelMs": 330
+        },
+        {
+          "id": "heldout-78",
+          "kind": "generated",
+          "family": "raid-economy",
+          "valid": true,
+          "choice": "raid-economy",
+          "correct": true,
+          "wallMs": 328,
+          "modelMs": 327
+        },
+        {
+          "id": "heldout-79",
+          "kind": "generated",
+          "family": "raid-economy",
+          "valid": true,
+          "choice": "raid-economy",
+          "correct": true,
+          "wallMs": 328,
+          "modelMs": 326
+        },
+        {
+          "id": "heldout-80",
+          "kind": "generated",
+          "family": "raid-production",
+          "valid": true,
+          "choice": "raid-production",
+          "correct": true,
+          "wallMs": 306,
+          "modelMs": 305
+        },
+        {
+          "id": "heldout-81",
+          "kind": "generated",
+          "family": "raid-production",
+          "valid": true,
+          "choice": "raid-production",
+          "correct": true,
+          "wallMs": 300,
+          "modelMs": 299
+        },
+        {
+          "id": "heldout-82",
+          "kind": "generated",
+          "family": "raid-production",
+          "valid": true,
+          "choice": "raid-production",
+          "correct": true,
+          "wallMs": 303,
+          "modelMs": 302
+        },
+        {
+          "id": "heldout-83",
+          "kind": "generated",
+          "family": "raid-production",
+          "valid": true,
+          "choice": "raid-production",
+          "correct": true,
+          "wallMs": 307,
+          "modelMs": 306
+        },
+        {
+          "id": "heldout-84",
+          "kind": "generated",
+          "family": "raid-production",
+          "valid": true,
+          "choice": "raid-production",
+          "correct": true,
+          "wallMs": 308,
+          "modelMs": 306
+        },
+        {
+          "id": "heldout-85",
+          "kind": "generated",
+          "family": "flank-left",
+          "valid": true,
+          "choice": "raid-economy@left",
+          "correct": true,
+          "wallMs": 423,
+          "modelMs": 422
+        },
+        {
+          "id": "heldout-86",
+          "kind": "generated",
+          "family": "flank-left",
+          "valid": true,
+          "choice": "raid-economy@left",
+          "correct": true,
+          "wallMs": 499,
+          "modelMs": 497
+        },
+        {
+          "id": "heldout-87",
+          "kind": "generated",
+          "family": "flank-left",
+          "valid": true,
+          "choice": "raid-economy@left",
+          "correct": true,
+          "wallMs": 384,
+          "modelMs": 383
+        },
+        {
+          "id": "heldout-88",
+          "kind": "generated",
+          "family": "flank-left",
+          "valid": true,
+          "choice": "raid-economy@left",
+          "correct": true,
+          "wallMs": 488,
+          "modelMs": 486
+        },
+        {
+          "id": "heldout-89",
+          "kind": "generated",
+          "family": "flank-left",
+          "valid": true,
+          "choice": "raid-economy@left",
+          "correct": true,
+          "wallMs": 382,
+          "modelMs": 380
+        },
+        {
+          "id": "heldout-90",
+          "kind": "generated",
+          "family": "flank-right",
+          "valid": true,
+          "choice": "raid-economy@right",
+          "correct": true,
+          "wallMs": 534,
+          "modelMs": 533
+        },
+        {
+          "id": "heldout-91",
+          "kind": "generated",
+          "family": "flank-right",
+          "valid": true,
+          "choice": "raid-economy@right",
+          "correct": true,
+          "wallMs": 480,
+          "modelMs": 479
+        },
+        {
+          "id": "heldout-92",
+          "kind": "generated",
+          "family": "flank-right",
+          "valid": true,
+          "choice": "raid-economy@right",
+          "correct": true,
+          "wallMs": 379,
+          "modelMs": 378
+        },
+        {
+          "id": "heldout-93",
+          "kind": "generated",
+          "family": "flank-right",
+          "valid": true,
+          "choice": "raid-economy@right",
+          "correct": true,
+          "wallMs": 524,
+          "modelMs": 523
+        },
+        {
+          "id": "heldout-94",
+          "kind": "generated",
+          "family": "flank-right",
+          "valid": true,
+          "choice": "raid-economy@right",
+          "correct": true,
+          "wallMs": 379,
+          "modelMs": 378
+        },
+        {
+          "id": "income-no-miners",
+          "kind": "benchmark",
+          "family": "Replace the last miners",
+          "valid": true,
+          "choice": "economy",
+          "correct": true,
+          "wallMs": 352,
+          "modelMs": 350
+        },
+        {
+          "id": "income-no-refinery",
+          "kind": "benchmark",
+          "family": "Rebuild the refinery",
+          "valid": true,
+          "choice": "economy",
+          "correct": true,
+          "wallMs": 268,
+          "modelMs": 266
+        },
+        {
+          "id": "critical-base",
+          "kind": "benchmark",
+          "family": "Protect a critical HQ",
+          "valid": true,
+          "choice": "defend",
+          "correct": true,
+          "wallMs": 268,
+          "modelMs": 267
+        },
+        {
+          "id": "air-counter",
+          "kind": "benchmark",
+          "family": "Counter an aircraft-heavy force",
+          "valid": true,
+          "choice": "anti-air",
+          "correct": true,
+          "wallMs": 271,
+          "modelMs": 270
+        },
+        {
+          "id": "armor-counter",
+          "kind": "benchmark",
+          "family": "Counter heavy armor",
+          "valid": true,
+          "choice": "anti-armor",
+          "correct": true,
+          "wallMs": 292,
+          "modelMs": 291
+        },
+        {
+          "id": "fortified-production",
+          "kind": "benchmark",
+          "family": "Break static defenses",
+          "valid": true,
+          "choice": "siege",
+          "correct": true,
+          "wallMs": 276,
+          "modelMs": 274
+        },
+        {
+          "id": "finish-exposed-hq",
+          "kind": "benchmark",
+          "family": "Finish a damaged HQ",
+          "valid": true,
+          "choice": "balanced",
+          "correct": true,
+          "wallMs": 244,
+          "modelMs": 243
+        },
+        {
+          "id": "no-ore-defense",
+          "kind": "benchmark",
+          "family": "Fight with no ore left",
+          "valid": true,
+          "choice": "defend",
+          "correct": true,
+          "wallMs": 268,
+          "modelMs": 267
+        },
+        {
+          "id": "history-early-air",
+          "kind": "benchmark",
+          "family": "Prepare for recurring air attacks",
+          "valid": true,
+          "choice": "anti-air",
+          "correct": true,
+          "wallMs": 295,
+          "modelMs": 293
+        },
+        {
+          "id": "losing-push",
+          "kind": "benchmark",
+          "family": "React to an unsuccessful push",
+          "valid": true,
+          "choice": "anti-armor",
+          "correct": true,
+          "wallMs": 292,
+          "modelMs": 291
+        },
+        {
+          "id": "naval-rival",
+          "kind": "benchmark",
+          "family": "Contest the water",
+          "valid": true,
+          "choice": "naval",
+          "correct": true,
+          "wallMs": 245,
+          "modelMs": 244
+        },
+        {
+          "id": "hq-pressure-air",
+          "kind": "benchmark",
+          "family": "Defend a damaged HQ from air",
+          "valid": true,
+          "choice": "defend",
+          "correct": true,
+          "wallMs": 268,
+          "modelMs": 266
+        },
+        {
+          "id": "anti-air-already-queued",
+          "kind": "benchmark",
+          "family": "Avoid duplicating queued anti-air",
+          "valid": true,
+          "choice": "economy",
+          "correct": true,
+          "wallMs": 269,
+          "modelMs": 267
+        },
+        {
+          "id": "economic-lead",
+          "kind": "benchmark",
+          "family": "Exploit an exposed economy",
+          "valid": true,
+          "choice": "raid-economy",
+          "correct": true,
+          "wallMs": 290,
+          "modelMs": 288
+        }
+      ]
+    }
+  },
+  "summary": {
+    "iron-field-qwen35:9b-base-q8-control": {
+      "valid": 109,
+      "total": 109,
+      "syntheticCorrect": 41,
+      "syntheticTotal": 95,
+      "benchmarkCorrect": 12,
+      "benchmarkTotal": 14,
+      "diagnosticCorrect": 7,
+      "diagnosticTotal": 9,
+      "medianMs": 294
+    },
+    "iron-field-qwen35:9b-rts-synthetic-full": {
+      "valid": 109,
+      "total": 109,
+      "syntheticCorrect": 79,
+      "syntheticTotal": 95,
+      "benchmarkCorrect": 14,
+      "benchmarkTotal": 14,
+      "diagnosticCorrect": 9,
+      "diagnosticTotal": 9,
+      "medianMs": 308
+    }
+  },
+  "completedAt": "2026-11-08T04:47:25.382Z"
+}

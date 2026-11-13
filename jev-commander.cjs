@@ -1,14 +1,15 @@
 'use strict';
 // Jev/System One decision API. Keep its endpoint separate from Ollama chat.
-const {summarize,offeredOperations,strategicLookahead,operationEvidence,planFor,assess,contactFacts,mapFacts,profileFacts,decisionVersion}=require('./commander.cjs');
+const {summarize,offeredOperations,strategicLookahead,strategicTradeoffs,operationEvidence,planFor,assess,contactFacts,mapFacts,profileFacts,decisionVersion}=require('./commander.cjs');
 const fail=(status,message,retryAfterMs=5000)=>Object.assign(new Error(message),{status,retryAfterMs});
 function validPort(value){const port=Number(value);if(!Number.isInteger(port)||port<1||port>65535)throw fail(400,'Enter a JEV port from 1 to 65535.');return port;}
 function decisionRequest(input,model){
  const summary=summarize(input),offered=offeredOperations(summary);
- return {summary,offered,body:{model,state:JSON.stringify({...summary,lookahead:strategicLookahead(summary,offered).map(o=>o.name)}),questions:{strategy:{type:'choice',instructions:'Command our army to destroy the enemy HQ. Choose the best feasible operation. lookahead ranks options using a rough two-step worst-case macro-model, not a prediction. Contacts are currently visible enemies; aggregate enemy totals can include hidden enemies. strategicMap has 5x5 rows north to south and columns A to E west to east; terrain ? unknown, . explored, ~ water, ^ ridge, = bridge. friendly and enemy are counts of our and visible enemy combat units, capped at 9; zero does not prove a sector is clear. Sites are own or currently seen; terrain is approximate, not a route. Profile and playerDescription describe past tendencies and possible strengths and vulnerabilities, not guarantees. Protect a threatened base, recover broken income if ore remains, fill unmet counters including queues, and exploit an army advantage. Continue productive attacks; replace stalled or losing plans. Consider credits and completed producers.',criteria:Object.fromEntries(offered.map(c=>[c.name,c.why]))}}}};
+ const forecast=strategicLookahead(summary,offered);
+ return {summary,offered,body:{model,state:JSON.stringify({...summary,lookahead:forecast.map(o=>o.name),lookaheadTradeoffs:strategicTradeoffs(forecast)}),questions:{strategy:{type:'choice',instructions:'Command our army to destroy the enemy HQ. Choose the best feasible operation. lookahead ranks options using a rough two-step worst-case macro-model, not a prediction. lookaheadTradeoffs lists possible risks, not predicted outcomes. Contacts are currently visible enemies; aggregate enemy totals can include hidden enemies. strategicMap has 5x5 rows north to south and columns A to E west to east; terrain ? unknown, . explored, ~ water, ^ ridge, = bridge. friendly and enemy are counts of our and visible enemy combat units, capped at 9; zero does not prove a sector is clear. Sites are own or currently seen; terrain is approximate, not a route. Profile and playerDescription describe past tendencies and possible strengths and vulnerabilities, not guarantees. Protect a threatened base, recover broken income if ore remains, fill unmet counters including queues, and exploit an army advantage. Continue productive attacks; replace stalled or losing plans. Consider credits and completed producers.',criteria:Object.fromEntries(offered.map(c=>[c.name,c.why]))}}}};
 }
-function classificationRequest(summary,offered){
- const m=assess(summary),f=summary.feedback;
+function classificationRequest(summary,offered,{lookahead=true}={}){
+ const m=assess(summary),f=summary.feedback,forecast=lookahead?strategicLookahead(summary,offered):[],risks=strategicTradeoffs(forecast);
  const premise=[
   `Our army has ${m.army} ground attackers, combat strength ${m.attackValue}, and ${summary.credits} credits. Enemy combat strength is ${m.enemyValue}.`,
   `Our HQ has ${summary.own.hqHealth}% health; enemy HQ has ${summary.opponent.hqHealth}%. ${summary.context.pressure} enemies threaten our base.`,
@@ -20,7 +21,8 @@ function classificationRequest(summary,offered){
   'Enemy aggregate estimates may include hidden units. '+contactFacts(summary),
   ...(summary.strategicMap?[mapFacts(summary)]:[]),
   profileFacts(summary),
-  'Rough two-step worst-case operation ranking (not a prediction): '+strategicLookahead(summary,offered).map(o=>o.name).join(' > ')+'.',
+  ...(lookahead?['Rough two-step worst-case operation ranking (not a prediction): '+forecast.map(o=>o.name).join(' > ')+'.']:[]),
+  ...(risks?['Possible tradeoffs, not predictions: '+risks+'.']:[]),
   'Feasible operations after checking resources and technology: '+offered.map(c=>c.name+' ('+c.why+')').join('; ')+'.'
  ].join(' ');
  return {premise,choices:offered.map(c=>operationEvidence[c.name])};

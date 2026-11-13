@@ -1,0 +1,40 @@
+{
+  "task": "Synthetic RTS recommendation-NLI",
+  "label_mapping": {
+    "entailment": "The original synthetic teacher-selected operation.",
+    "neutral": "An offered alternative operation not established as the teacher's recommendation.",
+    "contradiction": "An explicit RTS state fact paired with its generated opposite."
+  },
+  "data_sources": {
+    "train": "outputs\\qwen35-9b-rts-v2-synthetic\\train_synthetic.jsonl",
+    "validation": "outputs\\qwen35-9b-rts-v2-synthetic\\validation_synthetic.jsonl",
+    "weak_human_examples_included": false
+  },
+  "source_scenarios": {
+    "train": 1900,
+    "validation": 380
+  },
+  "converted_examples": {
+    "train": 5700,
+    "validation": 1140
+  },
+  "label_counts": {
+    "train": {
+      "contradiction": 1900,
+      "entailment": 1900,
+      "neutral": 1900
+    },
+    "validation": {
+      "contradiction": 380,
+      "entailment": 380,
+      "neutral": 380
+    }
+  },
+  "notes": [
+    "This is recommendation-NLI for synthetic game decisions, not ordinary linguistic NLI or vehicle/insurance NLI.",
+    "Entailment targets and scenario families inherit hand-written RTS heuristic limitations.",
+    "Neutral means the scenario does not establish that the alternative is the teacher-preferred operation; it does not mean the alternative is strategically bad.",
+    "Contradiction examples use explicit numeric or categorical facts from the prompt and their direct opposites.",
+    "The validation set uses new prompts but the same synthetic scenario families and teacher rules; it is not an independent gameplay test."
+  ]
+}

@@ -22,6 +22,9 @@ const productive=fixture({}, {},{feedback:{operation:'rush',age:60,mode:'Attacki
 assert(candidates(productive).find(c=>c.name==='rush').score>(candidates(stalled).find(c=>c.name==='rush')?.score??-Infinity));
 s=fixture({}, {},{feedback:{operation:'air',age:60,mode:'Regrouping',lostValue:1000,destroyedValue:50,income:180,raidAge:35,raidSize:2,stalled:true}});assert(names(s).includes('defend'));
 const prompt=promptFor(s);for(const value of ['Cash 650','force estimate','Income working','Previous air: stalled'])assert(prompt.includes(value),value);
+assert(prompt.includes('Last 45s: own assets lost 1000; enemy assets destroyed 50; ore delivered 180.'),'model sees actual recent feedback');
+assert(prompt.includes('These totals do not prove the operation caused them.'),'avoid attributing aggregate results to a specific operation');
+assert(prompt.includes('Approximate two-step worst-case ranking (simplified, not a prediction):'),'model sees bounded lookahead and its limitation');
 const {offeredOperations,operationEvidence}=require('../commander.cjs');
 const {decisionRequest,classificationRequest}=require('../jev-commander.cjs');
 const emergency=fixture({}, {},{own:{units:{tank:2},buildings:ready,hqHealth:35},opponent:{units:{tank:8},buildings:{base:1}},context:{pressure:4,oreRemaining:9000}});

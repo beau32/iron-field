@@ -1,0 +1,13 @@
+'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),THREE=require('../vendor/three.min.js');
+const {buildings:STRUCTURE,units:UNIT}=require('../data.js'),source=fs.readFileSync(require.resolve('../game.js'),'utf8');
+function extract(name){const a=source.indexOf('  function '+name+'('),b=source.indexOf('\n  function ',a+3);assert(a>=0&&b>a,name);return source.slice(a,b);}
+const ownBuildings=[{team:'enemy',kind:'base',hp:1},{team:'enemy',kind:'power',hp:1},{team:'enemy',kind:'turret',hp:1}],sold=[];let threat=true,built=false;
+let safe=true;const ctx={STRUCTURE,UNIT,fields:[{amount:1000}],commander:{},enemyCredits:20,remoteQueue:[],aiBaseThreats:()=>threat?[{}]:[],aiRecoverySite:()=>safe?{}:null,aiTactic:()=>{},saleValue:()=>200,sellStructure:b=>sold.push(b.kind),spend:()=>{},aiLog:()=>{},aiPriorityBuild:()=>{built=true;},producerFor:()=>true};
+vm.createContext(ctx);vm.runInContext(extract('aiRecoverIncome'),ctx);
+assert.equal(ctx.aiRecoverIncome([],ownBuildings,()=>2),false,'under attack, leave the economy loop free to defend');assert.deepEqual(sold,[],'do not sell defenses under attack');assert(!built,'do not rebuild while under attack');
+threat=false;safe=false;assert.equal(ctx.aiRecoverIncome([],ownBuildings,()=>2),false,'wait when no safe refinery site exists');assert.deepEqual(sold,[],'do not sell buildings with nowhere safe to rebuild');safe=true;ctx.enemyCredits=500;assert(ctx.aiRecoverIncome([],ownBuildings,()=>2),'income recovery resumes once clear');assert(built);
+const anchor={team:'enemy',hp:100,mesh:{position:new THREE.Vector3(0,0,0)}},attacker={team:'player',kind:'battleship',hp:100,mesh:{position:new THREE.Vector3(9,0,0)}};
+const site={THREE,STRUCTURE,buildings:[anchor],fields:[{amount:100,mesh:{position:new THREE.Vector3(20,0,0)}}],living:()=>[anchor,attacker],stats:e=>UNIT[e.kind]||{},visibleTo:()=>true,active:()=>true,placementError:()=>''};
+vm.createContext(site);vm.runInContext(extract('aiRecoverySite'),site);assert.equal(site.aiRecoverySite(),null,'no refinery is placed when all sites are under bombardment');site.buildings.push({team:'enemy',hp:100,mesh:{position:new THREE.Vector3(-60,0,0)}});const point=site.aiRecoverySite();assert(point&&point.distanceTo(attacker.mesh.position)>=UNIT.battleship.range+STRUCTURE.refinery.radius+8,'recovery site is outside visible bombardment range');
+console.log('PASS defense-preserving income recovery and safer refinery placement.');

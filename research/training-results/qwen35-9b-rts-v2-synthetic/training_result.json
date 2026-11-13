@@ -1,0 +1,9 @@
+{
+  "status": "completed",
+  "examples": 1902,
+  "steps": 1902,
+  "training_loss": 0.06241368806986231,
+  "seconds": 1472.5,
+  "adapter": "C:\\Users\\Public\\openjev\\outputs\\qwen35-9b-rts-v2-synthetic\\adapter-final",
+  "note": "Synthetic rule labels and two weak inferred human observations; training loss is not evidence of game strength."
+}

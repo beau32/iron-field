@@ -7,3 +7,7 @@
 *.cmd text eol=crlf
 *.zip binary
 *.png binary
+
+# Preserve archived training-source hashes and compressed paper evidence
+research/training/** -text whitespace=cr-at-eol,-blank-at-eof
+*.gz binary

@@ -1,0 +1,91 @@
+{
+  "status": "completed",
+  "base_model": "Qwen/Qwen3.5-4B",
+  "initialized_from_adapter": "outputs\\qwen35-4b-rts-recommendation-nli\\adapter-final",
+  "output_adapter": "outputs\\qwen35-4b-rts-lookahead-nli\\adapter-final",
+  "train_examples": 8900,
+  "validation_examples": 1780,
+  "epochs": 1.0,
+  "requested_max_steps": null,
+  "global_step": 557,
+  "training_loss": 0.49592496077505005,
+  "peak_cuda_memory_gb": 6.3,
+  "initial_validation_metrics": {
+    "initial_loss": 1.2699905633926392,
+    "initial_model_preparation_time": 0.02,
+    "initial_accuracy": 0.8084269662921348,
+    "initial_macro_f1": 0.8276603798426648,
+    "initial_runtime": 129.7187,
+    "initial_samples_per_second": 13.722,
+    "initial_steps_per_second": 3.431
+  },
+  "validation_metrics": {
+    "eval_loss": 0.13646455109119415,
+    "eval_model_preparation_time": 0.02,
+    "eval_accuracy": 0.9539325842696629,
+    "eval_macro_f1": 0.96095038862527,
+    "eval_runtime": 115.7242,
+    "eval_samples_per_second": 15.381,
+    "eval_steps_per_second": 3.845
+  },
+  "validation_classification_report": {
+    "contradiction": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 380.0
+    },
+    "entailment": {
+      "precision": 0.9352112676056338,
+      "recall": 0.9485714285714286,
+      "f1-score": 0.9418439716312057,
+      "support": 700.0
+    },
+    "neutral": {
+      "precision": 0.9478260869565217,
+      "recall": 0.9342857142857143,
+      "f1-score": 0.9410071942446043,
+      "support": 700.0
+    },
+    "accuracy": 0.9539325842696629,
+    "macro avg": {
+      "precision": 0.9610124515207185,
+      "recall": 0.960952380952381,
+      "f1-score": 0.96095038862527,
+      "support": 1780.0
+    },
+    "weighted avg": {
+      "precision": 0.9540034540412972,
+      "recall": 0.9539325842696629,
+      "f1-score": 0.953930233771386,
+      "support": 1780.0
+    }
+  },
+  "validation_confusion_matrix": [
+    [
+      380,
+      0,
+      0
+    ],
+    [
+      0,
+      664,
+      36
+    ],
+    [
+      0,
+      46,
+      654
+    ]
+  ],
+  "label_order": [
+    "contradiction",
+    "entailment",
+    "neutral"
+  ],
+  "caveats": [
+    "The model is fine-tuned to synthetic RTS recommendation-NLI, not OpenJEV vehicle/insurance NLI.",
+    "The training and validation labels are generated from heuristic decisions and explicit prompt facts.",
+    "Validation shares the generator's scenario families and is not evidence of human strategic quality."
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "source_adapter": "C:\\Users\\Public\\openjev\\qwen35-2b-openjev",
+  "source_adapter_sha256": "213fc423d500f4d1d13f85d05df6f16dada53ee742cf817aae311b6ef7fb8cce",
+  "inputs": {
+    "stage1_train": {
+      "path": "C:\\Users\\Public\\openjev\\outputs\\qwen35-4b-rts-recommendation-nli\\train_recommendation_nli.jsonl",
+      "sha256": "2393daf43e3fe22415cf99284d6814298c0fc31ee46d549b3812e307d95597ef",
+      "examples": 5700
+    },
+    "stage1_validation": {
+      "path": "C:\\Users\\Public\\openjev\\outputs\\qwen35-4b-rts-recommendation-nli\\validation_recommendation_nli.jsonl",
+      "sha256": "7cb3d3f3048bdb1aa90b884909f09277af0efcd4fa72f904c21f3d3f6b3729d9",
+      "examples": 1140
+    },
+    "stage2_train": {
+      "path": "C:\\Users\\Public\\openjev\\outputs\\qwen35-4b-rts-lookahead-nli\\train_lookahead_nli.jsonl",
+      "sha256": "9eece42b446c827d5f23aa650ed4546cc3ae81a56b20931c4c9aa1eacb22c98b",
+      "examples": 8900
+    },
+    "stage2_validation": {
+      "path": "C:\\Users\\Public\\openjev\\outputs\\qwen35-4b-rts-lookahead-nli\\validation_lookahead_nli.jsonl",
+      "sha256": "1b3a515a2e58db1b3b2289d2e4e9d426da697098f4a36b6f26bec57ec4a47c86",
+      "examples": 1780
+    }
+  },
+  "schedule": {
+    "stage1_epochs": 2,
+    "stage2_epochs": 1
+  },
+  "notes": [
+    "Same source datasets and epochs as the 4B training path.",
+    "Synthetic heuristic labels, not demonstrated optimal gameplay.",
+    "Original adapter remains unchanged."
+  ]
+}

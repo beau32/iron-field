@@ -1,0 +1,10 @@
+'use strict';
+const assert=require('node:assert/strict'),runner=require('../benchmarks/full-engine-benchmark.cjs'),duel=require('../benchmarks/duel-benchmark.cjs'),commander=require('../commander.cjs');
+async function main(){const server=duel.serve();await new Promise(r=>server.listen(0,'127.0.0.1',r));let browser,page;try{
+ browser=await runner.openBrowser();page=await runner.page(browser,`http://127.0.0.1:${server.address().port}/?benchmark=1`);
+ const start=await page.cdp.eval("window.__ironBench.start({map:'river',seed:1})"),teams=start.snapshot.teams;assert.equal(teams.player.credits,teams.enemy.credits);assert.deepEqual(teams.player.units,teams.enemy.units);assert.deepEqual(teams.player.structures,teams.enemy.structures);
+ let states=await page.cdp.eval('window.__ironDuel.summary()');assert.equal(states.player.credits,states.enemy.credits);for(const side of ['player','enemy']){const plan=commander.planFor('rush',commander.summarize(states[side]));await page.cdp.eval(`window.__ironDuel.apply(${JSON.stringify(side)},${JSON.stringify(plan)},'test')`);}
+ const first=await page.cdp.eval('window.__ironBench.step(60)');assert.equal(first.snapshot.computerAid.passive,0,'no one receives solo assistance');assert(first.intensity.unitsProduced.player>0&&first.intensity.unitsProduced.enemy>0,'both autonomous commanders produce units');states=await page.cdp.eval('window.__ironDuel.summary()');assert(states.player.own.units.miner>=2&&states.enemy.own.units.miner>=2);assert.equal(states.player.credits,first.snapshot.teams.player.credits);assert.equal(states.enemy.credits,first.snapshot.teams.enemy.credits);
+ const second=await page.cdp.eval('window.__ironBench.step(60)');assert(second.intensity.shots.player>0&&second.intensity.shots.enemy>0,'both commanders fight');console.log('PASS equal starts, two autonomous commanders, side-specific resources and combat, no subsidy.');
+ }finally{if(page)await runner.closePage(browser,page);await runner.closeBrowser(browser);server.close();}}
+main().catch(e=>{console.error(e);process.exitCode=1});

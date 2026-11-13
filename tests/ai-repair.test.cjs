@@ -20,7 +20,7 @@ const yard={id:101,kind:'shipyard',team:'enemy',hp:850,exitPoint:new THREE.Vecto
 const ctx={THREE,UNIT,STRUCTURE,elapsed:0,enemyCredits:10,buildings:[factory,yard],units:[tank,miner,ship],HALF_X:120,HALF_Z:100,
   isAir:u=>Boolean(UNIT[u.kind]?.aircraft),isNaval:u=>Boolean(UNIT[u.kind]?.naval),
   active:b=>b.hp>0&&!b.buildLeft,blocked:()=>false,living:()=>ctx.units,stats:e=>UNIT[e.kind]||STRUCTURE[e.kind],
-  distance:(a,b)=>a.mesh.position.distanceTo(b.mesh.position),visibleTo:()=>true,
+  distance:(a,b)=>a.mesh.position.distanceTo(b.mesh.position),visibleTo:()=>true,canAttack:()=>true,
   aiLog:()=>{},clearRoute:()=>{},baseOf:()=>({}),powerFor:()=>({low:false}),
   money:()=>ctx.enemyCredits,spend:(team,n)=>{ctx.enemyCredits-=n;},
   assignMining:u=>{u.mining=true;}};
@@ -32,6 +32,20 @@ assert(tank.aiRetreat&&miner.aiRetreat&&ship.aiRetreat,'idle half-health units s
 assert.equal(tank.aiRepairSource,factory.id);
 assert.equal(ship.aiRepairSource,yard.id);
 assert.equal(miner.mining,false);
+ctx.aiServiceDamagedUnits(ctx.units,{retreat:.28},[{}]);
+assert(!tank.aiRetreat&&!ship.aiRetreat,'able combat units leave repairs to defend when the base is threatened');
+assert(miner.aiRetreat,'defense recall does not interrupt miner repairs');
+ctx.aiServiceDamagedUnits(ctx.units,{retreat:.28});
+assert(tank.aiRetreat&&ship.aiRetreat,'combat units can resume repairs after the threat passes');
+ctx.canAttack=()=>false;
+ctx.aiServiceDamagedUnits(ctx.units,{retreat:.28},[{}]);
+assert(tank.aiRetreat,'units that cannot attack the approaching threat do not abandon repair');
+ctx.canAttack=()=>true;
+const critical=unit('heavy',-8,.2);ctx.units.push(critical);
+ctx.aiServiceDamagedUnits(ctx.units,{retreat:.28},[{}]);
+assert(critical.aiRetreat,'critically damaged defenders still seek repair during an attack');
+ctx.units.pop();
+ctx.aiServiceDamagedUnits(ctx.units,{retreat:.28});
 const fleeing=unit('miner',5,.4);fleeing.aiFleeUntil=10;ctx.units.push(fleeing);
 ctx.aiServiceDamagedUnits(ctx.units,{retreat:.28});assert(!fleeing.aiRetreat,'miner fleeing an active threat is not redirected into repair');ctx.units.pop();
 assert(tank.destination.distanceTo(miner.destination)>tank.radius+miner.radius,'repair positions have clearance');
@@ -45,6 +59,11 @@ tank.hp=tank.maxHp;
 miner.hp=miner.maxHp;
 ctx.aiServiceDamagedUnits(ctx.units,{retreat:.28});
 assert(!tank.aiRetreat&&!miner.aiRetreat&&miner.mining,'repaired units rejoin and miners resume work');
+
+const workers=[unit('miner',0,.75),unit('miner',2,.5),unit('miner',4,.4)];workers.forEach(u=>u.mining=true);ctx.units=workers;ctx.enemyCredits=100;
+ctx.aiServiceDamagedUnits(workers,{retreat:.28});assert(workers[0].mining&&!workers[0].aiRetreat,'a safe, serviceable miner keeps earning');assert(workers[1].aiRetreat&&workers[2].aiRetreat,'other damaged miners rotate into repair');
+workers[0].hp=workers[0].maxHp*.3;workers[1].hp=workers[1].maxHp*.72;ctx.aiServiceDamagedUnits(workers,{retreat:.28});assert(workers[0].aiRetreat&&workers[1].mining&&!workers[1].aiRetreat,'a repaired miner returns to work as the previous worker becomes critical');
+const attacker=unit('tank',2,1);attacker.team='player';ctx.units=[...workers,attacker];workers[1].mining=false;workers[1].aiRetreat=true;workers[1].aiResumeMining=true;ctx.aiServiceDamagedUnits(workers,{retreat:.28});assert(workers[1].aiRetreat&&!workers[1].mining,'a miner is not sent back to work beside a visible threat');
 
 const crawler=unit('repair',10,1),patient=unit('heavy',0,.2);
 ctx.buildings=[];ctx.units=[crawler,patient];ctx.enemyCredits=0;
