@@ -5,19 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Iron Field — Combined Arms</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%236ce6b1'/%3E%3Ctext x='7' y='23' font-size='20'%3EIF%3C/text%3E%3C/svg%3E">
-  <link rel="stylesheet" href="style.css?v=32">
+  <link rel="stylesheet" href="style.css?v=33">
   <script defer src="vendor/three.min.js"></script>
   <script defer src="map.js?v=8"></script>
-  <script defer src="data.js?v=16"></script>
+  <script defer src="data.js?v=17"></script>
   <script defer src="player-memory.js?v=4"></script>
-  <script defer src="network.js?v=16"></script>
+  <script defer src="network.js?v=17"></script>
   <script defer src="ui-art.js?v=17"></script>
-  <script defer src="weapon-fx.js?v=6"></script>
+  <script defer src="weapon-fx.js?v=9"></script>
   <script defer src="fog.js?v=2"></script>
   <script defer src="opponent.js?v=5"></script>
-  <script defer src="voice.js?v=4"></script>
+  <script defer src="voice.js?v=5"></script>
   <script defer src="ai-link.js?v=17"></script>
-  <script defer src="game.js?v=70"></script>
+  <script defer src="game.js?v=73"></script>
   <script defer src="music.js?v=2"></script>
 </head>
 <body>
@@ -94,6 +94,7 @@
     <aside class="sidebar">
       <div class="radar-frame"><div class="radar-heading"><span>TACTICAL RADAR</span><span class="radar-live">● ONLINE</span></div><canvas id="radar" width="270" height="160" tabindex="0" aria-label="Tactical minimap. Left-click or drag to pan the camera. Right-click to issue an order."></canvas><details class="sidebar-info"><summary aria-label="Radar controls" title="Radar controls"><span aria-hidden="true">i</span></summary><div class="info-content"><div class="radar-caption">LMB: camera · RMB: orders · Scout to reveal</div></div></details><div id="raid-status" class="raid-status" aria-label="Battle status">Enemy status</div></div>
       <nav class="tabs" aria-label="Production category"><button id="play-tab" class="active" aria-pressed="true" title="Units"><span>▰</span>Units</button><button id="build-tab" aria-pressed="false" title="Structures"><span>▥</span>Structures</button><button id="defense-tab" aria-pressed="false" title="Defenses"><span>⌖</span>Defenses</button></nav>
+      <section class="tech-console" aria-label="Command technology"><div><strong id="tech-level">COMMAND TIER I</strong><details class="sidebar-info"><summary aria-label="Technology information"><span aria-hidden="true">i</span></summary><div class="info-content"><p id="tech-caption"></p></div></details></div><button id="tech-upgrade">Upgrade Tier II · $450</button></section>
       <section id="superweapons" class="structure-controls" aria-label="Superweapons" hidden><strong>SUPERWEAPONS</strong><p id="super-warning" role="status"></p><div id="superweapon-list"></div></section>
       <section id="structure-actions" class="structure-controls" aria-label="Selected structure" hidden><div class="structure-heading"><strong id="structure-action-name"></strong><details class="sidebar-info structure-info"><summary aria-label="Repair and sell information" title="Repair and sell information"><span aria-hidden="true">i</span></summary><div class="info-content"><p id="structure-action-help" class="catalog-tip"></p></div></details></div><div class="structure-buttons"><button id="structure-repair" aria-pressed="false">Repair</button><button id="structure-sell">Sell</button></div><button id="structure-superweapon" hidden>Target superweapon</button></section>
       <div id="play-panel" class="panel">

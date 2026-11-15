@@ -1,0 +1,18 @@
+'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),data=require('../data.js');
+const source=fs.readFileSync(require.resolve('../game.js'),'utf8'),a=source.indexOf('  const techFor ='),b=source.indexOf('  const missingStructures',a);
+const cash={player:2000,enemy:2000},alerts=[],log=[];let low=false,network=false;
+const c={FIELD_DATA:data,UNIT:data.units,technology:{},localTeam:'player',outcome:'',elapsed:0,buildings:[{kind:'warFactory',team:'player'},{kind:'shipyard',team:'enemy'}],active:()=>true,baseOf:()=>({}),money:t=>cash[t],spend:(t,v)=>cash[t]-=v,powerFor:()=>({low}),announce:s=>alerts.push(s),sendAction:()=>network,battleLog:{event:(...x)=>log.push(x)},emitVoiceAlert:()=>{}};
+vm.runInNewContext(source.slice(a,b)+'\nthis.api={techFor,unitUnlocked,researchTechnology,updateTechnology};',c);const t=c.api;
+assert(t.unitUnlocked('tank','player'));assert(!t.unitUnlocked('heavy','player'));assert(!t.unitUnlocked('battleship','player'));
+assert(t.researchTechnology('player'));assert.equal(cash.player,1550);assert(!t.researchTechnology('player'),'duplicate research rejected');
+low=true;t.updateTechnology(24);assert.equal(t.techFor('player').tier,1,'low power slows research');assert.equal(t.techFor('player').progress,10.8);
+low=false;t.updateTechnology(14);assert.equal(t.techFor('player').tier,2);assert(t.unitUnlocked('heavy','player'));assert(t.unitUnlocked('frigate','player'));assert(!t.unitUnlocked('tesla','player'));assert.equal(t.techFor('enemy').tier,1,'tiers are per team');
+assert(t.researchTechnology('player'));t.updateTechnology(36);assert.equal(t.techFor('player').tier,3);assert(t.unitUnlocked('bomber','player'));assert(!t.researchTechnology('player'),'maximum tier');
+network=true;const before=cash.enemy;assert(t.researchTechnology('enemy'));assert.equal(cash.enemy,before,'client only sends command');assert(!t.techFor('enemy').researching);
+network=false;cash.enemy=100;assert(!t.researchTechnology('enemy'),'cannot research without credits');cash.enemy=1000;c.buildings=[];assert(!t.researchTechnology('enemy'),'requires completed producer');
+assert(source.includes("if(!unitUnlocked(kind,team))"),'queue path enforces tiers');assert(source.includes('technology:structuredClone(technology)'),'state exports research');assert(source.includes('technology=structuredClone(state.technology||{})'),'state restores research');
+const server=fs.readFileSync(require.resolve('../server.cjs'),'utf8'),start=server.indexOf('function validateAction('),end=server.indexOf('\nasync function body(',start);
+const relay={unitKinds:Object.keys(data.units),buildingKinds:Object.keys(data.buildings),MAP:require('../map.js'),fail:(status,message)=>Object.assign(new Error(message),{status})};
+vm.runInNewContext(server.slice(start,end)+';this.validate=validateAction;',relay);relay.validate({type:'research'});assert.throws(()=>relay.validate({type:'repairStructure'}),'structure commands still require a selection');
+console.log('PASS tier gates, costs, completion, low-power slowdown, separate teams, client authority and snapshot research.');

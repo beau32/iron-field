@@ -39,8 +39,8 @@
   // 1. SCENE, CAMERA, LIGHTS. Coordinates: X = east, Y = up, Z = south.
   // A scene is a tree of objects. A camera describes which part becomes an image.
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color('#78959a');
-  scene.fog = new THREE.Fog('#78959a', 210, 420);
+  scene.background = new THREE.Color('#718d96');
+  scene.fog = new THREE.Fog('#718d96', 210, 420);
   const ortho = new THREE.OrthographicCamera(-36, 36, 30, -30, 0.1, 200);
   const perspective = new THREE.PerspectiveCamera(44, 1, 0.1, 200);
   let camera = ortho;
@@ -51,7 +51,7 @@
   renderer.localClippingEnabled = true;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.12;
+  renderer.toneMappingExposure = 1.04;
   scene.add(new THREE.HemisphereLight('#e8f4ed', '#424b38', 1.9));
   const sun = new THREE.DirectionalLight('#ffe2ac', 3.1);
   sun.position.set(-50, 90, 30);
@@ -163,6 +163,12 @@
     const c = document.createElement('canvas'); c.width = c.height = size; const ctx = c.getContext('2d');
     let value = 1907; const noise = () => { value = (value * 1664525 + 1013904223) >>> 0; return value / 4294967296; };
     ctx.fillStyle = kind === 'water' ? '#476e77' : kind === 'road' ? '#726e59' : '#788959'; ctx.fillRect(0, 0, size, size);
+    if(kind==='grass')for(let i=0;i<55;i++){
+      const x=noise()*size,y=noise()*size,r=size*(.025+noise()*.08);
+      const patch=ctx.createRadialGradient(x,y,0,x,y,r);
+      patch.addColorStop(0,i%3?'rgba(158,143,96,.2)':'rgba(44,70,48,.18)');patch.addColorStop(1,'rgba(100,120,80,0)');
+      ctx.fillStyle=patch;ctx.fillRect(x-r,y-r,r*2,r*2);
+    }
     for (let i = 0; i < (kind === 'water' ? 1300 : 17000); i++) {
       const x = noise() * size, y = noise() * size, shade = noise();
       if (kind === 'water') { ctx.fillStyle = `rgba(171,210,206,${.03 + shade * .13})`; ctx.fillRect(x, y, 4 + noise() * 25, 1); }
@@ -176,13 +182,13 @@
     texture.wrapS = texture.wrapT = THREE.RepeatWrapping; texture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
     return texture;
   }
-  mat.ground.map = surfaceTexture('grass', 1024); mat.ground.color.set('#d2d9b0'); mat.ground.roughness = 1;
+  mat.ground.map = surfaceTexture('grass', 1024); mat.ground.color.set('#c3cda7'); mat.ground.roughness = 1;
   mat.road.map = surfaceTexture('road'); mat.road.map.repeat.set(5, 1); mat.road.color.set('#c0b699');
   mat.teal.roughness = mat.red.roughness = .48; mat.teal.metalness = mat.red.metalness = .28;
   mat.metal.roughness = .36; mat.metal.metalness = .65;
   const shore = box(world, mat.sand, 0, -1.05, 0, HALF_X * 2 + 8, .7, HALF_Z * 2 + 8); shore.castShadow = false;
   const waterTexture = surfaceTexture('water'); waterTexture.repeat.set(24, 24);
-  const waterMat = material('#8ec4c7', { map: waterTexture, roughness: .38, metalness: .15 });
+  const waterMat = material('#73b4be', { map: waterTexture, roughness: .32, metalness: .2 });
   const water = box(world, waterMat, 0, -1.55, 0, 900, .1, 900); water.castShadow = false; water.receiveShadow = false;
   // Low vegetation and pebble clusters use instancing to keep draw calls small.
   const grassMat = material('#566e42'), pebbleMat = material('#8b8c73');
@@ -297,6 +303,7 @@
   let battleRewards = {player:0,enemy:0,team3:0,team4:0}, lastRewards = {}, rewardUntil = 0;
   let voiceEvents=[],nextVoiceId=1,lastVoiceId=0,attackAlertAt={};
   let powerAlertState={},powerAlertClock=0;
+  let technology={};
   let localTeam = 'player', net = null, applyingCommand = false, commandTeam = null, winner = null;
   let remoteQueue = [], nextShotId = 1;
   let extraEconomies = {}, eliminated = [], matchTeams = ['player','enemy'];
@@ -314,12 +321,13 @@
   function shadeScene() {
     const shade=(root,conceal)=>{if(shadedRoots.has(root))return;root.traverse(o=>{if(o.material)for(const m of (Array.isArray(o.material)?o.material:[o.material]))fog.shade(m,conceal);});shadedRoots.add(root);};
     for(const root of scene.children) {
-      if(root===actors||root===deposits||root===effects||root===weaponFX.root)for(const child of root.children)shade(child,root===effects||root===weaponFX.root);
+      if(root===actors||root===deposits||root===effects||root===weaponFX.root||root===motionFX.root)for(const child of root.children)shade(child,root===effects||root===weaponFX.root||root===motionFX.root);
       else shade(root,false);
     }
   }
   const deliveredFor = team => team==='player'?delivered:team==='enemy'?enemyDelivered:extraEconomies[team]?.delivered||0;
   const weaponFX = new FIELD_WEAPONS.WeaponFX(scene);
+  const motionFX = new FIELD_WEAPONS.MotionFX(scene);
   let fxEvents = [], nextFXId = 1, lastVisualEvent = 0;
   function emitWeaponEvent(event) {
     const record = { ...event, id: nextFXId++, time: elapsed };
@@ -330,6 +338,12 @@
     lastVisualEvent = Math.max(lastVisualEvent, event.id);
     const point=event.origin||event.point||event.position;
     if(point&&!fog.at(localTeam,point.x,point.z))return;
+    if(event.type==='impact'&&point){
+      const bridge=MAP.bridges.find(b=>FIELD_MAP.inside(b,point.x,point.z));
+      const surface=bridge&&point.y>=BRIDGE_DECK_TOP?'bridge':FIELD_MAP.waterAt(MAP,point.x,point.z)?'water':'ground';
+      const surfaceY=surface==='bridge'?BRIDGE_DECK_TOP+.025:surface==='water'?.18:.08;
+      event={...event,surface:point.y-surfaceY>4?'air':surface,surfaceY,ceiling:bridge&&point.y<BRIDGE_DECK_BOTTOM?BRIDGE_DECK_BOTTOM-.02:null};
+    }
     weaponFX.emit(event);
     if (event.type === 'shot') {
       if(!restoring&&!paused&&!winner&&elapsed-event.time<1)window.IronFieldMusic?.combat(['artillery','rocket','tesla','bomb'].includes(event.visual)?2:1);
@@ -485,6 +499,31 @@
   const isNaval = e => e?.type==='unit' && Boolean(UNIT[e.kind].naval);
   const isProducer = b => ['warFactory','garrison','airfield','shipyard'].includes(b?.kind);
   const producerFor = (kind, team) => buildings.find(b => b.team === team && b.kind === UNIT[kind].producer && active(b));
+  const techFor = team => technology[team] ||= {tier:1,progress:0,researching:false};
+  const unitUnlocked = (kind,team) => (UNIT[kind].tier||1)<=techFor(team).tier;
+  function researchTechnology(team=localTeam){
+    if(outcome||!baseOf(team))return false;
+    const state=techFor(team),next=FIELD_DATA.technology[state.tier+1];
+    if(!next||state.researching)return false;
+    if(!buildings.some(b=>b.team===team&&['warFactory','shipyard'].includes(b.kind)&&active(b))){if(team===localTeam)announce('Complete a war factory or naval shipyard before upgrading.');return false;}
+    if(money(team)<next.cost){if(team===localTeam)announce('Not enough credits for the command upgrade.');return false;}
+    if(sendAction({type:'research'}))return true;
+    spend(team,next.cost);state.researching=true;state.progress=0;
+    battleLog.event(elapsed,'technology-started',{team,tier:state.tier+1,cost:next.cost});
+    if(team===localTeam)announce(`${next.name} research started.`);
+    return true;
+  }
+  function updateTechnology(dt){
+    for(const team of Object.keys(technology)){
+      const state=technology[team],next=FIELD_DATA.technology[state.tier+1];
+      if(!state.researching||!next||!baseOf(team))continue;
+      state.progress+=dt*(powerFor(team).low?.45:1);
+      if(state.progress>=next.time){state.tier++;state.progress=0;state.researching=false;
+        battleLog.event(elapsed,'technology-completed',{team,tier:state.tier});
+        emitVoiceAlert(team,'techReady');if(team===localTeam)announce(`${next.name} unlocked. Advanced units available.`);
+      }
+    }
+  }
   const missingStructures = (kind,team) => (STRUCTURE[kind].requires||[]).filter(required=>!buildings.some(b=>b.team===team&&b.kind===required&&active(b)));
   const prerequisiteMessage = (kind,team) => {const missing=missingStructures(kind,team);return missing.length?`Requires completed ${missing.map(k=>STRUCTURE[k].name).join(' + ')}.`:'';};
   const currentProduction = (production, kind) => production.find(q => UNIT[q.kind].producer === UNIT[kind].producer);
@@ -1037,7 +1076,7 @@
     }
     // A light stern wake uses two shared-geometry strips, with no particle simulation.
     const wake=new THREE.Group();wake.position.z=-length*.5;body.add(wake);rig.wake=wake;
-    for(const side of [-1,1]){const foam=box(wake,navalMat.wake,side*.22,.18,-.6,.12,.015,1.4);foam.rotation.y=side*.2;foam.castShadow=foam.receiveShadow=false;}
+    for(const side of [-1,1]){const foam=box(wake,navalMat.wake,side*.45,.18,-1,.24,.015,2.6);foam.rotation.y=side*.35;foam.castShadow=foam.receiveShadow=false;}
     wake.visible=false;
     turret.position.set(0,rig.mountY,rig.mountZ);
     batchStaticBoxes(body);batchStaticBoxes(turret);
@@ -1153,6 +1192,8 @@
       rotor=new THREE.Group();rotor.position.set(0,1.37,-.1);body.add(rotor);
       cylinder(rotor,groundMat.steel,0,0,0,.22,.16,8);
       box(rotor,groundMat.rubber,0,.05,0,5.5,.06,.18);box(rotor,groundMat.rubber,0,.05,0,.18,.06,5.5);
+      const blur=mesh(new THREE.CircleGeometry(2.65,32),new THREE.MeshBasicMaterial({color:0xb9cec5,transparent:true,opacity:.09,depthWrite:false,side:THREE.DoubleSide}),rotor,0,.06,0);
+      blur.rotation.x=-Math.PI/2;blur.castShadow=blur.receiveShadow=false;
       const tailRotor=new THREE.Group();tailRotor.position.set(.18,.82,-2.55);body.add(tailRotor);
       box(tailRotor,groundMat.rubber,0,0,0,.06,1.05,.09);box(tailRotor,groundMat.rubber,0,0,0,.06,.09,1.05);
       turret.position.y=-.05;groundBarrel(turret,[0,.05,.85],[0,.05,1.65],.055);
@@ -1495,6 +1536,7 @@
     const def = UNIT[kind], production = queueFor(team);
     if(producerId&&!buildings.some(b=>b.id===producerId&&b.team===team&&b.kind===def.producer&&active(b))){announce('Choose a completed production building of your own.');return;}
     if (outcome || !baseOf(team)) return;
+    if(!unitUnlocked(kind,team)){if(team==='enemy'&&!net?.active){const basic={warFactory:'tank',garrison:'rocketTrooper',shipyard:'patrolBoat'}[def.producer];if(basic)return queueUnit(basic,team);}if(team===localTeam)announce(`Research command Tier ${UNIT[kind].tier} to unlock ${def.name}.`);return;}
     if (!producerFor(kind, team)) { announce(`Complete a ${STRUCTURE[def.producer].name.toLowerCase()} first.`); return; }
     if (money(team) < def.cost) { announce('Not enough credits. Mine ore or earn battle rewards.'); return; }
     if (unitsFor(team).length + production.length >= 24) { announce('Unit limit reached (24, including queued units).'); return; }
@@ -1963,6 +2005,7 @@
     $('unit-catalog').scrollTop = 0;
   }
   for (const role of ['all', 'armor', 'siege', 'support', 'infantry', 'air', 'navy']) $(`filter-${role}`).onclick = () => filterRoster(role);
+  $('tech-upgrade').onclick=()=>researchTechnology();
   for (const [kind, def] of Object.entries(UNIT)) {
     const button = document.createElement('button'); button.id = `train-${kind}`; button.className = 'unit-option';
     const role = kind === 'miner' ? `Harvests ore · carries ${def.capacity} credits · unarmed` : def.role;
@@ -2140,6 +2183,35 @@
       const direction = u.repairTarget.mesh.position.clone().sub(u.mesh.position); rotateToward(u.turret, Math.atan2(direction.x, direction.z), dt); u.state = 'Repairing';
     } else if (u.destination) u.state = u.supportIds?.length?'Following behind squad':'Moving to support';
   }
+  function updateMotionVisual(u,dt){
+    const p=u.mesh.position;
+    const v=u.motionVisual ||= {last:p.clone(),clock:0,tick:0,moving:false};
+    if(dt<=0)return;
+    const dx=p.x-v.last.x,dz=p.z-v.last.z,travel=Math.hypot(dx,dz);v.last.copy(p);
+    v.moving=travel>.008&&travel<10;
+    if(!v.moving||!u.mesh.visible||u.hp<=0||UNIT[u.kind].infantry)return;
+    v.clock+=dt;const interval=$('graphics-quality').value==='performance'?.35:.18;
+    if(v.clock<interval)return;v.clock=0;v.tick++;
+    const direction=new THREE.Vector3(Math.sin(u.body.rotation.y),0,Math.cos(u.body.rotation.y));
+    const bridge=MAP.bridges.find(b=>FIELD_MAP.inside(b,p.x,p.z));
+    const ceiling=bridge&&p.y+u.body.position.y<BRIDGE_DECK_BOTTOM?BRIDGE_DECK_BOTTOM-.02:null;
+    const common={id:u.id,tick:v.tick,direction,ceiling};
+    if(isAir(u)){
+      if(u.kind==='gunship')return;
+      u.body.updateWorldMatrix(true,false);
+      const width=u.kind==='interceptor'?.42:1.55,z=u.kind==='interceptor'?-1.9:-1.1;
+      for(const side of [-1,1])motionFX.trail({...common,domain:'air',point:u.body.localToWorld(new THREE.Vector3(side*width,.25,z))});
+    }else if(isNaval(u)){
+      const rear=u.kind==='battleship'?2.6:u.kind==='frigate'?2.2:1.6;
+      const point=p.clone().addScaledVector(direction,-rear);point.y=.19;
+      motionFX.trail({...common,domain:'water',point,wide:u.kind!=='patrolBoat'});
+    }else{
+      // Bridge traffic and paved roads do not throw up soil clouds.
+      if(bridge||Math.abs(p.z+p.x*.61)<2.8)return;
+      const point=p.clone().addScaledVector(direction,-1.4);point.y+=u.body.position.y+.15;
+      motionFX.trail({...common,domain:'ground',point,wide:['heavy','miner','artillery'].includes(u.kind)});
+    }
+  }
   function animateVehicles(dt) {
     updateSuperVisuals();
     for (const u of units) {
@@ -2149,11 +2221,12 @@
         if(u.navalRig){
           const rig=u.navalRig;if(rig.radar)rig.radar.rotation.y+=dt*.9;
           for(const gun of rig.secondary)gun.rotation.y=u.turret.rotation.y-u.body.rotation.y;
-          rig.wake.visible=Boolean(u.destination||u.path.length);rig.wake.scale.z=.85+Math.sin(elapsed*5+u.id)*.15;
+          rig.wake.visible=Boolean(u.motionVisual?.moving);rig.wake.scale.z=.85+Math.sin(elapsed*5+u.id)*.15;
         }
         u.ring.position.y=isNaval(u)?.24:.09+u.body.position.y;
       }
       if(isAir(u)){u.ring.position.y=.09-u.mesh.position.y;if(u.flightRotor)u.flightRotor.rotation.y+=dt*30;u.body.position.y=Math.sin(elapsed*3+u.id)*.06;}
+      updateMotionVisual(u,dt);
       updateUnitDamage(u,dt);
       if (u.legs?.length) u.legs.forEach((leg,i) => { leg.rotation.x = u.destination || u.path.length ? Math.sin(elapsed*10+i*Math.PI)*.5 : 0; });
 
@@ -2291,7 +2364,7 @@
     const side=team=>{
       const count=list=>list.reduce((result,e)=>{result[e.kind]=(result[e.kind]||0)+1;return result;},{});
       const army=unitsFor(team).filter(u=>u.hp>0),structures=buildings.filter(b=>b.team===team&&b.hp>0),fighters=army.filter(u=>UNIT[u.kind].damage>0),hq=baseOf(team);
-      return {units:count(army),buildings:count(structures),ready:count(structures.filter(active)),queued:team==='enemy'?count(remoteQueue):{},health:fighters.length?Math.round(100*fighters.reduce((n,u)=>n+u.hp,0)/fighters.reduce((n,u)=>n+u.maxHp,0)):100,hqHealth:hq?Math.round(100*hq.hp/hq.maxHp):0};
+      return {techTier:techFor(team).tier,units:count(army),buildings:count(structures),ready:count(structures.filter(active)),queued:team==='enemy'?count(remoteQueue):{},health:fighters.length?Math.round(100*fighters.reduce((n,u)=>n+u.hp,0)/fighters.reduce((n,u)=>n+u.maxHp,0)):100,hqHealth:hq?Math.round(100*hq.hp/hq.maxHp):0};
     };
     const recent=(commander.battleEvents||[]).filter(e=>elapsed-e.at<=45),plan=currentModelPlan();
     return {elapsed:Math.floor(elapsed),credits:Math.floor(enemyCredits),own:side('enemy'),opponent:side('player'),contacts:visibleEnemyContacts(),...(includeMap?{strategicMap:strategicMap()}:{}),profile:window.FieldPlayerMemory?.observedProfile?.()||null,context:{water:MAP.water.length>0,lowPower:powerFor('enemy').low,pressure:aiBaseThreats().length,oreRemaining:Math.floor(fields.reduce((n,f)=>n+f.amount,0))},feedback:{
@@ -2334,7 +2407,7 @@
     const teams={};
     for(const team of ['player','enemy']){
       const army=unitsFor(team).filter(u=>u.hp>0),structures=buildings.filter(b=>b.team===team&&b.hp>0);
-      teams[team]={credits:Math.floor(money(team)),oreDelivered:deliveredFor(team),killRewards:battleRewards[team]||0,power:{...powerFor(team)},units:count(army),structures:count(structures),completedStructures:count(structures.filter(active)),queue:queueFor(team).map(q=>({kind:q.kind,progress:q.progress,producerId:q.producerId})),
+      teams[team]={technology:{...techFor(team)},credits:Math.floor(money(team)),oreDelivered:deliveredFor(team),killRewards:battleRewards[team]||0,power:{...powerFor(team)},units:count(army),structures:count(structures),completedStructures:count(structures.filter(active)),queue:queueFor(team).map(q=>({kind:q.kind,progress:q.progress,producerId:q.producerId})),
         entities:[...army,...structures].map(e=>({id:e.id,kind:e.kind,type:e.type,hp:Math.round(e.hp),maxHp:e.maxHp,kills:e.type==='unit'?e.kills:undefined,position:point(e.mesh.position),state:e.state,destination:point(e.destination),attackTarget:e.attackTarget?.id,repairTarget:e.repairTarget?.id,raid:Boolean(e.raid),retreating:Boolean(e.aiRetreat),pathLength:e.path?.length,cargo:e.cargo,mining:e.mining,mineState:e.mineState,oreField:e.field?.id,buildLeft:e.buildLeft,repairing:Boolean(e.repairing)}))};
     }
     return {elapsed,paused,simulationSpeed:simSpeed,outcome,winner,raids,teams,ore:fields.map(f=>({id:f.id,amount:Math.round(f.amount)})),computerAid:{...computerAid},
@@ -2494,6 +2567,7 @@
     if(plan.unit==='auto')return false;
     const kind=plan.unit,def=UNIT[kind],quota=def.aircraft?4:3;
     if(aiAvoidNavalLosses(kind))return false;
+    if(!unitUnlocked(kind,'enemy')){aiUpgradeTechnology();return false;}
     if(count(kind)>=quota){commander.intent=`${def.name} group assembled · supporting the force`;return false;}
     if(!producerFor(kind,'enemy'))return aiPriorityBuild(def.producer);
     if(own.length+remoteQueue.length>=policy.cap){commander.intent='Army limit reached · committing existing forces';return false;}
@@ -2518,7 +2592,7 @@
     if(count('gunship')+count('interceptor')+count('bomber')<2)options.push(seen.some(isAir)?'interceptor':'gunship');
     for(const kind of options){
       const def=UNIT[kind];
-      if(!producerFor(kind,'enemy')||remoteQueue.some(q=>UNIT[q.kind].producer===def.producer)||enemyCredits<def.cost+150)continue;
+      if(!unitUnlocked(kind,'enemy')||!producerFor(kind,'enemy')||remoteQueue.some(q=>UNIT[q.kind].producer===def.producer)||enemyCredits<def.cost+150)continue;
       queueUnit(kind,'enemy');commander.nextCombinedRecruit=elapsed+15;aiLog('Supporting the force: producing '+def.name);return;
     }
   }
@@ -2687,7 +2761,7 @@
     else if(infantry>armor && count('flame')<2) preferences=['flame','rifleman'];
     else if(armor>=3 && count('destroyer')<Math.ceil(fighters.length/3)) preferences=['destroyer','rocketTrooper','tank'];
     else preferences=count('tank')<=count('heavy')+1?['tank','rifleman']:['heavy','rocketTrooper','scout'];
-    const kind=preferences.find(k=>!aiAvoidNavalLosses(k)&&producerFor(k,'enemy')&&enemyCredits>=UNIT[k].cost&&!remoteQueue.some(q=>UNIT[q.kind].producer===UNIT[k].producer));
+    const kind=preferences.find(k=>unitUnlocked(k,'enemy')&&!aiAvoidNavalLosses(k)&&producerFor(k,'enemy')&&enemyCredits>=UNIT[k].cost&&!remoteQueue.some(q=>UNIT[q.kind].producer===UNIT[k].producer));
     if(kind) {queueUnit(kind,'enemy');commander.nextRecruit=elapsed+policy.recruit;}
   }
   function aiBaseThreats(){
@@ -2734,7 +2808,7 @@
     if(armor>=3&&count('destroyer')<Math.min(4,Math.ceil(armor/3))){options=['destroyer'];reason='Countering enemy armor';}
     else if(defenses>=2&&count('artillery')<Math.min(3,Math.ceil(defenses/2))){options=['artillery'];reason='Preparing siege against defenses';}
     else if(infantry>=4&&count('flame')<Math.min(2,Math.ceil(infantry/4))){options=['flame'];reason='Countering enemy infantry';}
-    const kind=options.find(k=>producerFor(k,'enemy')&&enemyCredits>=UNIT[k].cost&&!remoteQueue.some(q=>UNIT[q.kind].producer===UNIT[k].producer));
+    const kind=options.find(k=>unitUnlocked(k,'enemy')&&producerFor(k,'enemy')&&enemyCredits>=UNIT[k].cost&&!remoteQueue.some(q=>UNIT[q.kind].producer===UNIT[k].producer));
     if(!kind)return false;
     queueUnit(kind,'enemy');commander.nextRecruit=elapsed+policy.recruit;
     aiTactic(reason+': producing '+UNIT[kind].name);return true;
@@ -2972,6 +3046,14 @@
     }
     return null;
   }
+  function aiUpgradeTechnology(){
+    const state=techFor('enemy'),next=FIELD_DATA.technology[state.tier+1],base=baseOf('enemy');
+    if(!next||state.researching||!base||base.hp<base.maxHp*.55||powerFor('enemy').low||aiBaseThreats().length)return false;
+    const own=unitsFor('enemy');
+    if(own.filter(u=>u.kind==='miner').length<3||own.filter(u=>stats(u).damage>0).length<4||elapsed<(state.tier===1?60:150))return false;
+    if(enemyCredits<next.cost+120)return false;
+    if(researchTechnology('enemy')){aiLog('Researching command '+next.name);return true;}return false;
+  }
   function updateCommander() {
     if(net?.active || !raids || !baseOf('enemy') || elapsed<commander.nextThink)return;
     commander.nextThink=elapsed+1.5;
@@ -2981,6 +3063,7 @@
     const policy=aiPolicy();
     commander.intent='Balancing the army and protecting miners';
     aiEconomy();
+    aiUpgradeTechnology();
     const base=baseOf('enemy'), own=unitsFor('enemy'),fighters=own.filter(u=>UNIT[u.kind].damage>0);
     const assets=[...buildings.filter(b=>b.team==='enemy'&&active(b)),...own.filter(u=>u.kind==='miner')];
     const threats=aiBaseThreats();
@@ -3160,7 +3243,7 @@
   function simulate(dt) {
     if (paused || outcome || (net?.active && !net.playable)) return;
     elapsed += dt; fogClock+=dt; if(fogClock>=.12){refreshFog();fogClock=0;}
-    updateComputerAid(dt); updateSuperweapons(dt);
+    updateComputerAid(dt); updateSuperweapons(dt); updateTechnology(dt);
     for (const b of buildings) {
       if (b.hp <= 0) continue;
       if (b.buildLeft > 0) {
@@ -3179,7 +3262,7 @@
         const lines = new Set();
         for (const item of [...production]) {
           const def=UNIT[item.kind]; if(lines.has(def.producer)) continue; lines.add(def.producer);
-          if (!producerFor(item.kind,team)) continue;
+          if (!producerFor(item.kind,team)||!unitUnlocked(item.kind,team)) continue;
           item.progress = Math.min(def.time, item.progress + dt * (powerFor(team).low ? .45 : 1));
           if(item.progress >= def.time && spawnUnit(item.kind,team,item.producerId)) { production.splice(production.indexOf(item),1); emitVoiceAlert(team,'ready',item.kind); if(team===localTeam) announce(`${def.name} ready.`);else if(team==='enemy'&&!net?.active)aiLog(`${def.name} ready`); }
         }
@@ -3236,13 +3319,13 @@
     for(const v of superVisuals.values())v.material.dispose();superVisuals.clear();superEffects.clear();superStrikes=[];
     window.IronFieldMusic?.reset();
     window.FieldVoice?.reset();voiceEvents=[];nextVoiceId=1;lastVoiceId=0;attackAlertAt={};
-    powerAlertState={};powerAlertClock=0;
+    powerAlertState={};powerAlertClock=0;technology={};
     units.forEach(releaseUnitDamage);
     const shared = new Set([boxGeometry, wheelGeometry, ringGeometry, selectionRingGeometry, burstGeometry, smokeGeometry, damageFlameGeometry]), disposed = new Set();
     for (const root of [actors, deposits]) root.traverse(o => {
       if (o.geometry && !shared.has(o.geometry) && !disposed.has(o.geometry)) { disposed.add(o.geometry); o.geometry.dispose(); }
     });
-    weaponFX.clear(); fxEvents=[]; nextFXId=1; lastVisualEvent=0;
+    weaponFX.clear(); motionFX.clear(); fxEvents=[]; nextFXId=1; lastVisualEvent=0;
     bursts.forEach(b => b.mesh.material.dispose()); actors.clear(); deposits.clear(); effects.clear(); $('labels').replaceChildren();
     units = []; buildings = []; fields = []; shells = []; bursts = []; markers = []; queue = []; selected.clear(); keys.clear(); controlGroups.clear(); pointer = null; finishPointer();
     filterRoster();
@@ -3273,7 +3356,7 @@
         createBuilding('base',team,(39+MAP.spawnOffsetX)*sx,(29+MAP.spawnOffsetZ)*sz);createBuilding('refinery',team,(43+MAP.spawnOffsetX)*sx,(20+MAP.spawnOffsetZ)*sz);
         createBuilding('power',team,(29+MAP.spawnOffsetX)*sx,(34+MAP.spawnOffsetZ)*sz);createBuilding('turret',team,(28+MAP.spawnOffsetX)*sx,(23+MAP.spawnOffsetZ)*sz);
         createUnit('scout',team,(29+MAP.spawnOffsetX)*sx,(17+MAP.spawnOffsetZ)*sz);createUnit('tank',team,(33+MAP.spawnOffsetX)*sx,(22+MAP.spawnOffsetZ)*sz);
-        createUnit('tank',team,(30+MAP.spawnOffsetX)*sx,(27+MAP.spawnOffsetZ)*sz);createUnit('artillery',team,(35+MAP.spawnOffsetX)*sx,(35+MAP.spawnOffsetZ)*sz);
+        createUnit('tank',team,(30+MAP.spawnOffsetX)*sx,(27+MAP.spawnOffsetZ)*sz);createUnit('rocketTrooper',team,(35+MAP.spawnOffsetX)*sx,(35+MAP.spawnOffsetZ)*sz);
         const field=fields[['player','enemy','team3','team4'].indexOf(team)];
         assignMining(createUnit('miner',team,(39+MAP.spawnOffsetX)*sx,(14+MAP.spawnOffsetZ)*sz),field);assignMining(createUnit('miner',team,(44+MAP.spawnOffsetX)*sx,(14+MAP.spawnOffsetZ)*sz),field);
       }
@@ -3284,13 +3367,13 @@
     spawnBuilding('power', 'player', -8, 17); spawnBuilding('turret', 'player', -6, 7);
     spawnBuilding('base', 'enemy', 17, -12); spawnBuilding('refinery', 'enemy', 22, -3);
     spawnBuilding('power', 'enemy', 8, -17); spawnBuilding('turret', 'enemy', 6, -7);
-    spawnUnit('scout', 'player', -10, 8); spawnUnit('tank', 'player', -13, 7); spawnUnit('tank', 'player', -10, 11); spawnUnit('artillery', 'player', -12, 16);
+    spawnUnit('scout', 'player', -10, 8); spawnUnit('tank', 'player', -13, 7); spawnUnit('tank', 'player', -10, 11); spawnUnit('rocketTrooper', 'player', -12, 16);
     const miner1 = spawnUnit('miner', 'player', -18, 0), miner2 = spawnUnit('miner', 'player', -20, -2);
     assignMining(miner1, fields[0]); assignMining(miner2, fields[0]);
-    spawnUnit('scout', 'enemy', 10, -8); spawnUnit('tank', 'enemy', 13, -7); spawnUnit('tank', 'enemy', 10, -11); spawnUnit('artillery', 'enemy', 12, -16);
+    spawnUnit('scout', 'enemy', 10, -8); spawnUnit('tank', 'enemy', 13, -7); spawnUnit('tank', 'enemy', 10, -11); spawnUnit('rocketTrooper', 'enemy', 12, -16);
     const enemyMiner = spawnUnit('miner', 'enemy', 18, 0),enemyMiner2=spawnUnit('miner', 'enemy', 20, 2); assignMining(enemyMiner, fields[2]);assignMining(enemyMiner2, fields[2]);
     }
-    if(!net?.active)battleLog.start({game:'Iron Field',protocolVersion:16,loggingVersion:1,map:{id:MAP.id,name:MAP.name},mode:'solo',timeBasis:'simulation seconds; snapshots at minute boundaries',opponentStyle},battleLogSnapshot);
+    if(!net?.active)battleLog.start({game:'Iron Field',protocolVersion:17,loggingVersion:1,map:{id:MAP.id,name:MAP.name},mode:'solo',timeBasis:'simulation seconds; snapshots at minute boundaries',opponentStyle},battleLogSnapshot);
     refreshFog(); shadeScene(); homeCamera(); updatePause(); updateUI(); announce('Miners are harvesting. Build your army and protect the supply line.');
   }
 
@@ -3437,16 +3520,25 @@
     } else {
       $('selection-detail').textContent = 'Left-click / drag to select. Right-click to command. Double-click selects matching units.'; $('selection-extra').textContent = '';
     }
+    const tech=techFor(localTeam),nextTech=FIELD_DATA.technology[tech.tier+1];
+    $('tech-level').textContent=`COMMAND TIER ${['','I','II','III'][tech.tier]}`;
+    $('tech-caption').textContent=tech.researching?(power.low?'Research slowed · LOW POWER':nextTech.description):nextTech?nextTech.description:'All unit technology unlocked';
+    const researchButton=$('tech-upgrade');
+    researchButton.textContent=!nextTech?'Fully upgraded':tech.researching?`${nextTech.name} · ${Math.ceil((nextTech.time-tech.progress)/(power.low?.45:1))}s`:`Upgrade ${nextTech.name} · $${nextTech.cost}`;
+    researchButton.disabled=Boolean(outcome)||held||!nextTech||tech.researching||myCredits<(nextTech?.cost||0)||!buildings.some(b=>b.team===localTeam&&['warFactory','shipyard'].includes(b.kind)&&active(b));
+    researchButton.title='Upgrade at your command factory. Complete a war factory or shipyard first. Low power slows research.';
+    researchButton.style.setProperty('--research-progress',tech.researching?tech.progress/nextTech.time:0);
     for (const [kind, def] of Object.entries(UNIT)) {
       const button = $(`train-${kind}`), count = myQueue.filter(q => q.kind === kind).length, current = currentProduction(myQueue, kind)?.kind === kind ? currentProduction(myQueue, kind) : null;
-      const locked = !producerFor(kind, localTeam);
+      const techLocked=!unitUnlocked(kind,localTeam);
+      const locked = techLocked||!producerFor(kind, localTeam);
       const unavailable = locked || myCredits < def.cost || friendly.length + myQueue.length >= 24;
       button.disabled = Boolean(outcome) || held || (unavailable && !count);
       button.classList.toggle('locked', locked);
-      button.title = `${def.name} — ${def.role}. ${locked ? 'Requires completed ' : 'Produced at '}${STRUCTURE[def.producer].name}. Right-click refunds a queued unit.`;
+      button.title = `${def.name} — ${def.role}. Tier ${def.tier||1}. ${techLocked?'Upgrade the command tier. ':''}${locked ? 'Requires completed ' : 'Produced at '}${STRUCTURE[def.producer].name}. Right-click refunds a queued unit.`;
       button.classList.toggle('unavailable', unavailable); button.classList.toggle('producing', Boolean(current));
       button.querySelector('.build-count').hidden = !count; button.querySelector('.build-count').textContent = count;
-      button.querySelector('.card-state').textContent = locked ? `${count ? 'PAUSED · ' : 'NEEDS '}${STRUCTURE[def.producer].name.toUpperCase()}` : current ? current.progress>=def.time?'EXIT BLOCKED':`${Math.floor(current.progress / def.time * 100)}%` : count ? 'QUEUED' : unavailable ? 'UNAVAILABLE' : 'READY';
+      button.querySelector('.card-state').textContent = locked ? techLocked?`REQUIRES TIER ${def.tier}`:`${count ? 'PAUSED · ' : 'NEEDS '}${STRUCTURE[def.producer].name.toUpperCase()}` : current ? current.progress>=def.time?'EXIT BLOCKED':`${Math.floor(current.progress / def.time * 100)}%` : count ? 'QUEUED' : unavailable ? 'UNAVAILABLE' : 'READY';
       button.style.setProperty('--progress', current ? Math.min(1, current.progress / def.time) : 0);
     }
     for (const kind of BUILDABLE) {
@@ -3488,6 +3580,7 @@
       if (action.type === 'superweapon')launchSuperweapon(squad[0],action.point,team);
       if (action.type === 'rally')setRally(new THREE.Vector3(action.point.x,0,action.point.z),squad,team);
       if (action.type === 'queue') queueUnit(action.kind, team, action.producerId);
+      if (action.type === 'research') researchTechnology(team);
       if (action.type === 'cancelQueue') cancelQueue(team, action.kind);
       if (action.type === 'repairStructure') repairStructure(squad[0],action.enabled,team);
       if (action.type === 'sellStructure') sellStructure(squad[0],team);
@@ -3509,7 +3602,7 @@
   const vectorJSON = v => v ? { x: Math.round(v.x*1000)/1000, y: Math.round(v.y*1000)/1000, z: Math.round(v.z*1000)/1000 } : null;
   const fromJSON = v => v ? new THREE.Vector3(v.x, v.y || 0, v.z) : null;
   function exportNetworkState() {
-    return { superStrikes:superStrikes.map(s=>({...s})), mapId:MAP.id, matchTeams, extraEconomies, eliminated, battleRewards, lastRewards, voiceEvents:voiceEvents.filter(e=>elapsed-e.time<12), nextVoiceId, attackAlertAt, powerAlertState, fogExplored:fog.save(true), elapsed, credits, enemyCredits, delivered, enemyDelivered, queue, remoteQueue, paused, winner, seed, nextId, nextShotId, nextFXId, fxEvents,
+    return { technology:structuredClone(technology), superStrikes:superStrikes.map(s=>({...s})), mapId:MAP.id, matchTeams, extraEconomies, eliminated, battleRewards, lastRewards, voiceEvents:voiceEvents.filter(e=>elapsed-e.time<12), nextVoiceId, attackAlertAt, powerAlertState, fogExplored:fog.save(true), elapsed, credits, enemyCredits, delivered, enemyDelivered, queue, remoteQueue, paused, winner, seed, nextId, nextShotId, nextFXId, fxEvents,
       fields: fields.map(f => ({ id: f.id, amount: f.amount, initialAmount:f.initialAmount,name:f.name,x:f.mesh.position.x,z:f.mesh.position.z })),
       entities: living().map(e => ({ id: e.id, kind: e.kind, type: e.type, team: e.team, position: vectorJSON(e.mesh.position), hp: e.hp, kills:e.type==='unit'?e.kills:undefined, rallyPoint:vectorJSON(e.rallyPoint),
         superCharge:e.superCharge||0,empUntil:e.empUntil||0,buildLeft: e.buildLeft || 0, repairing:Boolean(e.repairing), body: e.body?.rotation.y || 0, turret: e.turret?.rotation.y || 0, rotor: e.rotor?.rotation.y || 0,
@@ -3525,6 +3618,7 @@
   function importNetworkState(state, restoring = false) {
     if (!state || !Array.isArray(state.entities)) return;
     superStrikes=(state.superStrikes||[]).map(s=>({...s}));
+    technology=structuredClone(state.technology||{});
     chooseMap(state.mapId);
     networkSampleAt=performance.now();networkSampleElapsed=state.elapsed;
     if(restoring||networkRenderTime===null)networkRenderTime=state.elapsed-.075;
@@ -3646,14 +3740,14 @@
     } else {accumulator=0;if(!net.isHost)interpolateNetwork(realDt);}
     if(net?.canPublish&&now-lastPublished>=50){lastPublished=now;net.publish(exportNetworkState());}
     const visualDt = paused || outcome || (net?.active && !net.playable) ? 0 : realDt * (net?.active ? 1 : simSpeed);
-    weaponFX.update(visualDt,camera); animateVehicles(visualDt); shadeScene(); renderer.render(scene, camera); updateLabels();
+    weaponFX.update(visualDt,camera); animateVehicles(visualDt); motionFX.update(visualDt,camera); shadeScene(); renderer.render(scene, camera); updateLabels();
     uiTimer += realDt; fpsTimer += realDt; frames++;
     if (uiTimer > .12) { window.IronFieldMusic?.setBattleState(!paused&&!winner&&(!net?.active||net.playable));updateUI(); uiTimer = 0; }
     if (fpsTimer > .8) { $('render-stats').textContent = `${Math.round(frames / fpsTimer)} FPS · ${renderer.info.render.triangles.toLocaleString()} TRIANGLES · WEBGL`; fpsTimer = 0; frames = 0; }
   }
   // Console diagnostics return copies, so inspection cannot alter the simulation.
   window.IronField = Object.freeze({
-    snapshot: () => ({ version: 16, matchTeams:[...matchTeams],eliminated:[...eliminated],winner,fog:fog.summary(localTeam), map: { id:MAP.id,name:MAP.name,water:MAP.water,bridges:MAP.bridges,width: HALF_X * 2, depth: HALF_Z * 2, buildRadius: MAP.buildRadius }, localTeam, network: { active: Boolean(net?.active), role: net?.role, code: net?.session?.code, phase: net?.room?.phase, playable: Boolean(net?.playable) }, credits: money(localTeam), delivered: deliveredFor(localTeam), rewards: battleRewards[localTeam]||0, enemyCredits, queue: queueFor(localTeam).map(q => ({ ...q })), paused, outcome, elapsed,
+    snapshot: () => ({ version: 17, technology:structuredClone(technology), matchTeams:[...matchTeams],eliminated:[...eliminated],winner,fog:fog.summary(localTeam), map: { id:MAP.id,name:MAP.name,water:MAP.water,bridges:MAP.bridges,width: HALF_X * 2, depth: HALF_Z * 2, buildRadius: MAP.buildRadius }, localTeam, network: { active: Boolean(net?.active), role: net?.role, code: net?.session?.code, phase: net?.room?.phase, playable: Boolean(net?.playable) }, credits: money(localTeam), delivered: deliveredFor(localTeam), rewards: battleRewards[localTeam]||0, enemyCredits, queue: queueFor(localTeam).map(q => ({ ...q })), paused, outcome, elapsed,
       camera: camera.type, cameraView: { ...view }, power: powerFor(localTeam), raids, nextRaid, wave, ai: net?.active ? null : {style:opponentStyle,policy:aiPolicy().name,plan:currentModelPlan()?{...currentModelPlan()}:null,intent:commander.intent,decisions:commander.decisions,events:commander.events.map(e=>({...e})),model:commander.model,pending:commander.pending,status:commander.modelStatus,mode:commander.mode,targetId:commander.targetId,queue:remoteQueue.map(q=>({...q}))}, placement, selected: [...selected].map(u => u.id),
       fields: fields.map(f => ({ id: f.id, name: f.name, amount: f.amount, x: f.mesh.position.x, z: f.mesh.position.z })),
       entities: living().map(e => ({ visible:visibleTo(e),rendered:e.mesh.visible,labelHidden:e.label.hidden,id: e.id, type: e.type, kind: e.kind, team: e.team, hp: e.hp, maxHp: e.maxHp,

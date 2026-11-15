@@ -40,6 +40,13 @@ const data = {
   }
 };
 for (const [kind, unit] of Object.entries(data.units)) unit.producer ||= kind === 'miner' ? 'base' : 'warFactory';
+data.technology={
+  2:{name:'Tier II',cost:450,time:24,description:'Heavy armor, siege, specialists, aircraft and missile frigates'},
+  3:{name:'Tier III',cost:850,time:36,description:'Railguns, rocket carriers, Tesla tanks, bombers and battleships'}
+};
+for(const unit of Object.values(data.units))unit.tier=1;
+for(const kind of ['heavy','artillery','flame','sniper','gunship','interceptor','frigate'])data.units[kind].tier=2;
+for(const kind of ['destroyer','rocket','tesla','bomber','battleship'])data.units[kind].tier=3;
 const prerequisites={missileSilo:['airfield','power'],empArray:['airfield','power'],power:['base'],refinery:['power'],garrison:['power'],warFactory:['refinery','garrison'],airfield:['warFactory'],shipyard:['refinery','power'],turret:['garrison'],flameBunker:['garrison'],missileBattery:['warFactory'],teslaCoil:['warFactory','power']};
 for(const [kind,requires] of Object.entries(prerequisites))data.buildings[kind].requires=requires;
 for (const kind of ['rocket','rocketTrooper']) data.units[kind].targets='all';

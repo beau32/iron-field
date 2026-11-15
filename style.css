@@ -205,3 +205,5 @@ dialog{color:var(--text);background:var(--panel);border:1px solid #51635e;border
  .sidebar>.panel>.sidebar-info{position:absolute;top:3px;right:8px;margin:0;z-index:5}
  .sidebar>.panel>.sidebar-info .info-content{position:absolute;top:27px;right:0;width:250px;box-shadow:0 6px 18px #0008}
 }
+
+.tech-console{padding:8px 12px;border-bottom:1px solid #53664a;background:#1b3028;font-size:11px}.tech-console>div{display:flex;align-items:center;justify-content:space-between;gap:8px}.tech-console strong{color:#f1d48a;letter-spacing:.1em}.tech-console .sidebar-info{position:relative}.tech-console button{width:100%;margin-top:5px;padding:7px 9px;min-height:30px;font-size:12px;background:linear-gradient(to right,#4b6850 calc(var(--research-progress,0)*100%),#273d32 0);border:1px solid #8a9866;color:#f3df9c}.tech-console button:disabled{opacity:.7}.tech-console .sidebar-info summary{width:22px;height:22px;min-height:0;font-size:15px}

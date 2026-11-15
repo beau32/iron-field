@@ -12,12 +12,14 @@ function duelInstrument(original){
     [credits,enemyCredits]=[enemyCredits,credits];[delivered,enemyDelivered]=[enemyDelivered,delivered];
     [queue,remoteQueue]=[remoteQueue,queue];[battleRewards.player,battleRewards.enemy]=[battleRewards.enemy,battleRewards.player];
     [fog.teams.player,fog.teams.enemy]=[fog.teams.enemy,fog.teams.player];
+    [technology.player,technology.enemy]=[technology.enemy,technology.player];
     [commander,benchOther]=[benchOther,commander];[nextRaid,benchOtherRaid]=[benchOtherRaid,nextRaid];[wave,benchOtherWave]=[benchOtherWave,wave];
     localTeam=localTeam==='player'?'enemy':'player';benchFlipped=!benchFlipped;
     try{return fn();}finally{
       localTeam=localTeam==='player'?'enemy':'player';benchFlipped=!benchFlipped;
       [commander,benchOther]=[benchOther,commander];[nextRaid,benchOtherRaid]=[benchOtherRaid,nextRaid];[wave,benchOtherWave]=[benchOtherWave,wave];
       [fog.teams.player,fog.teams.enemy]=[fog.teams.enemy,fog.teams.player];
+    [technology.player,technology.enemy]=[technology.enemy,technology.player];
       [queue,remoteQueue]=[remoteQueue,queue];[battleRewards.player,battleRewards.enemy]=[battleRewards.enemy,battleRewards.player];
       [credits,enemyCredits]=[enemyCredits,credits];[delivered,enemyDelivered]=[enemyDelivered,delivered];
       for(const e of [...units,...buildings])if(e.team==='player'||e.team==='enemy')e.team=e.team==='player'?'enemy':'player';

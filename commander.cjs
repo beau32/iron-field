@@ -69,7 +69,7 @@ function counts(value,keys){
 function summarize(value){
   if(!value||!integer(value.elapsed,86400)||!integer(value.credits,1000000))throw failure(400,'Invalid battle summary.');
   const bounded=(v,fallback,max)=>{if(v===undefined)return fallback;if(!integer(v,max))throw failure(400,'Invalid strategic feedback.');return v;};
-  const side=v=>{if(!v)throw failure(400,'Missing army.');const owned=counts(v.buildings,['base',...buildings]);return {units:counts(v.units,units),buildings:owned,ready:v.ready===undefined?owned:counts(v.ready,['base',...buildings]),queued:counts(v.queued||{},units),health:bounded(v.health,100,100),hqHealth:bounded(v.hqHealth,owned.base?100:0,100)};};
+  const side=v=>{if(!v)throw failure(400,'Missing army.');const owned=counts(v.buildings,['base',...buildings]);if(v.techTier!==undefined&&![1,2,3].includes(v.techTier))throw failure(400,'Invalid command tier.');return {techTier:v.techTier===undefined?3:bounded(v.techTier,1,3),units:counts(v.units,units),buildings:owned,ready:v.ready===undefined?owned:counts(v.ready,['base',...buildings]),queued:counts(v.queued||{},units),health:bounded(v.health,100,100),hqHealth:bounded(v.hqHealth,owned.base?100:0,100)};};
   const context=value.context||{};if(typeof context!=='object'||Array.isArray(context)||!integer(context.pressure??0,400)||typeof (context.water??false)!=='boolean'||typeof (context.lowPower??false)!=='boolean')throw failure(400,'Invalid tactical context.');
   const f=value.feedback||{};
   if(typeof f!=='object'||Array.isArray(f)||!['','balanced','rush','defend','economy','air','anti-air','siege','anti-armor','naval'].includes(f.operation||'')||!['Preparing','Building forces','Attacking','Defending','Regrouping'].includes(f.mode||'Preparing')||typeof(f.stalled??false)!=='boolean')throw failure(400,'Invalid operation feedback.');
@@ -178,7 +178,8 @@ function investmentCost(summary,unit){
     visited.add(kind);const def=definitions.buildings[kind];
     return def.cost+(def.requires||[]).reduce((n,k)=>n+buildingCost(k),0);
   }
-  return definitions.units[unit].cost+buildingCost(definitions.units[unit].producer);
+  let techCost=0;for(let tier=(own.techTier??3)+1;tier<=(definitions.units[unit].tier||1);tier++)techCost+=definitions.technology[tier].cost;
+  return definitions.units[unit].cost+buildingCost(definitions.units[unit].producer)+techCost;
 }
 function candidates(summary){
   const m=assess(summary),own=summary.own,f=summary.feedback,pressure=summary.context.pressure;
@@ -318,6 +319,7 @@ function facts(summary){
   if(summary.opponent.hqHealth<=50)lines.push(`Enemy HQ ${summary.opponent.hqHealth}%.`);
   if(summary.own.hqHealth<45)lines.push(`Our HQ ${summary.own.hqHealth}%.`);
   if(summary.context.lowPower)lines.push('Low power.');
+  if(summary.own.techTier<3)lines.push(`Command technology Tier ${summary.own.techTier}; advanced units require paid upgrades before production.`);
   if(f.operation)lines.push(`Previous ${f.operation}: ${f.stalled?'stalled':f.lostValue>Math.max(200,f.destroyedValue*1.5)?'losing':f.mode==='Attacking'?'attacking':'building'}.`);
   if(f.operation||f.lostValue||f.destroyedValue||f.income)lines.push(`Last 45s: own assets lost ${f.lostValue}; enemy assets destroyed ${f.destroyedValue}; ore delivered ${f.income}. These totals do not prove the operation caused them.`);
   if(f.tactic)lines.push(`Current maneuver ${f.tactic}: ${f.tacticPhase}.`);
