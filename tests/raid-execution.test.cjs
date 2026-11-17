@@ -33,15 +33,15 @@ function battle(harassers,extraGuards=0,plan={focus:'hq'},blocked=()=>false){
   const noop=()=>{};
   const ctx={THREE,UNIT,buildings,HALF_X:120,HALF_Z:100,net:null,raids:true,elapsed:10,nextRaid:0,wave:0,enemyCredits:0,opponentStyle:'ollama',
     unitsFor:t=>troops.filter(u=>u.team===t&&u.hp>0),living:()=>[...troops,...buildings].filter(e=>e.hp>0),
-    baseOf:t=>buildings.find(b=>b.team===t),aiPolicy:()=>styles.rush,currentModelPlan:()=>plan,isModelOpponent:()=>true,
+    baseOf:t=>buildings.find(b=>b.team===t),aiPolicy:()=>({...styles.rush,maxRaid:14}),currentModelPlan:()=>plan,isModelOpponent:()=>true,
     active:b=>b.hp>0,distance,stats,isBuilding:e=>e.type==='building',isAir:e=>Boolean(UNIT[e.kind]?.aircraft),
     isNaval:()=>false,canAttack:(u,e)=>!UNIT[e.kind]?.aircraft||['all','air'].includes(stats(u).targets),
     reach:u=>stats(u).range,visibleTo:()=>true,aiStrength:e=>stats(e).damage*Math.sqrt(e.hp)/stats(e).reload,
-    aiSuperweapons:noop,updateAIHistory:noop,requestModelPlan:noop,aiEconomy:noop,aiLog:noop,announce:noop,aiTactic:noop,
+    aiSuperweapons:noop,updateAIHistory:noop,aiRememberThreats:noop,requestModelPlan:noop,aiEconomy:noop,aiUpgradeTechnology:noop,aiLog:noop,announce:noop,aiTactic:noop,
     serviceCompatible:()=>false,clearRoute:noop,blocked,rotateToward:noop,closestEnemy:()=>null,
     fire:(u,target)=>shots.push(target.id)};
   vm.createContext(ctx);
-  vm.runInContext(['resetCommander','aiMove','aiAttack','aiBaseThreats','aiFocusTarget','aiObjective','aiFlankWaypoint','aiEngagement','guardsForHarasser','guardsForThreats','raidHasStalled','aiReinforceRaid','aiSplitRaid','aiRegroup','aiRepairDestination','aiServiceDamagedUnits','aiThreatensAsset','aiMinerShelter','aiDefensePost','updateCommander','updateCombat'].map(gameFunction).join('\n'),ctx);
+  vm.runInContext(['resetCommander','aiMove','aiAttack','aiBaseThreats','aiFocusTarget','aiObjective','aiFlankWaypoint','aiEngagement','guardsForHarasser','guardsForThreats','raidHasStalled','aiReinforceRaid','aiSelectStrikeForce','aiSplitRaid','aiRegroup','aiRepairDestination','aiServiceDamagedUnits','aiThreatensAsset','aiMinerShelter','aiDefensePost','updateCommander','updateCombat'].map(gameFunction).join('\n'),ctx);
   ctx.commander=ctx.resetCommander();
   ctx.updateCommander();
   return {ctx,guard,objective,threats,troops,shots};
@@ -61,8 +61,15 @@ const posts=positions.troops.filter(u=>u.team==='enemy').map((u,i)=>positions.ct
 assert(new Set(posts.map(p=>`${p.x.toFixed(1)},${p.z.toFixed(1)}`)).size>=8,'guards spread around the base instead of sharing six rally slots');
 const raiders=fight.troops.filter(u=>u.raid);
 assert(raiders.every(u=>u.attackTarget===fight.objective),'strike force receives HQ attack order');
+const mixed=[...Array.from({length:6},(_,id)=>({id,kind:'tank'})),{kind:'heavy'},{kind:'rifleman'},{kind:'gunship'}];const picked=fight.ctx.aiSelectStrikeForce(mixed,4);assert(picked.some(u=>u.kind==='rifleman')&&picked.some(u=>u.kind==='gunship')&&picked.some(u=>u.kind==='heavy'),'limited strike force includes infantry, heavy armor and air when available');
+const eco={id:1006,team:'player',kind:'refinery',type:'building',hp:650,maxHp:650,mesh:{position:new THREE.Vector3(65,0,0)}};fight.ctx.buildings.push(eco);assert.equal(fight.ctx.aiObjective(raiders.slice(0,3),null,false,true),eco,'small harassment groups prioritize economic targets');fight.ctx.buildings.pop();
+const harassment=battle([]);harassment.ctx.aiRegroup();harassment.troops.filter(u=>u.team==='enemy').slice(0,4).forEach(u=>u.hp=0);harassment.ctx.buildings.push({...eco,id:1007});harassment.ctx.elapsed=50;harassment.ctx.commander.regroupUntil=0;harassment.ctx.nextRaid=0;harassment.ctx.updateCommander();assert.equal(harassment.ctx.commander.raidRole,'harass');assert.equal(harassment.ctx.commander.raidSize,3,'small raids use only a few units');const waiting={id:1100,team:'enemy',kind:'tank',type:'unit',hp:160,maxHp:160,mesh:{position:new THREE.Vector3(35,0,0)}};harassment.troops.push(waiting);harassment.ctx.elapsed=52;harassment.ctx.updateCommander();assert(!waiting.raid,'reinforcements accumulate for the main attack instead of joining harassment');
+const policyCtx={FIELD_OPPONENT:{styles},opponentStyle:'balanced',currentModelPlan:()=>null,isModelOpponent:()=>false};vm.createContext(policyCtx);vm.runInContext(gameFunction('aiPolicy'),policyCtx);
+for(const style of Object.keys(styles)){policyCtx.opponentStyle=style;assert(policyCtx.aiPolicy().maxRaid>=14,style+' supports larger attacks');}
+policyCtx.isModelOpponent=()=>true;assert.equal(policyCtx.aiPolicy().maxRaid,16,'model commanders can coordinate up to sixteen attackers');
+const concentrated=battle([]);const exposed={id:1005,team:'player',kind:'refinery',type:'building',hp:650,maxHp:650,mesh:{position:new THREE.Vector3(60,0,20)}};concentrated.ctx.buildings.push(exposed);concentrated.ctx.elapsed=12;concentrated.ctx.updateCommander();assert(concentrated.troops.filter(u=>u.raid).every(u=>!u.aiSecondaryTarget),'medium-sized attacks remain concentrated');
 const reinforcement=battle([]);const extra={id:1000,team:'enemy',kind:'tank',type:'unit',hp:160,maxHp:160,mesh:{position:new THREE.Vector3(0,0,0)}};reinforcement.troops.push(extra);reinforcement.ctx.aiPolicy=()=>({...styles.rush,maxRaid:12});reinforcement.ctx.elapsed=12;reinforcement.ctx.updateCommander();assert(!extra.raid,'an isolated new unit waits for support');const extra2={...extra,id:1002,mesh:{position:new THREE.Vector3(1,0,0)}};reinforcement.troops.push(extra2);reinforcement.ctx.elapsed=14;reinforcement.ctx.updateCommander();assert(extra.raid&&extra2.raid&&extra.attackTarget===reinforcement.objective,'nearby new units reinforce together');assert(reinforcement.troops.some(u=>u.team==='enemy'&&!u.raid),'a guard stays home');
-const split=battle([]);const refinery={id:1001,team:'player',kind:'refinery',type:'building',hp:650,maxHp:650,mesh:{position:new THREE.Vector3(60,0,20)}};split.ctx.buildings.push(refinery);split.ctx.elapsed=12;split.ctx.updateCommander();assert(split.troops.some(u=>u.raid&&u.attackTarget===refinery),'second group attacks a different visible target');assert(split.troops.some(u=>u.raid&&u.attackTarget===split.objective),'primary attack continues');
+const split=battle([],4);assert(split.ctx.commander.raidSize>styles.rush.maxRaid,'attack can exceed the old size limit');const refinery={id:1001,team:'player',kind:'refinery',type:'building',hp:650,maxHp:650,mesh:{position:new THREE.Vector3(60,0,20)}};split.ctx.buildings.push(refinery);split.ctx.elapsed=12;split.ctx.updateCommander();assert(split.troops.filter(u=>u.raid&&u.attackTarget===split.objective).length>=8,'large primary attack remains together');assert(split.troops.some(u=>u.raid&&u.attackTarget===refinery),'large force can send a second group against another visible target');
 fight.ctx.elapsed=12;fight.ctx.updateCommander();
 for(const u of raiders)u.mesh.position.x=68;
 fight.ctx.elapsed=78;fight.ctx.updateCommander();
